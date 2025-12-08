@@ -46,3 +46,7 @@ Claude created something similar https://www.anthropic.com/engineering/advanced-
 
 Of course, they have access to the agent code and are able to change also specs for MCP, implemented this very nicely.  
 But we could create a solution that is agent-agnostic, which can then be used with any agents that support concepts like sub-agents, MCP, and others.
+
+## Ref
+
+https://www.claude.com/blog/skills

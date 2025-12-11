@@ -1,0 +1,359 @@
+[
+  {
+    "name": "cdl.calendar.event_create",
+    "description": "Create a new shared calendar event",
+    "arguments": {
+      "title": "string",
+      "date": "string",
+      "time": "string",
+      "duration": "string?"
+    },
+    "returns": { "event_id": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_delete",
+    "description": "Delete a calendar event",
+    "arguments": { "event_id": "string" },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_update",
+    "description": "Update fields of a calendar event",
+    "arguments": {
+      "event_id": "string",
+      "title": "string?",
+      "date": "string?",
+      "time": "string?",
+      "duration": "string?"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_reschedule",
+    "description": "Reschedule event to a new date and time",
+    "arguments": {
+      "event_id": "string",
+      "new_date": "string",
+      "new_time": "string"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_list",
+    "description": "List all upcoming events",
+    "arguments": {},
+    "returns": { "events": "array" }
+  },
+
+  {
+    "name": "cdl.calendar.event_attach_dog",
+    "description": "Attach a .dog file to a calendar event",
+    "arguments": {
+      "event_id": "string",
+      "path": "string"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_detach_dog",
+    "description": "Remove .dog attachment from event",
+    "arguments": {
+      "event_id": "string"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_list_dog",
+    "description": "List .dog files attached to event",
+    "arguments": {
+      "event_id": "string"
+    },
+    "returns": { "files": "array" }
+  },
+
+  {
+    "name": "cdl.calendar.event_comment",
+    "description": "Add comment to event",
+    "arguments": {
+      "event_id": "string",
+      "text": "string"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_comment_delete",
+    "description": "Delete comment from event",
+    "arguments": {
+      "event_id": "string",
+      "comment_id": "string"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_comment_list",
+    "description": "List comments on event",
+    "arguments": {
+      "event_id": "string"
+    },
+    "returns": { "comments": "array" }
+  },
+
+  {
+    "name": "cdl.calendar.event_tag",
+    "description": "Add tag to event",
+    "arguments": {
+      "event_id": "string",
+      "tag": "string"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_untag",
+    "description": "Remove tag from event",
+    "arguments": {
+      "event_id": "string",
+      "tag": "string"
+    },
+    "returns": { "status": "string" }
+  },
+
+  {
+    "name": "cdl.calendar.event_add_participant",
+    "description": "Add participant to event",
+    "arguments": {
+      "event_id": "string",
+      "user": "string"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_remove_participant",
+    "description": "Remove participant from event",
+    "arguments": {
+      "event_id": "string",
+      "user": "string"
+    },
+    "returns": { "status": "string" }
+  },
+
+  {
+    "name": "cdl.calendar.repeat_daily",
+    "description": "Set event to repeat daily",
+    "arguments": { "event_id": "string" },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.repeat_weekly",
+    "description": "Set event to repeat weekly",
+    "arguments": { "event_id": "string" },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.repeat_monthly",
+    "description": "Set event to repeat monthly",
+    "arguments": { "event_id": "string" },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.repeat_yearly",
+    "description": "Set event to repeat yearly",
+    "arguments": { "event_id": "string" },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.repeat_custom",
+    "description": "Set custom repeat rule",
+    "arguments": {
+      "event_id": "string",
+      "rule": "string"
+    },
+    "returns": { "status": "string" }
+  },
+
+  {
+    "name": "cdl.calendar.notify_add",
+    "description": "Add notification to event",
+    "arguments": {
+      "event_id": "string",
+      "minutes_before": "number"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.notify_remove",
+    "description": "Remove notification",
+    "arguments": {
+      "event_id": "string",
+      "minutes_before": "number"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.notify_list",
+    "description": "List event notifications",
+    "arguments": {
+      "event_id": "string"
+    },
+    "returns": { "notifications": "array" }
+  },
+
+  {
+    "name": "cdl.calendar.freebusy_query",
+    "description": "Check availability for time range",
+    "arguments": {
+      "start": "string",
+      "end": "string"
+    },
+    "returns": { "free": "boolean" }
+  },
+  {
+    "name": "cdl.calendar.freebusy_day",
+    "description": "Get daily availability",
+    "arguments": {
+      "date": "string"
+    },
+    "returns": { "blocks": "array" }
+  },
+  {
+    "name": "cdl.calendar.freebusy_week",
+    "description": "Get weekly availability",
+    "arguments": {
+      "week": "string"
+    },
+    "returns": { "blocks": "array" }
+  },
+
+  {
+    "name": "cdl.calendar.block_time",
+    "description": "Block a time range",
+    "arguments": {
+      "start": "string",
+      "end": "string"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.unblock_time",
+    "description": "Unblock a time range",
+    "arguments": {
+      "start": "string",
+      "end": "string"
+    },
+    "returns": { "status": "string" }
+  },
+
+  {
+    "name": "cdl.calendar.day_summary",
+    "description": "Get day summary",
+    "arguments": {
+      "date": "string"
+    },
+    "returns": { "summary": "string" }
+  },
+  {
+    "name": "cdl.calendar.week_summary",
+    "description": "Get week summary",
+    "arguments": {
+      "week": "string"
+    },
+    "returns": { "summary": "string" }
+  },
+  {
+    "name": "cdl.calendar.month_summary",
+    "description": "Get month summary",
+    "arguments": {
+      "month": "string"
+    },
+    "returns": { "summary": "string" }
+  },
+
+  {
+    "name": "cdl.calendar.event_split",
+    "description": "Split event into two",
+    "arguments": {
+      "event_id": "string",
+      "time": "string"
+    },
+    "returns": { "new_events": "array" }
+  },
+  {
+    "name": "cdl.calendar.event_merge",
+    "description": "Merge two events into one",
+    "arguments": {
+      "event_id_1": "string",
+      "event_id_2": "string"
+    },
+    "returns": { "merged_id": "string" }
+  },
+
+  {
+    "name": "cdl.calendar.event_clone",
+    "description": "Clone event",
+    "arguments": { "event_id": "string" },
+    "returns": { "new_event_id": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_shift",
+    "description": "Shift event time by offset",
+    "arguments": {
+      "event_id": "string",
+      "minutes": "number"
+    },
+    "returns": { "status": "string" }
+  },
+
+  {
+    "name": "cdl.calendar.event_color",
+    "description": "Set event color",
+    "arguments": {
+      "event_id": "string",
+      "color": "string"
+    },
+    "returns": { "status": "string" }
+  },
+  {
+    "name": "cdl.calendar.event_priority",
+    "description": "Set event priority",
+    "arguments": {
+      "event_id": "string",
+      "level": "string"
+    },
+    "returns": { "status": "string" }
+  },
+
+  {
+    "name": "cdl.calendar.search_title",
+    "description": "Search events by title",
+    "arguments": { "query": "string" },
+    "returns": { "events": "array" }
+  },
+  {
+    "name": "cdl.calendar.search_date",
+    "description": "Search events by date",
+    "arguments": { "date": "string" },
+    "returns": { "events": "array" }
+  },
+  {
+    "name": "cdl.calendar.search_tag",
+    "description": "Search events by tag",
+    "arguments": { "tag": "string" },
+    "returns": { "events": "array" }
+  },
+
+  {
+    "name": "cdl.calendar.meeting_suggest",
+    "description": "Suggest best meeting time",
+    "arguments": {
+      "participants": "array",
+      "duration": "string"
+    },
+    "returns": { "time": "string" }
+  },
+
+  {
+    "name": "cdl.calendar.dog_preview",
+    "description": "Preview .dog file attached to event",
+    "arguments": { "event_id": "string" },
+    "returns": { "preview": "string" }
+  }
+]

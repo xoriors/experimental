@@ -1,131 +1,119 @@
-# Git Merge Conflict Resolution Skill for AI Agents
+# Git Merge Conflict Resolution Skill - Solution Design
 
-This repository contains a modular skill designed to enable AI agents (specifically within the Claude Code environment) to autonomously and accurately resolve git merge conflicts.
+## Core Philosophy
 
-While Large Language Models are proficient at writing code, they often struggle with the syntax of standard git merge markers (`<<<<<<<`, `=======`, `>>>>>>>`) due to a lack of context regarding the conflicting branches. This project bridges that gap by providing the agent with executable tools to retrieve the full history of the conflict (Base, Local, Remote) and a strict set of operational guidelines.
+This skill treats merge conflict resolution as a **semantic understanding problem** rather than text manipulation. The agent reconstructs the complete 3-way evolution (Base → Ours, Base → Theirs) to understand *why* conflicts occurred, enabling intelligent reconciliation based on developer intent rather than pattern-matching on conflict markers.
 
-## Architecture Overview
+## Approach
 
-The solution relies on a "Tool-Use" pattern where the agent acts not just as a text processor but as an orchestrator. It uses local Python scripts to interact with the Git CLI, processes the data, and applies resolution logic based on a predefined educational context.
+**Context Over Heuristics**: Extract full 3-way diffs, analyze commit messages, examine dependencies, and make decisions based on semantic code understanding.
 
-## Repository Structure & File Descriptions
+**Progressive Resolution**: Address conflicts by difficulty—trivial (whitespace) → structural (imports) → logical (algorithms)—auto-resolving simple cases while escalating complex ones.
 
-To implement this skill effectively, the project requires the following file structure. Each file serves a specific role in the agent's decision-making loop.
+**Safety Through Validation**: Multi-layer verification (syntax, semantics, integration) with automatic backups before any modifications.
 
-### 1. `instructions.md` (The Educational Layer)
+## Skill Structure
 
-This file acts as the system prompt or "knowledge base" for the agent. It dictates the behavior and decision-making process. It does not contain code to be executed, but rather the logic the agent must follow.
+```
+git-merge-conflict-skill/
+├── instructions/
+│   ├── 01-workflow.md              # Detection, prioritization, backup creation
+│   ├── 02-context-extraction.md   # How to retrieve 3-way diffs and commit history
+│   ├── 03-resolution-strategies.md # Decision trees for each conflict type
+│   ├── 04-validation.md            # Post-resolution verification protocol
+│   └── 05-escalation.md            # When and how to request human help
+│
+└── tools/
+    ├── conflict_extractor.py       # Extract 3-way diffs and parse conflict markers
+    ├── semantic_analyzer.py        # Analyze dependencies and infer intent
+    ├── conflict_categorizer.py     # Classify conflict types automatically
+    ├── resolution_validator.py     # Verify syntax and semantic correctness
+    └── git_context.py              # Fetch commit history and branch metadata
+```
 
-**Purpose:** Teaches the agent the "Algorithm of Resolution."
+### Instructions Layer (Markdown)
 
-**Key Contents:**
+**Purpose**: Educate the agent on resolution logic—the "what to do" without executable code.
 
-* **Step-by-Step Workflow:** Instructions to identify conflicts, fetch raw data, analyze intent, and apply fixes.
-* **Conflict Strategies:** Rules for handling specific scenarios:
-    * **Independent Changes:** When both branches modified different parts, merge both changes
-    * **Conflicting Logic:** When same lines have incompatible changes, prefer the version from the more authoritative branch (typically main/master)
-    * **Rename Conflicts:** When variables/functions are renamed, follow the naming standard from main branch
-    * **Import Conflicts:** Perform a union of all imports from both branches, sorted alphabetically
-    * **Ambiguous Cases:** When intent is unclear, keep current version and add TODO comment with explanation
-* **Special Cases:** Instructions for handling deleted files, binary files, and multiple conflicts in one file
-* **Validation Requirements:** Mandate to always validate syntax before staging
+**01-workflow.md**: Teaches initial conflict detection, how to scan for conflicts, create backups, and prioritize resolution order (simple first).
 
-### 2. `git_tools.py` (The Execution Layer)
+**02-context-extraction.md**: Guides the agent through retrieving Base/Ours/Theirs versions, fetching commit messages from both branches, and understanding author intent through git blame.
 
-This Python script serves as the bridge between the AI agent and the local Git repository. The agent calls functions within this file to gather factual data about the state of the codebase.
+**03-resolution-strategies.md**: Core decision logic organized by conflict type:
+- **Imports**: Union merge, deduplicate, sort alphabetically
+- **Whitespace**: Auto-resolve with project formatter
+- **Renames**: Detect pattern, apply rename everywhere, keep other side's logic
+- **Function signatures**: Check compatibility, merge if safe, escalate if breaking
+- **Logic divergence**: Compare intents (bugfix vs feature), attempt combination or escalate with analysis
+- **Refactoring**: Accept new structure, apply other side's changes to relocated code
 
-**Purpose:** Provides deterministic, structured data to the LLM.
+**04-validation.md**: Multi-stage verification—syntax check (must pass), semantic check (undefined vars, type errors), integration check (works with surrounding code), plus test recommendations.
 
-**Key Functions:**
+**05-escalation.md**: Clear criteria for requesting human help—ambiguous intent, data loss risk, test conflicts, complex dependencies. Defines escalation report format with detailed analysis and resolution options.
 
-* `list_conflicted_files()`: Parses `git status --porcelain` to identify files with merge conflicts (status "UU")
-* `get_three_way_diff(filepath)`: Uses `git show` to extract the three versions:
-    * **:1 (Base):** The common ancestor
-    * **:2 (Ours):** The local changes (HEAD)
-    * **:3 (Theirs):** The incoming changes
-    * Returns structured JSON with all three versions plus branch names
-* `validate_syntax(filepath)`: Runs language-specific validation:
-    * Python: Uses `ast.parse()` to check syntax
-    * JavaScript/TypeScript: Attempts to use eslint if available
-    * Java: Attempts to use javac if available
-    * Returns JSON with validation status and error messages
+### Tools Layer (Python)
 
-**CLI Interface:** Accepts commands `--list`, `--extract <file>`, `--verify <file>` and outputs JSON for easy parsing by the agent.
+**Purpose**: Provide deterministic, structured data to the agent—the "how to fetch" without decision logic.
 
-### 3. `resolution_template.md` (Optional)
+**conflict_extractor.py**: 
+- Scans repository using `git status --porcelain`
+- Extracts 3-way diff via git stages (`:1` base, `:2` ours, `:3` theirs)
+- Parses conflict markers, returns structured blocks with surrounding context
 
-A template file used by the agent to structure its reasoning before editing the code.
+**semantic_analyzer.py**:
+- Maps code dependencies (what variables/functions are used)
+- Detects rename patterns by comparing identifiers across versions
+- Infers intent by analyzing commit messages and code changes
+- Validates that resolved code satisfies its dependencies
 
-**Purpose:** Forces the agent to output a "Chain of Thought" before writing code.
+**conflict_categorizer.py**:
+- Automatically classifies conflicts (IMPORT, LOGIC, REFACTOR, etc.)
+- Estimates difficulty (EASY, MEDIUM, HARD, ESCALATE)
+- Provides initial assessment to guide strategy selection
 
-**Structure:**
-* Conflict Summary (file, branches, location)
-* Version Analysis (what Base, Ours, and Theirs contain)
-* Detected Intent (what each branch was trying to accomplish)
-* Conflict Type Classification
-* Proposed Resolution Strategy
-* Proposed Resolution Code
-* Reasoning
-* Validation Checklist
+**resolution_validator.py**:
+- Language-specific syntax checking (AST parsing for Python, etc.)
+- Semantic validation (undefined references, type mismatches)
+- Runs project linters
+- Suggests relevant tests based on changed code
 
-### 4. `examples/conflict_scenarios.md` (Optional but Recommended)
+**git_context.py**:
+- Fetches commit messages that modified conflicted regions
+- Finds merge base (common ancestor commit)
+- Retrieves author info for escalation context
+- Creates backup branches before resolution
 
-Real-world examples of common conflict patterns and their resolutions.
+## Resolution Workflow
 
-**Purpose:** Provides concrete examples the agent can reference when encountering similar conflicts.
+```
+DETECT → EXTRACT → CATEGORIZE → STRATEGIZE → RESOLVE → VALIDATE → COMMIT/ESCALATE
+```
 
-**Contents:**
-* Example: Independent feature additions (logging vs. validation) with resolution showing both merged
-* Example: Variable rename conflicts with resolution following main branch convention
-* Example: Import statement differences with resolution performing union
-* Example: Conflicting algorithm changes with resolution preferring main branch
-* Example: Deleted vs. modified file with context-dependent decision
+**For each conflict:**
 
-Each example shows Base, Ours, Theirs, and the Resolution with explanation.
+1. **Extract Context**: Get 3-way diff, commit history, dependencies
+2. **Categorize**: Classify type and difficulty using categorizer tool
+3. **Select Strategy**: Match to decision tree in instructions
+4. **Apply Resolution**: Generate resolved code based on strategy
+5. **Validate**: Syntax → Semantics → Integration (must pass all)
+6. **Finalize**: Stage if valid, escalate with detailed report if not
 
-## Operational Workflow
+## Key Innovations
 
-When the agent is tasked with fixing a merge conflict, the expected execution flow is:
+**Intent-Driven Resolution**: Analyzes commit messages + code semantics to understand the *goal* of each change, enabling intelligent merging of complementary features.
 
-1. **Context Loading:** The agent reads `instructions.md` to understand its role and constraints.
-2. **Discovery:** The agent executes `python git_tools.py --list` to find the target files.
-3. **Data Extraction:** For every conflict, the agent executes `python git_tools.py --extract <filename>`. It receives a structured JSON object containing the Base, Ours, and Theirs content plus branch information.
-4. **Intent Analysis:** The agent compares the three versions to understand what changed and why in each branch.
-5. **Strategy Selection:** Based on the analysis, the agent selects the appropriate resolution strategy from `instructions.md`.
-6. **Logic Synthesis:** The agent reconstructs the valid code path based on the chosen strategy, preserving intent from both branches when possible.
-7. **Application:** The agent rewrites the file content locally with the resolved code.
-8. **Verification:** The agent executes `python git_tools.py --verify <filename>` to catch syntax errors.
-9. **Staging:** If validation passes, the agent runs `git add <filename>`.
-10. **Completion:** After all conflicts are resolved, the agent can commit the merge.
+**Complete Context**: 3-way diff reveals full story (original → how each side changed → why), eliminating guesswork from conflict markers alone.
 
-## Key Design Principles
+**Explicit Boundaries**: Clear escalation criteria prevent incorrect auto-resolutions while maximizing safe automation.
 
-**Separation of Concerns:** Documentation defines the "what" and "why" while code handles the "how". The agent orchestrates both.
+**Semantic Validation**: Beyond syntax, verifies resolved code makes semantic sense—no undefined variables, consistent types, satisfied dependencies.
 
-**Structured Data Over Text Parsing:** All tool outputs are JSON with predictable schemas. The agent receives facts (three versions) not opinions (conflict markers).
+**Progressive Complexity**: Sorts conflicts simple → complex, builds confidence on easy cases, bails early if complexity exceeds capabilities.
 
-**Explicit Decision Framework:** Every type of conflict has a defined strategy in instructions.md with documented fallback behavior.
+## Success Criteria
 
-**Safety Through Validation:** Syntax validation is mandatory before staging to prevent broken commits.
+**Target auto-resolution rates**: 95% for trivial conflicts (imports, whitespace), 60% for structural (renames, refactors), 30% for logic conflicts.
 
-**Transparency and Traceability:** Optional resolution template encourages documenting reasoning, and TODO comments preserve context when full resolution is not possible.
+**Quality**: Zero syntax errors through validation. <1% semantic errors through multi-layer checking. Clear escalation reports when human input needed.
 
-## Integration
-
-To add this skill to your agent configuration:
-
-1. Place `git_tools.py` in the root or a dedicated `scripts/` directory.
-2. Add the content of `instructions.md` to the agent's context or system prompt.
-3. Optionally add `resolution_template.md` and `examples/conflict_scenarios.md` to the context.
-4. Ensure the agent has permission to execute shell commands (specifically `python` and `git`).
-
-## Expected Outcomes
-
-With this skill properly configured, the agent should be able to:
-
-* Detect all merge conflicts in a repository
-* Successfully resolve the majority of simple conflicts (independent changes, imports, renames)
-* Identify complex conflicts that require human review and add appropriate TODO comments
-* Never stage syntactically invalid code
-* Preserve the intent of changes from both branches when merging
-* Defer to humans for semantic conflicts requiring deep domain knowledge
+**Safety-first**: Always backup before changes. Never commit invalid code. Escalate with detailed analysis when uncertain.

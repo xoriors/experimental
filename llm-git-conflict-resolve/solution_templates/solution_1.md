@@ -1,44 +1,44 @@
 # Git Merge Conflict Prompt for AI Agents
 
-Acest proiect defineste un skill pentru Claude Code Agent, conceput pentru a detecta si rezolva conflicte Git merge. Skill-ul ofera instructiuni clare, proceduri bine definite si unelte auxiliare pentru a ajuta agentul sa interpreteze fisiere aflate in conflict si sa genereze o versiune finala corecta, fara marcaje de conflict.
+This project defines a skill for the Claude Code Agent, designed to detect and resolve Git merge conflicts. The skill provides clear instructions, well‑defined procedures, and auxiliary tools to help the agent interpret files containing conflicts and generate a correct final version without conflict markers.
 
-## Obiectiv
+## Objective
 
-Skill-ul are ca scop furnizarea unui set complet de instructiuni prin care un AI agent poate:
+The goal of the skill is to provide a complete set of instructions enabling an AI agent to:
 
-- Detecta conflictele din fisiere.
-- Identifica structura markerelor Git (`<<<<<<<`, `=======`, `>>>>>>>`).
-- Extrage sectiunile aflate in conflict.
-- Analiza diferentele dintre variantele HEAD si branch.
-- Aplica diverse strategii de merge (automata, preferinta pentru HEAD, preferinta pentru branch, semantica).
-- Apela cod Python auxiliar pentru analize mai avansate.
-- Genera o rezolvare finala coerenta.
-- Rescrie fisierul final fara conflicte.
+- Detect conflicts in files.
+- Identify the structure of Git markers (`<<<<<<<`, `=======`, `>>>>>>>`).
+- Extract the conflicting sections.
+- Analyze differences between HEAD and branch versions.
+- Apply various merge strategies (automatic, HEAD‑first, branch‑first, semantic).
+- Call auxiliary Python code for more advanced analysis.
+- Generate a coherent final resolution.
+- Rewrite the final file without conflict markers.
 
-Agentul nu utilizeaza comenzi Git propriu-zise. Toate operatiunile se bazeaza exclusiv pe procesarea textului, conform instructiunilor din acest skill.
+The agent **does not use real Git commands**. All operations are based exclusively on text processing according to the instructions in this skill.
 
 ---
 
-# Continutul skill-ului
+# Skill Contents
 
-Structura skill-ului este formata din trei componente principale: fisierul de logica (`skill.md`), scriptul auxiliar (`merge_utils.py`) si documentatia de utilizare (`usage.md`).
+The skill consists of three main components: the logic file (`skill.md`), the auxiliary script (`merge_utils.py`), and the usage documentation (`usage.md`).
 
-## 1. `skill.md` – Instructiunile principale
+## 1. `skill.md` – Main Instructions
 
-Acest fisier defineste comportamentul agentului si regulile pe care trebuie sa le urmeze in timpul rezolvarii conflictelor.
+This file defines the agent’s behavior and the rules it must follow when resolving conflicts.
 
-### Ce contine
+### What it contains
 
-- Descrierea scopului skill-ului.
-- Explicarea pasilor operationali obligatorii.
-- Definirea clara a modului de detectare si extragere a conflictelor.
-- Regulile de analiza si de aplicare a strategiilor de merge.
-- Instructiuni despre cum sa utilizeze codul auxiliar Python.
-- Exemple de input si output pentru a ghida agentul.
+- Description of the skill’s purpose.
+- Explanation of mandatory operational steps.
+- Clear definition of how to detect and extract conflicts.
+- Rules for analyzing and applying merge strategies.
+- Instructions on how to use the auxiliary Python code.
+- Sample inputs and outputs to guide the agent.
 
-### Pasii operationali
+### Operational steps
 
-1. Identificarea marcajelor de conflict:
+1. Identify conflict markers:
    ```
    <<<<<<< HEAD
    ...
@@ -46,52 +46,52 @@ Acest fisier defineste comportamentul agentului si regulile pe care trebuie sa l
    ...
    >>>>>>> branch
    ```
-2. Extractia celor doua sectiuni in structura:
+2. Extract the two sections into this structure:
    ```json
-    { 
-        "HEAD": "...", 
-        "branch": "..." 
-    }
+   {
+       "HEAD": "...",
+       "branch": "..."
+   }
    ```
-3. Analiza diferentelor dintre sectiuni.
-4. Aplicarea unei strategii de merge, conform instructiunilor si contextului.
-5. Generarea unei rezolvari finale.
-6. Daca este necesar, apelarea scriptului Python (`merge_utils.py`) pentru:
-   - detectarea conflictelor,
-   - comparari avansate,
-   - analiza semantica.
-7. Interpretarea outputului JSON primit de la script.
-8. Reconstruirea fisierului final fara marcaje de conflict.
+3. Analyze the differences between the two sections.
+4. Apply a merge strategy based on instructions and context.
+5. Generate a final resolved version.
+6. If necessary, call the Python script (`merge_utils.py`) for:
+   - conflict detection,
+   - advanced comparisons,
+   - semantic analysis.
+7. Interpret the JSON output returned by the script.
+8. Reconstruct the final file without conflict markers.
 
-### Strategii de merge documentate
+### Documented merge strategies
 
-- Strategie automata: daca una dintre versiuni este continuta in cealalta.
-- Preferinta HEAD: agentul pastreaza versiunea din HEAD.
-- Preferinta branch: agentul pastreaza versiunea din branch.
-- Merge semantic:
-  - reconstructie JSON,
-  - combinarea functiilor in cod atunci cand modificarile nu sunt conflictuale.
-- Merge asistat: agentul solicita utilizatorului o alegere explicita.
+- **Automatic strategy**: if one version is contained in the other.
+- **HEAD‑first strategy**: keep the HEAD version.
+- **Branch‑first strategy**: keep the branch version.
+- **Semantic merge**:
+  - reconstruct JSON,
+  - combine functions in code when changes are not conflicting.
+- **Assisted merge**: the agent asks the user for explicit selection.
 
-### Exemple
+### Examples
 
-Skill-ul trebuie sa includa exemple de conflicte si rezolvarile lor, astfel incat agentul sa inteleaga formatul asteptat.
+The skill includes examples of conflicts and their correct resolutions so that the agent understands the expected format.
 
 ---
 
-## 2. `merge_utils.py` – Cod Python auxiliar
+## 2. `merge_utils.py` – Auxiliary Python Code
 
-Acest script este destinat operatiunilor care sunt mai eficiente sau mai sigure atunci cand sunt executate ca program local. Agentul il poate apela in mod explicit in timpul procesului.
+This script is used for operations that are more efficient or safer when executed as local Python code. The agent may explicitly call it during the merge process.
 
-### Functionalitati posibile
+### Possible functionalities
 
-- `detect_conflicts(file_text)` identifica toate sectiunile conflictuale dintr-un fisier si intoarce o structura JSON.
-- `three_way_merge(base, ours, theirs)` implementeaza logica unui merge in trei sensuri.
-- `ast_merge_python(ours, theirs)` realizeaza un merge semantic asupra functiilor Python.
-- `json_merge(ours, theirs)` combina structuri JSON intr-un mod sigur.
-- `line_similarity(a, b)` ofera un scor de similaritate intre linii pentru decizii automatizate.
+- `detect_conflicts(file_text)` identifies all conflicting sections in a file and returns a JSON structure.
+- `three_way_merge(base, ours, theirs)` implements a three‑way merge.
+- `ast_merge_python(ours, theirs)` performs a semantic merge of Python functions.
+- `json_merge(ours, theirs)` safely combines JSON structures.
+- `line_similarity(a, b)` returns a similarity score between lines for automated decisions.
 
-### Format de output recomandat
+### Recommended output format
 
 ```json
 {
@@ -109,20 +109,20 @@ Acest script este destinat operatiunilor care sunt mai eficiente sau mai sigure 
 
 ---
 
-## 3. `usage.md` – Documentatie de utilizare
+## 3. `usage.md` – Usage Documentation
 
-Fisierul `usage.md` explica modul corect de utilizare al skill-ului, atat pentru agent, cat si pentru utilizator.
+The `usage.md` file explains the correct way to use the skill, for both the agent and the user.
 
-### Continut
+### Contents
 
-- Instructiuni despre cum trebuie apelat scriptul Python.
-- Formatele acceptate pentru input.
-- Modul de interpretare al outputului.
-- Exemple complete de rulare.
-- Conventii stabilite intre agent si script (argumente CLI, structuri JSON, etc.).
+- Instructions on how to call the Python script.
+- Accepted input formats.
+- How to interpret output.
+- Complete examples of usage.
+- Conventions between agent and script (CLI arguments, JSON structures, etc.).
 
 ---
 
-# Concluzie
+# Conclusion
 
-Skill-ul ofera o metodologie completa pentru rezolvarea conflictelor Git fara a utiliza Git in mod direct. Documentatia din `skill.md` deserveste drept ghid operational pentru agent, `merge_utils.py` furnizeaza suport tehnic avansat, iar `usage.md` clarifica modul de interactiune cu skill-ul. Acest set de fisiere permite agentului sa detecteze, interpreteze si combine eficient sectiunile aflate in conflict, oferind o versiune finala curata si coerenta.
+The skill provides a complete methodology for resolving Git merge conflicts without using Git directly. The documentation in `skill.md` serves as the operational guide for the agent, `merge_utils.py` provides advanced technical support, and `usage.md` clarifies how to interact with the skill. This set of files enables the agent to efficiently detect, interpret, and combine conflicting sections, producing a clean and coherent final version.

@@ -1,0 +1,46 @@
+[
+  {"name": "dogedit.core.file_new", "description": "Create a new .dog file", "arguments": {"path": "string"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.file_open", "description": "Open a .dog file", "arguments": {"path": "string"}, "returns": {"content": "string"}},
+  {"name": "dogedit.core.file_save", "description": "Save .dog file", "arguments": {"path": "string", "content": "string"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.file_close", "description": "Close .dog file", "arguments": {}, "returns": {"status": "string"}},
+
+  {"name": "dogedit.core.cursor_move", "description": "Move cursor", "arguments": {"line": "number", "col": "number"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.cursor_home", "description": "Move cursor to line start", "arguments": {}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.cursor_end", "description": "Move cursor to line end", "arguments": {}, "returns": {"status": "string"}},
+
+  {"name": "dogedit.core.text_insert", "description": "Insert text", "arguments": {"text": "string"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.text_delete", "description": "Delete range", "arguments": {"start": "number", "end": "number"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.text_replace", "description": "Replace text", "arguments": {"start": "number", "end": "number", "text": "string"}, "returns": {"status": "string"}},
+
+  {"name": "dogedit.core.text_bold", "description": "Bold a text range", "arguments": {"start": "number", "end": "number"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.text_italic", "description": "Italic a text range", "arguments": {"start": "number", "end": "number"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.text_underline", "description": "Underline a text range", "arguments": {"start": "number", "end": "number"}, "returns": {"status": "string"}},
+
+  {"name": "dogedit.core.text_color", "description": "Color a text range", "arguments": {"start": "number", "end": "number", "color": "string"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.text_comment", "description": "Comment a region", "arguments": {"start": "number", "end": "number", "comment": "string"}, "returns": {"status": "string"}},
+
+  {"name": "dogedit.core.clipboard_cut", "description": "Cut to clipboard", "arguments": {"start": "number", "end": "number"}, "returns": {"clipboard": "string"}},
+  {"name": "dogedit.core.clipboard_copy", "description": "Copy to clipboard", "arguments": {"start": "number", "end": "number"}, "returns": {"clipboard": "string"}},
+  {"name": "dogedit.core.clipboard_paste", "description": "Paste clipboard", "arguments": {"position": "number"}, "returns": {"status": "string"}},
+
+  {"name": "dogedit.core.section_create", "description": "Create a section", "arguments": {"title": "string"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.section_delete", "description": "Delete a section", "arguments": {"title": "string"}, "returns": {"status": "string"}},
+
+  {"name": "dogedit.core.meta_author", "description": "Set file author", "arguments": {"author": "string"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.meta_tags", "description": "Set metadata tags", "arguments": {"tags": "array"}, "returns": {"status": "string"}},
+
+  {"name": "dogedit.core.search", "description": "Search text", "arguments": {"query": "string"}, "returns": {"results": "array"}},
+  {"name": "dogedit.core.replace_all", "description": "Replace all occurrences", "arguments": {"query": "string", "replacement": "string"}, "returns": {"count": "number"}},
+
+  {"name": "dogedit.core.preview", "description": "Preview .dog file", "arguments": {"path": "string"}, "returns": {"preview": "string"}},
+
+  {"name": "dogedit.core.event_attach", "description": "Attach .dog file to calendar event", "arguments": {"path": "string", "event_id": "string"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.event_detach", "description": "Detach .dog file from event", "arguments": {"event_id": "string"}, "returns": {"status": "string"}},
+
+  {"name": "dogedit.core.link_create", "description": "Create link in .dog file", "arguments": {"text": "string", "url": "string"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.image_insert", "description": "Insert image", "arguments": {"path": "string", "position": "number"}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.table_insert", "description": "Insert table", "arguments": {"rows": "number", "cols": "number"}, "returns": {"status": "string"}},
+
+  {"name": "dogedit.core.undo", "description": "Undo last action", "arguments": {}, "returns": {"status": "string"}},
+  {"name": "dogedit.core.redo", "description": "Redo last undo", "arguments": {}, "returns": {"status": "string"}}
+]

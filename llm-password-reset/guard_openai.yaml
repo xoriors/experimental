@@ -1,0 +1,116 @@
+openapi: 3.1.0
+info:
+  title: GUARD backend
+  version: 1.0.0
+paths:
+
+  /user/{user_id}:
+    get:
+      operationId: checkUserStatus
+      summary: Check if a username exists and return its status (locked/active)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User status returned
+        "404":
+          description: User not found
+
+  /enroll:
+    post:
+      operationId: enrollUser
+      summary: Enroll a new user in the password reset system
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  description: Unique identifier for the user
+                password:
+                  type: string
+                  description: The user's chosen password (will be hashed)
+                phrases:
+                  type: array
+                  items:
+                    type: string
+                  description: Secret phrases used for verification (raw text format)
+      responses:
+        "200":
+          description: Enrollment success
+        "400":
+          description: User already enrolled
+        "500":
+          description: Internal Server Error
+  
+  /verify:
+    post:
+      operationId: verifyIdentity
+      summary: Verify identity using either Password (exact) or Passphrase (semantic)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                input_text:
+                  type: string
+                auth_type:
+                  type: string
+                  enum: [password, phrase]
+      responses:
+        "200":
+          description: Verification processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [authorized, denied, ambiguous]
+                  score:
+                    type: number
+                  message:
+                    type: string
+        "404":
+          description: User not found
+        "429":
+          description: Account Locked
+
+  /update_account:
+    post:
+      operationId: updateAccountCredentials
+      summary: Update the user's password AFTER successful verification.
+      description: This endpoint allows setting a new password. Recovery passphrases cannot be changed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, new_password]
+              properties:
+                user_id:
+                  type: string
+                new_password:
+                  type: string
+                  description: The new password (unhashed)
+      responses:
+        "200":
+          description: Password update successful
+        "500":
+          description: Database error
+servers:
+  # https://retral-maire-lily.ngrok-free.dev
+  - url: https://NGROK-SPECIFIED-CONNECTION.ngrok-free.dev

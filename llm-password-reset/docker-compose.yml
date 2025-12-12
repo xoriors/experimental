@@ -19,5 +19,5 @@ services:
       - "4040:4040"
     environment:
       NGROK_AUTHTOKEN : ${NGROK_AUTHTOKEN}
-    depends-on:
-      backend
+    depends_on:
+      - backend

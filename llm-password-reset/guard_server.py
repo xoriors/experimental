@@ -24,9 +24,8 @@ app = FastAPI(title="GUARD Backend", version="3.0.0")
 # TODO: 
 # 1. update instructions inside guard (force backend call for password reset of any kind)
 # 2. documentation inside README.md
-# 3. creation of dockerfile (image)
-# 4. privacy policy URL
-# 5. presentation
+# 3. privacy policy URL
+# 4. presentation
 
 # creation of database if file not already created (handles users and phrases tables, as well as the table of contexts)
 def init_db():

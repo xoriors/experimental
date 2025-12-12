@@ -180,6 +180,8 @@ def verify(req: VerifyRequest):
             auth_status = "authorized"    
     # SCENARIO G_Phase2: semantic match
     elif req.auth_type == "phrase":
+        context_used = False
+
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.execute("SELECT partial_phrase, timestamp FROM auth_context WHERE user_id = ?", (req.user_id,))
             row = cursor.fetchone()
@@ -188,6 +190,7 @@ def verify(req: VerifyRequest):
                 # context valid for 5 mins
                 if current_time - saved_ts < 300: 
                     final_input_text = f"{saved_phrase} {req.input_text}"
+                    context_used = True
                     logger.info(f"Context combined successfully.")
                 else:
                     # expired context, clean it up
@@ -211,7 +214,11 @@ def verify(req: VerifyRequest):
         if similarity_score >= 0.85:
             auth_status = "authorized"
         elif 0.60 <= similarity_score < 0.85:
-            auth_status = "ambiguous"
+            if context_used:
+                auth_status = "denied" # No 3rd chances
+                logger.info("Clarification failed. Denying access.")
+            else:
+                auth_status = "ambiguous" # allow only one follow-up question
 
     # handle cases
     with sqlite3.connect(DB_FILE) as conn:

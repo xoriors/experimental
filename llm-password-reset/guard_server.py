@@ -23,11 +23,10 @@ app = FastAPI(title="GUARD Backend", version="3.0.0")
 
 # TODO: 
 # 1. update instructions inside guard (force backend call for password reset of any kind)
-# 2. handle ambiguous reponse
-# 3. documentation inside README.md
-# 4. creation of dockerfile (image)
-# 5. privacy policy URL
-# 6. presentation
+# 2. documentation inside README.md
+# 3. creation of dockerfile (image)
+# 4. privacy policy URL
+# 5. presentation
 
 # creation of database if file not already created (handles users and phrases tables, as well as the table of contexts)
 def init_db():
@@ -211,11 +210,11 @@ def verify(req: VerifyRequest):
         similarity_score = calculate_similarity(final_input_text, stored_embeddings)
         logger.info(f"User: {req.user_id} | Input: {final_input_text} | Score: {similarity_score:.2f}")
 
-        if similarity_score >= 0.85:
+        if similarity_score >= 0.80:
             auth_status = "authorized"
-        elif 0.60 <= similarity_score < 0.85:
+        elif 0.60 <= similarity_score < 0.80:
             if context_used:
-                auth_status = "denied" # No 3rd chances
+                auth_status = "denied"
                 logger.info("Clarification failed. Denying access.")
             else:
                 auth_status = "ambiguous" # allow only one follow-up question

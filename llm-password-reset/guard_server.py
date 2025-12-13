@@ -19,13 +19,7 @@ model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="GUARD Backend", version="3.0.0")
-
-# TODO: 
-# 1. update instructions inside guard (force backend call for password reset of any kind)
-# 2. documentation inside README.md
-# 3. privacy policy URL
-# 4. presentation
+app = FastAPI(title="GUARD Backend", version="3.2.0")
 
 # creation of database if file not already created (handles users and phrases tables, as well as the table of contexts)
 def init_db():

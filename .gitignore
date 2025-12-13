@@ -19,3 +19,27 @@ Cargo.lock
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# AI AGENTS DELEGATE ACTIONS
+# Python cache
+ai-agents-delegate-actions/__pycache__/
+ai-agents-delegate-actions/*.pyc
+
+# Virtual environments
+ai-agents-delegate-actions/venv/
+ai-agents-delegate-actions/env/
+ai-agents-delegate-actions/.venv/
+ai-agents-delegate-actions/.env/
+
+# Environment variables
+ai-agents-delegate-actions/.env
+
+# OS-specific
+.DS_Store
+
+# Editor files
+.idea/
+.vscode/
+
+# IGNORE TOOLS FOLDER ENTIRELY
+ai-agents-delegate-actions/tools/

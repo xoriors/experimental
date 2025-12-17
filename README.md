@@ -2,11 +2,6 @@
 
 A sandbox for ideas: imagine freely, experiment boldly, learn from every misstep, and simply play.
 
-> [!WARNING]  
-> This is just experimental at this point; it is still under development. Please do not use it with sensitive data for now; please wait for a
-stable release.  
-> It's mostly ideal for experimental and learning projects.**
-
 ## Contribute
 
 Feel free to fork, change, and use it however you want. We always appreciate it if you build something interesting and feel like sharing pull requests.

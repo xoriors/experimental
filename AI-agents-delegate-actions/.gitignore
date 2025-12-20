@@ -1,0 +1,22 @@
+# Python cache
+ai-agents-delegate-actions/__pycache__/
+ai-agents-delegate-actions/*.pyc
+
+# Virtual environments
+ai-agents-delegate-actions/venv/
+ai-agents-delegate-actions/env/
+ai-agents-delegate-actions/.venv/
+ai-agents-delegate-actions/.env/
+
+# Environment variables
+ai-agents-delegate-actions/.env
+
+# OS-specific
+.DS_Store
+
+# Editor files
+.idea/
+.vscode/
+
+# IGNORE TOOLS FOLDER ENTIRELY
+ai-agents-delegate-actions/tools/

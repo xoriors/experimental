@@ -1,6 +1,6 @@
 # experimental
 
-A sandbox for ideas: imagine freely, experiment boldly, learn from every misstep, and simply play.
+A playground for ideas: imagine freely, experiment boldly, learn from every misstep, and simply play.
 
 > [!WARNING]  
 > This is just experimental at this point; it is still under development. Please do not use it with sensitive data for now; please wait for a

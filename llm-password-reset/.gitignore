@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+guard_secure.db
+.env

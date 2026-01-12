@@ -1,0 +1,23 @@
+services:
+  # python backend
+  backend:
+    build: .
+    container_name: guard_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # maps file on the computer with files inside the container
+      - ./guard_secure.db:/app/guard_secure.db
+    restart: always
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: guard_tunnel
+    # looks for the service named 'backend'
+    command: "http backend:8000"
+    ports:
+      - "4040:4040"
+    environment:
+      NGROK_AUTHTOKEN : ${NGROK_AUTHTOKEN}
+    depends_on:
+      - backend

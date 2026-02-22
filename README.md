@@ -7,6 +7,10 @@ A playground for ideas: imagine freely, experiment boldly, learn from every miss
 stable release.  
 > It's mostly ideal for experimental and learning projects.**
 
+# Ideas
+
+Feel free to add any of these [experimental projects](https://docs.google.com/spreadsheets/d/17baWfQ2YvJUX5tyLfYUYGlfdY7VBcjDA6Eef8oUAUbo/edit?usp=sharing) or propose new ideas.
+
 ## Contribute
 
 Feel free to fork, change, and use it however you want. We always appreciate it if you build something interesting and feel like sharing pull requests.

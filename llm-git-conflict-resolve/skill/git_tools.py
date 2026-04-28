@@ -4,6 +4,7 @@ import subprocess
 import json
 import os
 import ast
+import shutil
 
 def run_git_command(command):
     """Executes a git command and returns the output as a string."""
@@ -95,6 +96,21 @@ def verify_syntax(filepath):
     # For other files, currently return valid (or implement specific linters)
     return {"status": "valid", "message": f"No linter configured for {ext}, assuming valid."}
 
+def create_backup(filepath):
+    """Automatically creates a .bak copy of the file."""
+    if os.path.exists(filepath):
+        backup_path = f"{filepath}.bak"
+        shutil.copy2(filepath, backup_path)
+
+def restore_backup(filepath):
+    """Restore the file from the .bak copy."""
+    backup_path = f"{filepath}.bak"
+    if os.path.exists(backup_path):
+        # Overwrite the corrupted file with the backup
+        shutil.copy2(backup_path, filepath) 
+        return {"status": "success", "message": f"The file has been restored to its original state in {backup_path}"}
+    return {"status": "error", "message": f"No backup found.({backup_path})."}
+
 def main():
     parser = argparse.ArgumentParser(description="Git Merge Conflict Tool for AI Agents")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -110,6 +126,10 @@ def main():
     verify_parser = subparsers.add_parser("verify", help="Verify syntax")
     verify_parser.add_argument("filepath", type=str, help="Path to the file to verify")
 
+    # --- Command: restore ---
+    restore_parser = subparsers.add_parser("restore", help="Restore the file from a .bak backup")
+    restore_parser.add_argument("filepath", type=str, help="Path to the file to be restored")
+
     args = parser.parse_args()
 
     # Command routing
@@ -119,6 +139,9 @@ def main():
 
     elif args.command == "extract":
         filepath = args.filepath
+        
+        #Perform the backup before extracting the data
+        create_backup(filepath)
         
         # 1. Extract Diff (Code)
         diff_data = {
@@ -141,6 +164,10 @@ def main():
 
     elif args.command == "verify":
         result = verify_syntax(args.filepath)
+        print(json.dumps(result, indent=2))
+
+    elif args.command == "restore":
+        result = restore_backup(args.filepath)
         print(json.dumps(result, indent=2))
 
     else:

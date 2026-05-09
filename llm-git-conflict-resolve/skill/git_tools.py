@@ -69,6 +69,20 @@ def get_commit_context(filepath):
         "remote_intent": remote_msg.strip() if remote_msg else "Unknown (No MERGE_HEAD found)"
     }
 
+def format_process_error(e, message):
+    """
+    Helper function to format subprocess.CalledProcessError into a standard JSON response.
+    """
+    # Try to extract the error from stderr, then from stdout, and finally fallback to str(e)
+    details = e.stderr.strip() if e.stderr else ""
+    if not details:
+        details = e.stdout.strip() if e.stdout else str(e)
+    return {
+        "status": "error",
+        "message": message,
+        "details": details
+    }
+
 def verify_syntax(filepath):
     """
     Verifies file syntax. Currently supports Python via AST.
@@ -92,7 +106,52 @@ def verify_syntax(filepath):
                 "message": f"Syntax Error on line {e.lineno}: {e.msg}",
                 "details": str(e)
             }
-    
+            
+    elif ext in ['.js', '.jsx', '.cjs', '.mjs']:
+        # Check if 'node' is installed on the system
+        if shutil.which("node") is None:
+            return {
+                "status": "warning", 
+                "message": "Node.js is missing. JS verification was skipped.",
+                "suggestion": "To enable JS verification on Linux (Ubuntu/Debian), run:",
+                "install_command": "sudo apt update && sudo apt install nodejs npm"
+            }
+        
+        try:
+            # Run node --check
+            subprocess.run(
+                ["node", "--check", filepath],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return {"status": "valid", "message": "JS syntax check passed."}
+        except subprocess.CalledProcessError as e:
+            return format_process_error(e, "JS Syntax Error")
+
+    # --- TYPESCRIPT ---
+    elif ext in ['.ts', '.tsx']:
+        # Check if 'tsc' (TypeScript compiler) is installed
+        if shutil.which("tsc") is None:
+            return {
+                "status": "warning", 
+                "message": "TypeScript compiler (tsc) is missing. TS verification was skipped.",
+                "suggestion": "If you already have npm installed, install TypeScript globally by running:",
+                "install_command": "sudo npm install -g typescript"
+            }
+        
+        try:
+            # Run tsc --noEmit (checks syntax and types without generating .js files)
+            subprocess.run(
+                ["tsc", "--noEmit", filepath],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return {"status": "valid", "message": "TS syntax check passed."}
+        except subprocess.CalledProcessError as e:
+            return format_process_error(e, "TS Syntax/Type Error")
+            
     # For other files, currently return valid (or implement specific linters)
     return {"status": "valid", "message": f"No linter configured for {ext}, assuming valid."}
 

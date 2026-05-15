@@ -54,12 +54,19 @@ You must listen for the following keywords. Execute the action, then **guide the
 3. **Report:** Report the status ("Syntax Valid" or "Error").
 4. **Guidance Example:**
    - If valid: "Syntax verified. Please run `git add <filepath>` manually to mark it resolved, then type `scan` to check for others."
-   - If error: "Syntax error detected. Shall I try to fix it?"
+   - If error: "Syntax error detected. Shall I try to fix it, or would you like to revert the file using the `restore <filepath>` command?"
+
+### COMMAND: restore
+**Triggers:** "restore", "revert", "undo", "back"
+**Action:**
+1. **Execute:** `python3 git_tools.py restore <filepath>`
+2. **Report:** Tell the user if the restoration from the `.bak` file was successful based on the JSON output.
+3. **Guidance Example:** "The file has been restored to its original conflicted state. We can try resolving it again, or you can check the code manually."
 
 ### COMMAND: help
 **Triggers:** "help", "info", "commands"
 **Action:**
-1. List the available commands (`scan`, `resolve`, `apply`).
+1. List the available commands (scan, resolve, apply, restore).
 2. Explain the workflow briefly.
 
 ---
@@ -68,10 +75,11 @@ You must listen for the following keywords. Execute the action, then **guide the
 
 You must use your understanding of programming logic to merge the files. Do not rely on git markers blindly.
 
-### 1. Semantic Intent Analysis
-- Read the commit messages in the `context` object to understand *why* changes were made on each branch.
-- **Structural vs. Functional:** Distinguish between changes that alter code structure (renaming, moving functions) and changes that alter behavior (new logic, new values).
-- **Adaptation:** If one branch changes the structure (e.g., renames a variable) and the other modifies the logic of that same variable, you must apply the new logic to the new name.
+### 1. Semantic Intent & Sub-Agent Delegation
+- **Context Path Extraction:** When you run the `extract` command, look for the `ai_context_path` in both the `local` and `remote` context objects.
+- **Spawn Sub-Agents (CRITICAL):** If those paths exist, DO NOT guess the context. Spawn a sub-agent (using your platform's delegation capabilities and requesting a fast, lightweight model) and instruct it to read the files at those paths using your file-reading tools.
+- **Summarization Request:** Tell your sub-agent to extract the core technical intent and return a concise, 5-sentence summary of why the code was written that way.
+- **Wait and Synthesize:** Wait for the sub-agents to return the summaries. Once you have both summaries, mentally synthesize them to understand the true intent of both branches before writing any code.
 
 ### 2. Logic Synthesis
 - **Preserve Intent:** Your goal is to produce code that satisfies the requirements of **both** branches simultaneously.

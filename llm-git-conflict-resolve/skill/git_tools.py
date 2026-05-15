@@ -5,14 +5,15 @@ import json
 import os
 import ast
 import shutil
+import re
+import shlex
 
 def run_git_command(command):
     """Executes a git command and returns the output as a string."""
     try:
         result = subprocess.check_output(
-            command, 
-            stderr=subprocess.STDOUT, 
-            shell=True
+            shlex.split(command),
+            stderr=subprocess.STDOUT
         )
         return result.decode('utf-8').strip()
     except subprocess.CalledProcessError as e:
@@ -33,8 +34,8 @@ def list_conflicted_files():
         status = line[:2]
         filepath = line[3:].strip()
         
-        # Simplified filter: if both sides modified (U) or added (A)
-        if 'U' in status or 'A' in status:
+        # Only exact two-character conflict statuses (avoids staged-but-not-conflicted false positives)
+        if status in {'UU', 'AA', 'AU', 'UA', 'DD', 'DU', 'UD'}:
             conflicted_files.append({
                 "filepath": filepath,
                 "status": status
@@ -50,23 +51,54 @@ def get_file_content_at_stage(filepath, stage):
     Stage 3 = Theirs (Remote/MERGE_HEAD)
     """
     # git show :<stage>:<filepath>
-    content = run_git_command(f"git show :{stage}:{filepath}")
+    content = run_git_command(f"git show :{stage}:{shlex.quote(filepath)}")
     return content if content is not None else ""
+
+def parse_and_summarize_ai_context(commit_message):
+    """
+    Searches for @ai-context and returns ONLY the path.
+    The actual reading and summarization will be delegated to a Sub-Agent 
+    as defined in the system instructions.
+    """
+    if not commit_message:
+        return None
+
+    # Search for the @ai-context <path> pattern
+    match = re.search(r'@ai-context\s+([^\s]+)', commit_message)
+    if match:
+        repo_root = run_git_command("git rev-parse --show-toplevel") or ""
+        context_path = os.path.abspath(match.group(1))
+        if os.path.exists(context_path) and context_path.startswith(repo_root + os.sep):
+            return context_path
+
+    return None
 
 def get_commit_context(filepath):
     """
-    Extracts commit messages to understand semantic intent (Solution 3).
+    Extracts commit messages and identifies AI reasoning context paths.
     """
-    # HEAD is the current branch (Local)
-    local_msg = run_git_command(f"git log -1 --pretty=%B HEAD -- {filepath}")
+    # 1. Extract commit messages from Git
+    local_msg = run_git_command(f"git log -1 --pretty=%B HEAD -- {shlex.quote(filepath)}")
+    remote_msg = run_git_command(f"git log -1 --pretty=%B MERGE_HEAD -- {shlex.quote(filepath)}")
     
-    # MERGE_HEAD is the incoming branch (Remote). 
-    # It might be null if we are not in a standard merge, but we handle the case.
-    remote_msg = run_git_command(f"git log -1 --pretty=%B MERGE_HEAD -- {filepath}")
-    
+    # Ensure we have clean strings
+    local_msg = local_msg.strip() if local_msg else "Unknown (Manual changes or no commit msg)"
+    remote_msg = remote_msg.strip() if remote_msg else "Unknown (No MERGE_HEAD found)"
+
+    # 2. Identify @ai-context file paths (delegation mode)
+    local_ctx_path = parse_and_summarize_ai_context(local_msg)
+    remote_ctx_path = parse_and_summarize_ai_context(remote_msg)
+
+    # 3. Return organized data for the Orchestrator
     return {
-        "local_intent": local_msg.strip() if local_msg else "Unknown (Manual changes or no commit msg)",
-        "remote_intent": remote_msg.strip() if remote_msg else "Unknown (No MERGE_HEAD found)"
+        "local": {
+            "intent": local_msg,
+            "ai_context_path": local_ctx_path
+        },
+        "remote": {
+            "intent": remote_msg,
+            "ai_context_path": remote_ctx_path
+        }
     }
 
 def format_process_error(e, message):
@@ -191,6 +223,10 @@ def main():
 
     args = parser.parse_args()
 
+    def _in_repo(fp):
+        root = run_git_command("git rev-parse --show-toplevel") or ""
+        return os.path.abspath(fp).startswith(root + os.sep)
+
     # Command routing
     if args.command == "list":
         result = list_conflicted_files()
@@ -198,7 +234,10 @@ def main():
 
     elif args.command == "extract":
         filepath = args.filepath
-        
+        if not _in_repo(filepath):
+            print(json.dumps({"status": "error", "message": "Path outside repository"}))
+            sys.exit(1)
+
         #Perform the backup before extracting the data
         create_backup(filepath)
         
@@ -222,10 +261,20 @@ def main():
         print(json.dumps(full_payload, indent=2))
 
     elif args.command == "verify":
+        if not _in_repo(args.filepath):
+            print(json.dumps({"status": "error", "message": "Path outside repository"}))
+            sys.exit(1)
         result = verify_syntax(args.filepath)
+        if result.get("status") == "valid":
+            bak = args.filepath + ".bak"
+            if os.path.exists(bak):
+                os.remove(bak)
         print(json.dumps(result, indent=2))
 
     elif args.command == "restore":
+        if not _in_repo(args.filepath):
+            print(json.dumps({"status": "error", "message": "Path outside repository"}))
+            sys.exit(1)
         result = restore_backup(args.filepath)
         print(json.dumps(result, indent=2))
 

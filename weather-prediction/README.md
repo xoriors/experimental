@@ -11,13 +11,19 @@ A SvelteKit webapp that gives hour-by-hour fused weather forecasts for a **route
 
 ## Screenshots
 
-| Route tab — overview | Route tab — day-after with hourly scores |
-|---|---|
-| ![Route overview](./docs/screenshots/route-overview.png) | ![Day-after expanded](./docs/screenshots/route-day-after-expanded.png) |
+**Route tab — Phi Phi → Ao Nang, trip finder showing best window across 3 days:**
 
-| Fixed-location tab | Mobile layout |
+![Route overview](./docs/screenshots/route-overview.jpg)
+
+**Forecast table with 3h blocks expanded into hourly rows — each hour shows the trip-window score chip and red→green gradient:**
+
+| Today | Day after |
 |---|---|
-| ![Fixed location](./docs/screenshots/fixed-location.png) | ![Mobile route](./docs/screenshots/mobile-route.png) |
+| ![Today expanded](./docs/screenshots/route-day-today-expanded.png) | ![Day after expanded](./docs/screenshots/route-day-after-expanded.png) |
+
+**Fixed-location tab — inland point auto-falls-back to land mode:**
+
+![Fixed location](./docs/screenshots/fixed-location.png)
 
 ---
 

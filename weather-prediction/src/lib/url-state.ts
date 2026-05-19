@@ -1,4 +1,4 @@
-import type { DayKey, LabeledPoint, Tab, ViewState } from './types';
+import type { DayKey, LabeledPoint, Tab, TripMode, ViewState } from './types';
 
 const ROUND = 4;
 
@@ -30,6 +30,16 @@ function isDay(x: string | null): x is DayKey {
 	return x === 'today' || x === 'tomorrow' || x === 'd2';
 }
 
+function isMode(x: string | null): x is TripMode {
+	return x === 'auto' || x === 'sea' || x === 'land';
+}
+
+function parseDuration(raw: string | null): number {
+	const n = Number(raw);
+	if (!Number.isFinite(n)) return 2;
+	return Math.max(1, Math.min(12, Math.round(n)));
+}
+
 export function decodeView(search: URLSearchParams): ViewState {
 	const tab: Tab = isTab(search.get('tab')) ? (search.get('tab') as Tab) : 'route';
 	const day: DayKey = isDay(search.get('day')) ? (search.get('day') as DayKey) : 'today';
@@ -46,7 +56,10 @@ export function decodeView(search: URLSearchParams): ViewState {
 			.filter((s) => /^\d{2}$/.test(s))
 	);
 
-	return { tab, from, to, at, day, expanded };
+	const tripMode: TripMode = isMode(search.get('mode')) ? (search.get('mode') as TripMode) : 'auto';
+	const tripDurationH = search.has('dur') ? parseDuration(search.get('dur')) : 2;
+
+	return { tab, from, to, at, day, expanded, tripMode, tripDurationH };
 }
 
 export function encodeView(v: ViewState): string {
@@ -74,6 +87,9 @@ export function encodeView(v: ViewState): string {
 		const sorted = [...v.expanded].sort();
 		params.set('expand', sorted.join(','));
 	}
+
+	if (v.tripMode !== 'auto') params.set('mode', v.tripMode);
+	if (v.tripDurationH !== 2) params.set('dur', String(v.tripDurationH));
 
 	return params.toString();
 }

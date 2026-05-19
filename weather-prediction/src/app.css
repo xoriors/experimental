@@ -166,10 +166,15 @@ table.forecast th {
 
 tr.slot {
 	cursor: pointer;
+	background: var(--row-bg, transparent);
+}
+
+tr.slot > td:first-child {
+	border-left: 4px solid var(--row-border, transparent);
 }
 
 tr.slot:hover {
-	background: rgba(56, 189, 248, 0.05);
+	filter: brightness(1.35);
 }
 
 tr.detail td {

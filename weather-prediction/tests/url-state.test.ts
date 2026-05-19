@@ -34,6 +34,38 @@ describe('url-state', () => {
 		expect(decoded.day).toBe('today');
 		expect(decoded.from).toBeNull();
 		expect(decoded.expanded.size).toBe(0);
+		expect(decoded.tripMode).toBe('auto');
+		expect(decoded.tripDurationH).toBe(2);
+	});
+
+	it('decodes tripMode and tripDurationH', () => {
+		const { decoded } = roundTrip('tab=route&mode=sea&dur=4');
+		expect(decoded.tripMode).toBe('sea');
+		expect(decoded.tripDurationH).toBe(4);
+	});
+
+	it('clamps duration to 1..12', () => {
+		expect(roundTrip('dur=99').decoded.tripDurationH).toBe(12);
+		expect(roundTrip('dur=0').decoded.tripDurationH).toBe(1);
+		expect(roundTrip('dur=garbage').decoded.tripDurationH).toBe(2);
+	});
+
+	it('rejects invalid mode and falls back to auto', () => {
+		expect(roundTrip('mode=bogus').decoded.tripMode).toBe('auto');
+	});
+
+	it('omits mode and dur from URL when default', () => {
+		const { re } = roundTrip('tab=route');
+		const params = new URLSearchParams(re);
+		expect(params.has('mode')).toBe(false);
+		expect(params.has('dur')).toBe(false);
+	});
+
+	it('includes mode and dur when non-default', () => {
+		const { re } = roundTrip('tab=route&mode=land&dur=6');
+		const params = new URLSearchParams(re);
+		expect(params.get('mode')).toBe('land');
+		expect(params.get('dur')).toBe('6');
 	});
 
 	it('rejects out-of-range coordinates', () => {

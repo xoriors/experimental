@@ -7,9 +7,10 @@
 		hours: FusedHour[];
 		expanded: Set<string>;
 		onToggleSlot: (slot: string) => void;
+		mode: 'sea' | 'land';
 	};
 
-	let { hours, expanded, onToggleSlot }: Props = $props();
+	let { hours, expanded, onToggleSlot, mode }: Props = $props();
 
 	const slots = $derived(aggregate3h(hours));
 	const coastal = $derived(hours.some((h) => h.waveHsM != null));
@@ -39,6 +40,7 @@
 					expanded={expanded.has(key)}
 					onToggle={() => onToggleSlot(key)}
 					{coastal}
+					{mode}
 				/>
 			{/each}
 		</tbody>

@@ -4,6 +4,7 @@ export type LabeledPoint = LatLng & { label?: string };
 
 export type Tab = 'route' | 'fixed';
 export type DayKey = 'today' | 'tomorrow' | 'd2';
+export type TripMode = 'auto' | 'sea' | 'land';
 
 export type ViewState = {
 	tab: Tab;
@@ -12,6 +13,8 @@ export type ViewState = {
 	at: LabeledPoint | null;
 	day: DayKey;
 	expanded: Set<string>;
+	tripMode: TripMode;
+	tripDurationH: number;
 };
 
 export type ForecastHour = {

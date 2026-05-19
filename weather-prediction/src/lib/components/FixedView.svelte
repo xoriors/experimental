@@ -4,9 +4,11 @@
 	import MapView from './MapView.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
+	import TripFinder from './TripFinder.svelte';
 	import { getCurrentPosition } from '$lib/client/geolocation';
 	import { filterHoursForDay } from '$lib/time';
 	import { mergeSinglePoint } from '$lib/fusion';
+	import { resolveMode } from '$lib/trip-score';
 	import type { FusedHour, ForecastHour, LabeledPoint, MarineHour, DayKey } from '$lib/types';
 
 	let loading = $state(false);
@@ -76,6 +78,7 @@
 
 	const todayIso = $derived(new Date().toISOString().slice(0, 10));
 	const hoursForDay = $derived(result ? filterHoursForDay(result.hours, view.day, todayIso) : []);
+	const activeMode = $derived(result ? resolveMode(view.tripMode, result.hours) : 'land');
 
 	function pick(p: LabeledPoint) {
 		view.at = p;
@@ -125,6 +128,9 @@
 </div>
 
 {#if view.at}
+	{#if result}
+		<TripFinder hours={result.hours} timezone={result.timezone} defaultMode="land" />
+	{/if}
 	<DayTabs day={view.day} onChange={onDay} />
 	<div class="card">
 		{#if loading}<p class="muted">Loading forecast…</p>{/if}
@@ -151,6 +157,7 @@
 				hours={hoursForDay}
 				expanded={view.expanded}
 				onToggleSlot={toggleExpanded}
+				mode={activeMode}
 			/>
 		{/if}
 	</div>

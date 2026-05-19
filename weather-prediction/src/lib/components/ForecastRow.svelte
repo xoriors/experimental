@@ -2,6 +2,7 @@
 	import type { ThreeHourAggregate } from '$lib/fusion';
 	import { degToCompass, round1 } from '$lib/units';
 	import { summariseHour } from '$lib/activities';
+	import { hourTripScore, scoreToCss } from '$lib/trip-score';
 	import WxIcon from './icons/WxIcon.svelte';
 	import HourCell from './HourCell.svelte';
 	import MarineBlock from './MarineBlock.svelte';
@@ -12,9 +13,10 @@
 		expanded: boolean;
 		onToggle: () => void;
 		coastal: boolean;
+		mode: 'sea' | 'land';
 	};
 
-	let { slot, expanded, onToggle, coastal }: Props = $props();
+	let { slot, expanded, onToggle, coastal, mode }: Props = $props();
 
 	const start = $derived(slot.startHour.toString().padStart(2, '0'));
 	const end = $derived(((slot.startHour + 3) % 24).toString().padStart(2, '0'));
@@ -42,12 +44,15 @@
 	});
 
 	const activitySummary = $derived(summariseHour(summary));
+	const rowScore = $derived(hourTripScore(summary, mode));
+	const rowCss = $derived(scoreToCss(rowScore));
 </script>
 
-<tr class="slot" onclick={onToggle}>
+<tr class="slot" style="--row-bg: {rowCss.bg}; --row-border: {rowCss.border};" onclick={onToggle}>
 	<td>
 		<span class="expand-caret" class:open={expanded}>▶</span>
 		{start}–{end}
+		<span class="row-score" title="Trip score 0–100">{rowScore}</span>
 	</td>
 	<td><WxIcon code={slot.agg.weatherCode} /></td>
 	<td>{round1(slot.agg.tempC)}°</td>
@@ -72,3 +77,19 @@
 		<HourCell hour={h} />
 	{/each}
 {/if}
+
+<style>
+	.row-score {
+		display: inline-block;
+		min-width: 2.2rem;
+		margin-left: 0.4rem;
+		padding: 0.05rem 0.4rem;
+		font-size: 0.78em;
+		font-weight: 600;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--fg);
+		font-variant-numeric: tabular-nums;
+		text-align: center;
+	}
+</style>

@@ -4,8 +4,9 @@
 	import MapView from './MapView.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
+	import TripFinder from './TripFinder.svelte';
 	import { filterHoursForDay } from '$lib/time';
-	import { dayOffset } from '$lib/time';
+	import { resolveMode } from '$lib/trip-score';
 	import type { FusedHour, LabeledPoint, DayKey } from '$lib/types';
 
 	let loading = $state(false);
@@ -60,6 +61,8 @@
 		result ? filterHoursForDay(result.hours, view.day, todayIso) : []
 	);
 
+	const activeMode = $derived(result ? resolveMode(view.tripMode, result.hours) : 'sea');
+
 	function pickFrom(p: LabeledPoint) {
 		view.from = p;
 	}
@@ -94,6 +97,9 @@
 </div>
 
 {#if view.from && view.to}
+	{#if result}
+		<TripFinder hours={result.hours} timezone={result.timezone} />
+	{/if}
 	<DayTabs day={view.day} onChange={onDay} />
 	<div class="card">
 		{#if loading}<p class="muted">Loading forecast…</p>{/if}
@@ -106,6 +112,7 @@
 				hours={hoursForDay}
 				expanded={view.expanded}
 				onToggleSlot={toggleExpanded}
+				mode={activeMode}
 			/>
 		{/if}
 	</div>

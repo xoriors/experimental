@@ -74,8 +74,18 @@ export function detectMode(hours: FusedHour[]): ResolvedMode {
 	return marineHours.length / hours.length >= 0.6 ? 'sea' : 'land';
 }
 
+export function hasMarineData(hours: FusedHour[]): boolean {
+	if (hours.length === 0) return false;
+	const marineHours = hours.filter((h) => h.waveHsM != null);
+	return marineHours.length / hours.length >= 0.1;
+}
+
 export function resolveMode(mode: TripMode, hours: FusedHour[]): ResolvedMode {
-	if (mode === 'sea' || mode === 'land') return mode;
+	if (mode === 'sea') {
+		if (!hasMarineData(hours)) return 'land';
+		return 'sea';
+	}
+	if (mode === 'land') return 'land';
 	return detectMode(hours);
 }
 

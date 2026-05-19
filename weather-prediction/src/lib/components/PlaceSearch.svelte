@@ -13,6 +13,15 @@
 	let { placeholder = 'Search a place…', initial = '', onSelect }: Props = $props();
 
 	let q = $state(initial ?? '');
+	let lastInitial = $state(initial ?? '');
+
+	$effect(() => {
+		const next = initial ?? '';
+		if (next !== lastInitial) {
+			lastInitial = next;
+			q = next;
+		}
+	});
 	let input = $state<HTMLInputElement | null>(null);
 	let results = $state<{ name: string; lat: number; lon: number; label: string }[]>([]);
 	let showResults = $state(false);

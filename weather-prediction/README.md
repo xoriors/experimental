@@ -4,8 +4,20 @@ A SvelteKit webapp that gives hour-by-hour fused weather forecasts for a **route
 
 🌐 **Live**: [weather-prediction-khaki.vercel.app](https://weather-prediction-khaki.vercel.app)
 
-![status](https://img.shields.io/badge/tests-45%20passing-brightgreen)
+![status](https://img.shields.io/badge/tests-50%20passing-brightgreen)
 ![stack](https://img.shields.io/badge/stack-SvelteKit%202%20%C2%B7%20Svelte%205%20%C2%B7%20TS-blue)
+
+---
+
+## Screenshots
+
+| Route tab — overview | Route tab — day-after with hourly scores |
+|---|---|
+| ![Route overview](./docs/screenshots/route-overview.png) | ![Day-after expanded](./docs/screenshots/route-day-after-expanded.png) |
+
+| Fixed-location tab | Mobile layout |
+|---|---|
+| ![Fixed location](./docs/screenshots/fixed-location.png) | ![Mobile route](./docs/screenshots/mobile-route.png) |
 
 ---
 

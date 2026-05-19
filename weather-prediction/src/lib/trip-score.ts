@@ -1,20 +1,64 @@
 import { scoreHour } from './activities';
 import type { Activity, FusedHour, TripMode, Verdict } from './types';
 
-const SCORE: Record<Verdict, number> = { unsafe: 0, poor: 35, ok: 65, good: 95 };
-
 type ResolvedMode = 'sea' | 'land';
 
 const SEA_ACTIVITIES: Activity[] = ['ferryOrBoat', 'kayaking'];
 const LAND_ACTIVITIES: Activity[] = ['sightseeing', 'hiking', 'photography'];
 
+function clamp01(x: number): number {
+	return Math.max(0, Math.min(1, x));
+}
+
+// linear factor: 1 at `best`, 0 at `worst`. `best` can be higher or lower than `worst`.
+function tier(value: number, best: number, worst: number): number {
+	if (best === worst) return value === best ? 1 : 0;
+	return clamp01((value - worst) / (best - worst));
+}
+
+// blend the arithmetic mean of factors with their minimum so the worst factor
+// pulls the score down more aggressively. This gives a wider score spread.
+function blendMean(factors: number[]): number {
+	const mean = factors.reduce((s, v) => s + v, 0) / factors.length;
+	const min = Math.min(...factors);
+	return mean * 0.6 + min * 0.4;
+}
+
+// continuous comfort score 1..100 for a sea trip starting in this hour
+function seaContinuous(h: FusedHour): number {
+	const wave = tier(h.waveHsM ?? 0.2, 0.2, 2.0);
+	const wind = tier(h.windKn, 5, 22);
+	const gust = tier(h.gustKn, 8, 28);
+	const rain = tier(h.precipMmH, 0, 5);
+	const vis = tier(h.visKm, 10, 1);
+	const windFactor = (wind + gust) / 2;
+	return Math.max(1, Math.round(blendMean([wave, windFactor, rain, vis]) * 100));
+}
+
+function landContinuous(h: FusedHour): number {
+	const wind = tier(h.windKn, 5, 22);
+	const gust = tier(h.gustKn, 8, 30);
+	const rain = tier(h.precipMmH, 0, 5);
+	const vis = tier(h.visKm, 10, 1);
+	const tempC = h.tempC;
+	const tempScore =
+		tempC >= 16 && tempC <= 26
+			? 1
+			: tempC > 26
+				? tier(tempC, 26, 36)
+				: tier(tempC, 16, -2);
+	const cloud = h.cloudPct;
+	const cloudScore = cloud <= 70 ? 1 : tier(cloud, 70, 100);
+	const windFactor = (wind + gust) / 2;
+	return Math.max(1, Math.round(blendMean([windFactor, rain, vis, tempScore, cloudScore]) * 100));
+}
+
 export function hourTripScore(h: FusedHour, mode: ResolvedMode): number {
 	const verdicts = scoreHour(h);
 	const activities = mode === 'sea' ? SEA_ACTIVITIES : LAND_ACTIVITIES;
-	const nums = activities.map((a) => SCORE[verdicts[a]]);
-	if (Math.min(...nums) === SCORE.unsafe) return 0;
-	const sum = nums.reduce((s, v) => s + v, 0);
-	return Math.round(sum / nums.length);
+	// Any activity hitting 'unsafe' still vetoes the hour to 0 (clear danger).
+	if (activities.some((a) => verdicts[a] === 'unsafe')) return 0;
+	return mode === 'sea' ? seaContinuous(h) : landContinuous(h);
 }
 
 export type TripWindow = {

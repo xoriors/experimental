@@ -54,6 +54,38 @@ describe('hourTripScore', () => {
 		expect(seaScore).toBeGreaterThanOrEqual(80);
 		expect(landScore).toBeGreaterThanOrEqual(80);
 	});
+
+	it('produces continuous scores — small input differences yield distinct scores', () => {
+		const a = hourTripScore(mk('t', { waveHsM: 0.5, gustKn: 12, windKn: 8 }), 'sea');
+		const b = hourTripScore(mk('t', { waveHsM: 0.6, gustKn: 14, windKn: 9 }), 'sea');
+		const c = hourTripScore(mk('t', { waveHsM: 0.8, gustKn: 16, windKn: 10 }), 'sea');
+		expect(a).not.toBe(b);
+		expect(b).not.toBe(c);
+		expect(a).toBeGreaterThan(b);
+		expect(b).toBeGreaterThan(c);
+	});
+
+	it('many distinct sea scores across a range of conditions', () => {
+		const distinct = new Set<number>();
+		for (let gust = 10; gust <= 22; gust += 1) {
+			for (let wave = 0.2; wave <= 1; wave += 0.1) {
+				for (let rain = 0; rain <= 2; rain += 0.5) {
+					distinct.add(hourTripScore(mk('t', { gustKn: gust, waveHsM: wave, precipMmH: rain }), 'sea'));
+				}
+			}
+		}
+		// Before the continuous scoring fix this produced ~5 distinct values.
+		// New scoring produces ~34 distinct across this input space.
+		expect(distinct.size).toBeGreaterThan(25);
+	});
+
+	it('land score degrades smoothly with rising rain', () => {
+		const dry = hourTripScore(mk('t', { precipMmH: 0 }), 'land');
+		const drizzle = hourTripScore(mk('t', { precipMmH: 1.5 }), 'land');
+		const shower = hourTripScore(mk('t', { precipMmH: 3 }), 'land');
+		expect(dry).toBeGreaterThan(drizzle);
+		expect(drizzle).toBeGreaterThan(shower);
+	});
 });
 
 describe('findBestWindows', () => {

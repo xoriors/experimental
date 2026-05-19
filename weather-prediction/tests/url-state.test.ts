@@ -77,6 +77,38 @@ describe('url-state', () => {
 		expect(new URLSearchParams(re).get('hl')).toBe('2026-05-21T09:00');
 	});
 
+	it('decodes tripMaxHour', () => {
+		expect(roundTrip('maxh=17').decoded.tripMaxHour).toBe(17);
+		expect(roundTrip('').decoded.tripMaxHour).toBe(23);
+	});
+
+	it('decodes per-day intervals', () => {
+		const { decoded } = roundTrip('i_today=9-17&i_tomorrow=8-&i_d2=-15');
+		expect(decoded.intervals.today).toEqual({ min: 9, max: 17 });
+		expect(decoded.intervals.tomorrow).toEqual({ min: 8, max: null });
+		expect(decoded.intervals.d2).toEqual({ min: null, max: 15 });
+	});
+
+	it('defaults all intervals to {null,null}', () => {
+		const { decoded } = roundTrip('');
+		expect(decoded.intervals.today).toEqual({ min: null, max: null });
+		expect(decoded.intervals.tomorrow).toEqual({ min: null, max: null });
+		expect(decoded.intervals.d2).toEqual({ min: null, max: null });
+	});
+
+	it('omits i_* params when all null', () => {
+		const { re } = roundTrip('tab=route');
+		const p = new URLSearchParams(re);
+		expect(p.has('i_today')).toBe(false);
+		expect(p.has('i_tomorrow')).toBe(false);
+		expect(p.has('i_d2')).toBe(false);
+	});
+
+	it('emits i_today when non-null', () => {
+		const { re } = roundTrip('i_today=9-17');
+		expect(new URLSearchParams(re).get('i_today')).toBe('9-17');
+	});
+
 	it('clamps duration to 1..12', () => {
 		expect(roundTrip('dur=99').decoded.tripDurationH).toBe(12);
 		expect(roundTrip('dur=0').decoded.tripDurationH).toBe(1);

@@ -1,4 +1,4 @@
-import type { DayKey, LabeledPoint, Tab, TripMode, ViewState } from './types';
+import type { DayInterval, DayKey, LabeledPoint, Tab, TripMode, ViewState } from './types';
 
 const ROUND = 4;
 
@@ -46,6 +46,28 @@ function parseMinHour(raw: string | null): number {
 	return Math.max(0, Math.min(23, Math.round(n)));
 }
 
+function parseMaxHour(raw: string | null): number {
+	const n = Number(raw);
+	if (!Number.isFinite(n)) return 23;
+	return Math.max(0, Math.min(23, Math.round(n)));
+}
+
+function parseInterval(raw: string | null): DayInterval {
+	if (!raw) return { min: null, max: null };
+	const m = /^(\d{0,2})-(\d{0,2})$/.exec(raw);
+	if (!m) return { min: null, max: null };
+	const minStr = m[1];
+	const maxStr = m[2];
+	const min = minStr === '' ? null : Math.max(0, Math.min(23, Number(minStr)));
+	const max = maxStr === '' ? null : Math.max(0, Math.min(23, Number(maxStr)));
+	return { min, max };
+}
+
+function intervalToParam(i: DayInterval): string | null {
+	if (i.min == null && i.max == null) return null;
+	return `${i.min ?? ''}-${i.max ?? ''}`;
+}
+
 export function decodeView(search: URLSearchParams): ViewState {
 	const tab: Tab = isTab(search.get('tab')) ? (search.get('tab') as Tab) : 'route';
 	const day: DayKey = isDay(search.get('day')) ? (search.get('day') as DayKey) : 'today';
@@ -65,10 +87,29 @@ export function decodeView(search: URLSearchParams): ViewState {
 	const tripMode: TripMode = isMode(search.get('mode')) ? (search.get('mode') as TripMode) : 'auto';
 	const tripDurationH = search.has('dur') ? parseDuration(search.get('dur')) : 2;
 	const tripMinHour = search.has('minh') ? parseMinHour(search.get('minh')) : 0;
+	const tripMaxHour = search.has('maxh') ? parseMaxHour(search.get('maxh')) : 23;
+	const intervals = {
+		today: parseInterval(search.get('i_today')),
+		tomorrow: parseInterval(search.get('i_tomorrow')),
+		d2: parseInterval(search.get('i_d2'))
+	};
 	const hlRaw = search.get('hl');
 	const highlight = hlRaw && /^\d{4}-\d{2}-\d{2}T\d{2}:00$/.test(hlRaw) ? hlRaw : null;
 
-	return { tab, from, to, at, day, expanded, tripMode, tripDurationH, tripMinHour, highlight };
+	return {
+		tab,
+		from,
+		to,
+		at,
+		day,
+		expanded,
+		tripMode,
+		tripDurationH,
+		tripMinHour,
+		tripMaxHour,
+		intervals,
+		highlight
+	};
 }
 
 export function encodeView(v: ViewState): string {
@@ -100,6 +141,11 @@ export function encodeView(v: ViewState): string {
 	if (v.tripMode !== 'auto') params.set('mode', v.tripMode);
 	if (v.tripDurationH !== 2) params.set('dur', String(v.tripDurationH));
 	if (v.tripMinHour !== 0) params.set('minh', String(v.tripMinHour));
+	if (v.tripMaxHour !== 23) params.set('maxh', String(v.tripMaxHour));
+	for (const dk of ['today', 'tomorrow', 'd2'] as DayKey[]) {
+		const enc = intervalToParam(v.intervals[dk]);
+		if (enc) params.set(`i_${dk}`, enc);
+	}
 	if (v.highlight) params.set('hl', v.highlight);
 
 	return params.toString();

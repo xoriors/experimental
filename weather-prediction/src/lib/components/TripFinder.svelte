@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { view } from '$lib/state.svelte';
+	import { view, effectiveInterval } from '$lib/state.svelte';
 	import { findBestWindows, resolveMode, scoreToCss, type TripWindow } from '$lib/trip-score';
 	import { filterHoursForDay } from '$lib/time';
 	import { round1 } from '$lib/units';
@@ -15,7 +15,13 @@
 
 	const activeMode = $derived(resolveMode(view.tripMode, hours));
 	const allWindows = $derived(
-		findBestWindows(hours, view.tripDurationH, activeMode, view.tripMinHour)
+		findBestWindows(
+			hours,
+			view.tripDurationH,
+			activeMode,
+			view.tripMinHour,
+			view.tripMaxHour
+		)
 	);
 	const bestOverall = $derived<TripWindow | undefined>(allWindows[0]);
 
@@ -31,13 +37,14 @@
 	const bestPerDay = $derived(
 		DAYS.map(({ key, label }) => {
 			const dayHours = filterHoursForDay(hours, key, todayIso);
-			const wins = findBestWindows(dayHours, view.tripDurationH, activeMode, view.tripMinHour);
-			return { key, label, window: wins[0] ?? null };
+			const eff = effectiveInterval(key);
+			const wins = findBestWindows(dayHours, view.tripDurationH, activeMode, eff.min, eff.max);
+			return { key, label, window: wins[0] ?? null, eff };
 		})
 	);
 
 	const DURATIONS = [1, 2, 3, 4, 6, 8, 12];
-	const MIN_HOURS = Array.from({ length: 24 }, (_, i) => i);
+	const HOURS_LIST = Array.from({ length: 24 }, (_, i) => i);
 
 	function onModeChange(e: Event) {
 		view.tripMode = (e.target as HTMLSelectElement).value as TripMode;
@@ -47,6 +54,9 @@
 	}
 	function onMinHourChange(e: Event) {
 		view.tripMinHour = Number((e.target as HTMLSelectElement).value);
+	}
+	function onMaxHourChange(e: Event) {
+		view.tripMaxHour = Number((e.target as HTMLSelectElement).value);
 	}
 
 	function pad2(n: number): string {
@@ -128,7 +138,15 @@
 		<label>
 			<span class="muted">Earliest start</span>
 			<select onchange={onMinHourChange} value={view.tripMinHour}>
-				{#each MIN_HOURS as h}
+				{#each HOURS_LIST as h}
+					<option value={h}>{pad2(h)}:00</option>
+				{/each}
+			</select>
+		</label>
+		<label>
+			<span class="muted">Latest start</span>
+			<select onchange={onMaxHourChange} value={view.tripMaxHour}>
+				{#each HOURS_LIST as h}
 					<option value={h}>{pad2(h)}:00</option>
 				{/each}
 			</select>

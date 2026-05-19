@@ -30,7 +30,8 @@ export function findBestWindows(
 	hours: FusedHour[],
 	durationH: number,
 	mode: ResolvedMode,
-	minStartHour = 0
+	minStartHour = 0,
+	maxStartHour = 23
 ): TripWindow[] {
 	if (durationH < 1 || hours.length < durationH) return [];
 	const windows: TripWindow[] = [];
@@ -38,7 +39,7 @@ export function findBestWindows(
 		const slice = hours.slice(i, i + durationH);
 		const match = /T(\d{2}):/.exec(slice[0].time);
 		const startHour = match ? Number(match[1]) : 0;
-		if (startHour < minStartHour) continue;
+		if (startHour < minStartHour || startHour > maxStartHour) continue;
 		const scores = slice.map((h) => hourTripScore(h, mode));
 		windows.push({
 			startTime: slice[0].time,
@@ -50,6 +51,21 @@ export function findBestWindows(
 		});
 	}
 	return windows.sort((a, b) => b.score - a.score || b.avgScore - a.avgScore);
+}
+
+export function windowScoreAt(
+	allHours: FusedHour[],
+	startIdx: number,
+	durationH: number,
+	mode: ResolvedMode
+): number | null {
+	if (startIdx < 0 || startIdx + durationH > allHours.length) return null;
+	let min = 100;
+	for (let i = startIdx; i < startIdx + durationH; i++) {
+		const s = hourTripScore(allHours[i], mode);
+		if (s < min) min = s;
+	}
+	return min;
 }
 
 export function detectMode(hours: FusedHour[]): ResolvedMode {

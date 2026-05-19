@@ -6,6 +6,8 @@ export type Tab = 'route' | 'fixed';
 export type DayKey = 'today' | 'tomorrow' | 'd2';
 export type TripMode = 'auto' | 'sea' | 'land';
 
+export type DayInterval = { min: number | null; max: number | null };
+
 export type ViewState = {
 	tab: Tab;
 	from: LabeledPoint | null;
@@ -16,6 +18,8 @@ export type ViewState = {
 	tripMode: TripMode;
 	tripDurationH: number;
 	tripMinHour: number;
+	tripMaxHour: number;
+	intervals: Record<DayKey, DayInterval>;
 	highlight: string | null;
 };
 

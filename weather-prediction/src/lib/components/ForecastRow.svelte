@@ -2,7 +2,7 @@
 	import type { ThreeHourAggregate } from '$lib/fusion';
 	import { degToCompass, round1 } from '$lib/units';
 	import { summariseHour } from '$lib/activities';
-	import { hourTripScore, scoreToCss } from '$lib/trip-score';
+	import { scoreToCss } from '$lib/trip-score';
 	import { view } from '$lib/state.svelte';
 	import WxIcon from './icons/WxIcon.svelte';
 	import HourCell from './HourCell.svelte';
@@ -15,9 +15,10 @@
 		onToggle: () => void;
 		coastal: boolean;
 		mode: 'sea' | 'land';
+		hourScores: Map<string, number | null>;
 	};
 
-	let { slot, expanded, onToggle, coastal, mode }: Props = $props();
+	let { slot, expanded, onToggle, coastal, mode, hourScores }: Props = $props();
 
 	const highlightStartMs = $derived(view.highlight ? Date.parse(view.highlight + ':00Z') : null);
 	const highlightEndMs = $derived(
@@ -58,20 +59,34 @@
 	});
 
 	const activitySummary = $derived(summariseHour(summary));
-	const rowScore = $derived(Math.min(...slot.hours.map((h) => hourTripScore(h, mode))));
-	const rowCss = $derived(scoreToCss(rowScore));
+
+	const slotScore = $derived.by(() => {
+		const valid: number[] = [];
+		for (const h of slot.hours) {
+			const s = hourScores.get(h.time);
+			if (s != null) valid.push(s);
+		}
+		return valid.length ? Math.max(...valid) : null;
+	});
+
+	const rowCss = $derived(
+		slotScore == null ? { bg: 'transparent', border: 'transparent' } : scoreToCss(slotScore)
+	);
 </script>
 
 <tr
 	class="slot"
 	class:highlight={slotHighlighted}
+	class:disabled={slotScore == null}
 	style="--row-bg: {rowCss.bg}; --row-border: {rowCss.border};"
 	onclick={onToggle}
 >
 	<td>
 		<span class="expand-caret" class:open={expanded}>▶</span>
 		{start}–{end}
-		<span class="row-score" title="Trip score 0–100">{rowScore}</span>
+		<span class="row-score" title="Best start within this block (window score 0–100)">
+			{slotScore == null ? '—' : slotScore}
+		</span>
 	</td>
 	<td><WxIcon code={slot.agg.weatherCode} /></td>
 	<td>{round1(slot.agg.tempC)}°</td>
@@ -93,7 +108,11 @@
 </tr>
 {#if expanded}
 	{#each slot.hours as h}
-		<HourCell hour={h} {mode} highlighted={isHourHighlighted(h.time)} />
+		<HourCell
+			hour={h}
+			score={hourScores.get(h.time) ?? null}
+			highlighted={isHourHighlighted(h.time)}
+		/>
 	{/each}
 {/if}
 
@@ -101,6 +120,9 @@
 	tr.slot.highlight {
 		outline: 2px solid #38bdf8;
 		outline-offset: -2px;
+	}
+	tr.slot.disabled {
+		opacity: 0.55;
 	}
 	.row-score {
 		display: inline-block;

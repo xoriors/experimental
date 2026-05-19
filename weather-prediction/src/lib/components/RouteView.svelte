@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { view, toggleExpanded } from '$lib/state.svelte';
+	import { view, toggleExpanded, effectiveInterval, setDayInterval } from '$lib/state.svelte';
 	import PlaceSearch from './PlaceSearch.svelte';
 	import MapView from './MapView.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
-	import { filterHoursForDay } from '$lib/time';
 	import { resolveMode } from '$lib/trip-score';
 	import type { FusedHour, LabeledPoint, DayKey } from '$lib/types';
 
@@ -56,12 +55,8 @@
 	});
 
 	const todayIso = $derived(new Date().toISOString().slice(0, 10));
-
-	const hoursForDay = $derived(
-		result ? filterHoursForDay(result.hours, view.day, todayIso) : []
-	);
-
 	const activeMode = $derived(result ? resolveMode(view.tripMode, result.hours) : 'sea');
+	const eff = $derived(effectiveInterval(view.day));
 
 	function pickFrom(p: LabeledPoint) {
 		view.from = p;
@@ -109,10 +104,19 @@
 				Fused route forecast across 3 sample points. Worst-case wind/wave/rain shown per hour. Times in {result.timezone}.
 			</p>
 			<ForecastTable
-				hours={hoursForDay}
+				allHours={result.hours}
+				day={view.day}
+				mode={activeMode}
+				durationH={view.tripDurationH}
+				min={eff.min}
+				max={eff.max}
+				override={view.intervals[view.day]}
+				topMin={view.tripMinHour}
+				topMax={view.tripMaxHour}
+				onChangeInterval={(min, max) => setDayInterval(view.day, min, max)}
 				expanded={view.expanded}
 				onToggleSlot={toggleExpanded}
-				mode={activeMode}
+				{todayIso}
 			/>
 		{/if}
 	</div>

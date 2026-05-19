@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { view, toggleExpanded } from '$lib/state.svelte';
+	import { view, toggleExpanded, effectiveInterval, setDayInterval } from '$lib/state.svelte';
 	import PlaceSearch from './PlaceSearch.svelte';
 	import MapView from './MapView.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
 	import { getCurrentPosition } from '$lib/client/geolocation';
-	import { filterHoursForDay } from '$lib/time';
 	import { mergeSinglePoint } from '$lib/fusion';
 	import { resolveMode } from '$lib/trip-score';
 	import type { FusedHour, ForecastHour, LabeledPoint, MarineHour, DayKey } from '$lib/types';
@@ -77,8 +76,8 @@
 	});
 
 	const todayIso = $derived(new Date().toISOString().slice(0, 10));
-	const hoursForDay = $derived(result ? filterHoursForDay(result.hours, view.day, todayIso) : []);
 	const activeMode = $derived(result ? resolveMode(view.tripMode, result.hours) : 'land');
+	const eff = $derived(effectiveInterval(view.day));
 
 	function pick(p: LabeledPoint) {
 		view.at = p;
@@ -154,10 +153,19 @@
 				Forecast in {result.timezone}. 3h blocks aggregate worst conditions in the period. Click a row to expand hourly.
 			</p>
 			<ForecastTable
-				hours={hoursForDay}
+				allHours={result.hours}
+				day={view.day}
+				mode={activeMode}
+				durationH={view.tripDurationH}
+				min={eff.min}
+				max={eff.max}
+				override={view.intervals[view.day]}
+				topMin={view.tripMinHour}
+				topMax={view.tripMaxHour}
+				onChangeInterval={(min, max) => setDayInterval(view.day, min, max)}
 				expanded={view.expanded}
 				onToggleSlot={toggleExpanded}
-				mode={activeMode}
+				{todayIso}
 			/>
 		{/if}
 	</div>

@@ -1,29 +1,31 @@
 <script lang="ts">
 	import type { FusedHour } from '$lib/types';
 	import { degToCompass, round1 } from '$lib/units';
-	import { hourTripScore, scoreToCss } from '$lib/trip-score';
+	import { scoreToCss } from '$lib/trip-score';
 	import WxIcon from './icons/WxIcon.svelte';
 
 	type Props = {
 		hour: FusedHour;
-		mode: 'sea' | 'land';
+		score: number | null;
 		highlighted?: boolean;
 	};
 
-	let { hour, mode, highlighted = false }: Props = $props();
+	let { hour, score, highlighted = false }: Props = $props();
 	const timeLabel = $derived(hour.time.slice(11, 16));
-	const hScore = $derived(hourTripScore(hour, mode));
-	const css = $derived(scoreToCss(hScore));
+	const css = $derived(score == null ? { bg: 'transparent', border: 'transparent' } : scoreToCss(score));
 </script>
 
 <tr
 	class="detail hour"
 	class:highlight={highlighted}
+	class:disabled={score == null}
 	style="--row-bg: {css.bg}; --row-border: {css.border};"
 >
 	<td>
 		{timeLabel}
-		<span class="hour-score" title="Trip score 0–100 for this hour">{hScore}</span>
+		<span class="hour-score" title="Score 0–100 for a trip starting at this hour">
+			{score == null ? '—' : score}
+		</span>
 	</td>
 	<td><WxIcon code={hour.weatherCode} /></td>
 	<td>{round1(hour.tempC)}°</td>
@@ -43,15 +45,18 @@
 	tr.hour > td:first-child {
 		border-left: 4px solid var(--row-border, transparent);
 	}
+	tr.hour.disabled {
+		opacity: 0.55;
+	}
 	.hour-score {
 		display: inline-block;
 		min-width: 2rem;
 		margin-left: 0.4rem;
 		padding: 0.05rem 0.4rem;
-		font-size: 0.72em;
+		font-size: 0.75em;
 		font-weight: 600;
 		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.08);
+		background: rgba(255, 255, 255, 0.1);
 		color: var(--fg);
 		font-variant-numeric: tabular-nums;
 		text-align: center;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectMode, findBestWindows, hourTripScore, resolveMode, scoreToCss } from '../src/lib/trip-score';
+import { detectMode, findBestWindows, hourTripScore, resolveMode, scoreToCss, windowScoreAt } from '../src/lib/trip-score';
 import type { FusedHour } from '../src/lib/types';
 
 function mk(time: string, override: Partial<FusedHour> = {}): FusedHour {
@@ -76,6 +76,18 @@ describe('findBestWindows', () => {
 		expect(findBestWindows(hours, 4, 'land')).toEqual([]);
 	});
 
+	it('respects maxStartHour filter', () => {
+		const hours = [
+			mk('2026-05-21T06:00', { waveHsM: 0.3 }),
+			mk('2026-05-21T10:00', { waveHsM: 0.3 }),
+			mk('2026-05-21T14:00', { waveHsM: 0.3 }),
+			mk('2026-05-21T16:00', { waveHsM: 0.3 })
+		];
+		const windows = findBestWindows(hours, 1, 'sea', 0, 10);
+		const startHours = windows.map((w) => w.startHour);
+		expect(startHours.every((h) => h <= 10)).toBe(true);
+	});
+
 	it('respects minStartHour filter', () => {
 		const hours = [
 			mk('2026-05-21T06:00', { waveHsM: 0.3 }),
@@ -128,6 +140,25 @@ describe('detectMode and resolveMode', () => {
 	it('resolveMode auto-detects when mode=auto', () => {
 		const hours = [mk('t', { waveHsM: 0.5 }), mk('t', { waveHsM: 0.5 })];
 		expect(resolveMode('auto', hours)).toBe('sea');
+	});
+});
+
+describe('windowScoreAt', () => {
+	it('returns min hour score over window', () => {
+		const hours = [
+			mk('2026-05-21T08:00', { waveHsM: 0.3, gustKn: 10 }),
+			mk('2026-05-21T09:00', { waveHsM: 0.3, gustKn: 25 }),
+			mk('2026-05-21T10:00', { waveHsM: 0.3, gustKn: 10 })
+		];
+		const score = windowScoreAt(hours, 0, 2, 'sea');
+		const single0 = hourTripScore(hours[0], 'sea');
+		const single1 = hourTripScore(hours[1], 'sea');
+		expect(score).toBe(Math.min(single0, single1));
+	});
+
+	it('returns null when window exceeds array', () => {
+		const hours = [mk('2026-05-21T08:00'), mk('2026-05-21T09:00')];
+		expect(windowScoreAt(hours, 1, 3, 'sea')).toBeNull();
 	});
 });
 

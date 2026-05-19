@@ -280,7 +280,7 @@
 	}
 	.day-label {
 		display: inline-block;
-		min-width: 7rem;
+		min-width: 6rem;
 		font-weight: 600;
 	}
 	.time-cell {
@@ -289,7 +289,7 @@
 	}
 	.range-cell {
 		display: inline-block;
-		min-width: 7rem;
+		min-width: 6.5rem;
 	}
 	.score-cell {
 		display: inline-block;
@@ -298,12 +298,53 @@
 	}
 	.avg-cell {
 		display: inline-block;
-		min-width: 4rem;
+		min-width: 3.4rem;
 	}
 	.conditions {
-		flex: 1;
+		flex: 1 1 100%;
 		font-size: 0.85em;
-		min-width: 16rem;
+		min-width: 12rem;
+	}
+	@media (max-width: 720px) {
+		.trip-finder select {
+			padding: 0.35rem 0.45rem;
+			margin-left: 0.25rem;
+		}
+		.window-row {
+			gap: 0.4rem;
+			padding: 0.35rem 0.5rem;
+		}
+		.day-label {
+			min-width: 4.5rem;
+			font-size: 0.92em;
+		}
+		.range-cell {
+			min-width: 5.5rem;
+			font-size: 0.9em;
+		}
+		.conditions {
+			font-size: 0.78em;
+			min-width: 100%;
+			flex-basis: 100%;
+			opacity: 0.85;
+		}
+		.legend {
+			margin-left: 0;
+		}
+		.legend-bar {
+			width: 50px;
+		}
+		.best-pick {
+			padding: 0.5rem 0.6rem;
+		}
+	}
+	@media (max-width: 420px) {
+		.conditions {
+			display: none;
+		}
+		.avg-cell {
+			display: none;
+		}
 	}
 	.override-badge {
 		font-size: 0.75em;

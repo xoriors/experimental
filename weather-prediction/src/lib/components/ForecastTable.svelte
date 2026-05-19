@@ -143,33 +143,35 @@
 {#if dayHours.length === 0}
 	<p class="muted">No forecast data for this day.</p>
 {:else}
-	<table class="forecast">
-		<thead>
-			<tr>
-				<th>Time</th>
-				<th></th>
-				<th>Temp</th>
-				<th>Wind / gust</th>
-				<th>Rain / Pₚ</th>
-				<th>Cloud</th>
-				<th>Vis</th>
-				<th>Wave</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each slots as slot}
-				{@const key = slot.startHour.toString().padStart(2, '0')}
-				<ForecastRow
-					{slot}
-					expanded={expanded.has(key)}
-					onToggle={() => onToggleSlot(key)}
-					{coastal}
-					{mode}
-					{hourScores}
-				/>
-			{/each}
-		</tbody>
-	</table>
+	<div class="forecast-scroll">
+		<table class="forecast">
+			<thead>
+				<tr>
+					<th>Time</th>
+					<th></th>
+					<th>Temp</th>
+					<th>Wind / gust</th>
+					<th>Rain / Pₚ</th>
+					<th>Cloud</th>
+					<th>Vis</th>
+					<th>Wave</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each slots as slot}
+					{@const key = slot.startHour.toString().padStart(2, '0')}
+					<ForecastRow
+						{slot}
+						expanded={expanded.has(key)}
+						onToggle={() => onToggleSlot(key)}
+						{coastal}
+						{mode}
+						{hourScores}
+					/>
+				{/each}
+			</tbody>
+		</table>
+	</div>
 {/if}
 
 <style>
@@ -190,5 +192,15 @@
 		padding: 0.3rem 0.5rem;
 		margin-left: 0.3rem;
 		font: inherit;
+	}
+	@media (max-width: 720px) {
+		.interval-bar {
+			gap: 0.4rem;
+			font-size: 0.88em;
+		}
+		.interval-bar select {
+			padding: 0.25rem 0.4rem;
+			margin-left: 0.2rem;
+		}
 	}
 </style>

@@ -44,6 +44,12 @@ input, button, select {
 	padding: 1rem;
 }
 
+.forecast-scroll {
+	width: 100%;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
 .tab-bar {
 	display: flex;
 	gap: 0.5rem;
@@ -256,4 +262,95 @@ tr.detail td {
 
 .results-list button:hover {
 	background: var(--bg-row);
+}
+
+@media (max-width: 720px) {
+	.container {
+		padding: 0.5rem;
+	}
+
+	.card {
+		padding: 0.75rem;
+		border-radius: 8px;
+		margin-bottom: 0.6rem;
+	}
+
+	.tab {
+		padding: 0.5rem 0.7rem;
+		font-size: 0.95em;
+	}
+
+	.row {
+		gap: 0.5rem;
+	}
+
+	.input,
+	input[type='text'],
+	input[type='search'] {
+		min-width: 140px;
+		padding: 0.5rem 0.6rem;
+		font-size: 16px;
+	}
+
+	.btn,
+	.btn-ghost {
+		padding: 0.45rem 0.75rem;
+		font-size: 0.9em;
+	}
+
+	.day-tabs {
+		gap: 0.35rem;
+		margin: 0.6rem 0;
+	}
+
+	.day-tab {
+		padding: 0.45rem 0.7rem;
+		font-size: 0.9em;
+	}
+
+	.map {
+		height: 240px;
+	}
+
+	header h1 {
+		font-size: 1.05rem !important;
+	}
+
+	.share-bar {
+		gap: 0.3rem;
+	}
+
+	.share-bar .btn,
+	.share-bar .btn-ghost {
+		padding: 0.4rem 0.55rem;
+		font-size: 0.85em;
+	}
+
+	table.forecast th,
+	table.forecast td {
+		padding: 0.4rem 0.45rem;
+		font-size: 0.88em;
+		white-space: nowrap;
+	}
+
+	.muted {
+		font-size: 0.8em;
+	}
+
+	.activity-line {
+		font-size: 0.78em;
+		white-space: normal;
+	}
+}
+
+@media (max-width: 400px) {
+	header h1 {
+		font-size: 1rem !important;
+	}
+
+	.share-bar .btn,
+	.share-bar .btn-ghost {
+		padding: 0.35rem 0.5rem;
+		font-size: 0.8em;
+	}
 }

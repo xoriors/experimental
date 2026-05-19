@@ -41,9 +41,25 @@
 </script>
 
 <div class="container">
-	<header style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-		<h1 style="margin: 0; font-size: 1.25rem;">🌦️ Weather Prediction</h1>
+	<header>
+		<h1>🌦️ Weather Prediction</h1>
 		<ShareBar />
 	</header>
 	{@render children?.()}
 </div>
+
+<style>
+	header {
+		display: flex;
+		gap: 0.6rem;
+		align-items: center;
+		flex-wrap: wrap;
+		margin-bottom: 1rem;
+	}
+	header h1 {
+		margin: 0;
+		font-size: 1.25rem;
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+</style>

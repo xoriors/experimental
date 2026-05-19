@@ -55,20 +55,19 @@
 		const indexByTime = new Map<string, number>();
 		for (let i = 0; i < allHours.length; i++) indexByTime.set(allHours[i].time, i);
 		for (const h of dayHours) {
-			const startHour = Number(h.time.slice(11, 13));
-			const inInterval = startHour >= hourBounds[0] && startHour <= hourBounds[1];
-			if (!inInterval) {
-				map.set(h.time, null);
-				continue;
-			}
 			const idx = indexByTime.get(h.time);
-			if (idx == null) {
-				map.set(h.time, null);
-				continue;
-			}
-			map.set(h.time, windowScoreAt(allHours, idx, durationH, mode));
+			map.set(h.time, idx == null ? null : windowScoreAt(allHours, idx, durationH, mode));
 		}
 		return map;
+	});
+
+	const outsideInterval = $derived.by(() => {
+		const s = new Set<string>();
+		for (const h of dayHours) {
+			const startHour = Number(h.time.slice(11, 13));
+			if (startHour < hourBounds[0] || startHour > hourBounds[1]) s.add(h.time);
+		}
+		return s;
 	});
 
 	const overridden = $derived(
@@ -167,6 +166,7 @@
 						{coastal}
 						{mode}
 						{hourScores}
+						{outsideInterval}
 					/>
 				{/each}
 			</tbody>

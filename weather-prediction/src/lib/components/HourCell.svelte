@@ -7,23 +7,33 @@
 	type Props = {
 		hour: FusedHour;
 		score: number | null;
+		outside?: boolean;
 		highlighted?: boolean;
 	};
 
-	let { hour, score, highlighted = false }: Props = $props();
+	let { hour, score, outside = false, highlighted = false }: Props = $props();
 	const timeLabel = $derived(hour.time.slice(11, 16));
-	const css = $derived(score == null ? { bg: 'transparent', border: 'transparent' } : scoreToCss(score));
+	const css = $derived(
+		score == null || outside
+			? { bg: 'transparent', border: 'transparent' }
+			: scoreToCss(score)
+	);
+	const chipTitle = $derived(
+		outside
+			? `${score ?? '-'} — outside your start window; adjust Earliest/Latest to include this hour`
+			: 'Score 0–100 for a trip starting at this hour'
+	);
 </script>
 
 <tr
 	class="detail hour"
 	class:highlight={highlighted}
-	class:disabled={score == null}
+	class:outside
 	style="--row-bg: {css.bg}; --row-border: {css.border};"
 >
 	<td>
 		{timeLabel}
-		<span class="hour-score" title="Score 0–100 for a trip starting at this hour">
+		<span class="hour-score" class:outside-chip={outside} title={chipTitle}>
 			{score == null ? '—' : score}
 		</span>
 	</td>
@@ -45,8 +55,8 @@
 	tr.hour > td:first-child {
 		border-left: 4px solid var(--row-border, transparent);
 	}
-	tr.hour.disabled {
-		opacity: 0.55;
+	tr.hour.outside {
+		opacity: 0.5;
 	}
 	.hour-score {
 		display: inline-block;
@@ -60,6 +70,11 @@
 		color: var(--fg);
 		font-variant-numeric: tabular-nums;
 		text-align: center;
+	}
+	.hour-score.outside-chip {
+		background: rgba(255, 255, 255, 0.04);
+		color: var(--fg-dim);
+		font-weight: 500;
 	}
 	tr.hour.highlight {
 		outline: 2px solid #38bdf8;

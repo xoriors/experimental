@@ -9,7 +9,8 @@ const initial: ViewState = {
 	expanded: new Set<string>(),
 	tripMode: 'auto',
 	tripDurationH: 2,
-	tripMinHour: 0
+	tripMinHour: 0,
+	highlight: null
 };
 
 export const view = $state<ViewState>({ ...initial, expanded: new Set(initial.expanded) });
@@ -24,6 +25,7 @@ export function setView(next: ViewState): void {
 	view.tripMode = next.tripMode;
 	view.tripDurationH = next.tripDurationH;
 	view.tripMinHour = next.tripMinHour;
+	view.highlight = next.highlight;
 }
 
 export function toggleExpanded(slot: string): void {

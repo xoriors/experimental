@@ -53,6 +53,23 @@
 		return n.toString().padStart(2, '0');
 	}
 
+	function selectWindow(w: TripWindow) {
+		const date = w.startTime.slice(0, 10);
+		const todayDate = todayIso;
+		const tomorrowDate = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
+		if (date === todayDate) view.day = 'today';
+		else if (date === tomorrowDate) view.day = 'tomorrow';
+		else view.day = 'd2';
+
+		view.highlight = w.startTime;
+
+		const slotStart = Math.floor(w.startHour / 3) * 3;
+		const slotKey = pad2(slotStart);
+		const next = new Set(view.expanded);
+		next.add(slotKey);
+		view.expanded = next;
+	}
+
 	function formatDay(iso: string): string {
 		const date = iso.slice(0, 10);
 		const today = new Date().toISOString().slice(0, 10);
@@ -123,7 +140,13 @@
 	</div>
 
 	{#if bestOverall}
-		<div class="best-pick" style="border-left: 4px solid {bestCss.border}; background: {bestCss.bg};">
+		<button
+			type="button"
+			class="best-pick"
+			style="border-left: 4px solid {bestCss.border}; background: {bestCss.bg};"
+			onclick={() => selectWindow(bestOverall)}
+			title="Click to highlight in the table below"
+		>
 			<div style="font-size: 1.1em;">
 				<strong>★ Best across 3 days:</strong> {formatDay(bestOverall.startTime)} {bestOverall.startTime.slice(11, 16)} —
 				<strong>{bestOverall.score}/100</strong>
@@ -132,7 +155,7 @@
 			<div class="muted" style="margin-top: 0.25rem;">
 				{view.tripDurationH}h window: {formatRange(bestOverall)} · {summariseConditions(bestOverall.hours)}
 			</div>
-		</div>
+		</button>
 
 		<div style="margin-top: 0.6rem;">
 			<div class="muted" style="font-size: 0.85em; margin-bottom: 0.3rem;">Best window each day:</div>
@@ -140,16 +163,27 @@
 				{#each bestPerDay as entry}
 					{@const w = entry.window}
 					{@const css = w ? scoreToCss(w.score) : { bg: 'transparent', border: 'transparent' }}
-					<li style="border-left: 3px solid {css.border}; background: {css.bg};">
-						<span class="day-label">{entry.label}</span>
+					<li>
 						{#if w}
-							<span class="time-cell">{w.startTime.slice(11, 16)}</span>
-							<span class="range-cell">{formatRange(w)}</span>
-							<strong class="score-cell">{w.score}</strong>
-							<span class="muted avg-cell">avg {w.avgScore}</span>
-							<span class="muted conditions">{summariseConditions(w.hours)}</span>
+							<button
+								type="button"
+								class="window-row"
+								style="border-left: 3px solid {css.border}; background: {css.bg};"
+								onclick={() => selectWindow(w)}
+								title="Click to highlight in the table below"
+							>
+								<span class="day-label">{entry.label}</span>
+								<span class="time-cell">{w.startTime.slice(11, 16)}</span>
+								<span class="range-cell">{formatRange(w)}</span>
+								<strong class="score-cell">{w.score}</strong>
+								<span class="muted avg-cell">avg {w.avgScore}</span>
+								<span class="muted conditions">{summariseConditions(w.hours)}</span>
+							</button>
 						{:else}
-							<span class="muted">no window fits</span>
+							<div class="window-row" style="opacity: 0.6;">
+								<span class="day-label">{entry.label}</span>
+								<span class="muted">no window fits</span>
+							</div>
 						{/if}
 					</li>
 				{/each}
@@ -177,9 +211,19 @@
 		font: inherit;
 	}
 	.best-pick {
+		display: block;
+		width: 100%;
+		text-align: left;
 		margin-top: 0.75rem;
 		padding: 0.6rem 0.75rem;
 		border-radius: 6px;
+		border: none;
+		color: var(--fg);
+		cursor: pointer;
+		font: inherit;
+	}
+	.best-pick:hover {
+		filter: brightness(1.2);
 	}
 	.window-list {
 		list-style: none;
@@ -190,13 +234,25 @@
 		gap: 0.3rem;
 	}
 	.window-list li {
-		padding: 0.4rem 0.6rem;
-		border-radius: 4px;
-		font-variant-numeric: tabular-nums;
+		padding: 0;
+	}
+	.window-row {
 		display: flex;
 		gap: 0.5rem;
 		align-items: baseline;
 		flex-wrap: wrap;
+		width: 100%;
+		padding: 0.4rem 0.6rem;
+		border-radius: 4px;
+		font-variant-numeric: tabular-nums;
+		border: none;
+		color: var(--fg);
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.window-row:hover {
+		filter: brightness(1.2);
 	}
 	.day-label {
 		display: inline-block;

@@ -65,8 +65,10 @@ export function decodeView(search: URLSearchParams): ViewState {
 	const tripMode: TripMode = isMode(search.get('mode')) ? (search.get('mode') as TripMode) : 'auto';
 	const tripDurationH = search.has('dur') ? parseDuration(search.get('dur')) : 2;
 	const tripMinHour = search.has('minh') ? parseMinHour(search.get('minh')) : 0;
+	const hlRaw = search.get('hl');
+	const highlight = hlRaw && /^\d{4}-\d{2}-\d{2}T\d{2}:00$/.test(hlRaw) ? hlRaw : null;
 
-	return { tab, from, to, at, day, expanded, tripMode, tripDurationH, tripMinHour };
+	return { tab, from, to, at, day, expanded, tripMode, tripDurationH, tripMinHour, highlight };
 }
 
 export function encodeView(v: ViewState): string {
@@ -98,6 +100,7 @@ export function encodeView(v: ViewState): string {
 	if (v.tripMode !== 'auto') params.set('mode', v.tripMode);
 	if (v.tripDurationH !== 2) params.set('dur', String(v.tripDurationH));
 	if (v.tripMinHour !== 0) params.set('minh', String(v.tripMinHour));
+	if (v.highlight) params.set('hl', v.highlight);
 
 	return params.toString();
 }

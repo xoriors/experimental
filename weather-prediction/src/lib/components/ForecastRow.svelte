@@ -3,6 +3,7 @@
 	import { degToCompass, round1 } from '$lib/units';
 	import { summariseHour } from '$lib/activities';
 	import { hourTripScore, scoreToCss } from '$lib/trip-score';
+	import { view } from '$lib/state.svelte';
 	import WxIcon from './icons/WxIcon.svelte';
 	import HourCell from './HourCell.svelte';
 	import MarineBlock from './MarineBlock.svelte';
@@ -17,6 +18,19 @@
 	};
 
 	let { slot, expanded, onToggle, coastal, mode }: Props = $props();
+
+	const highlightStartMs = $derived(view.highlight ? Date.parse(view.highlight + ':00Z') : null);
+	const highlightEndMs = $derived(
+		highlightStartMs != null ? highlightStartMs + view.tripDurationH * 3600_000 : null
+	);
+
+	function isHourHighlighted(time: string): boolean {
+		if (highlightStartMs == null || highlightEndMs == null) return false;
+		const t = Date.parse(time + ':00Z');
+		return t >= highlightStartMs && t < highlightEndMs;
+	}
+
+	const slotHighlighted = $derived(slot.hours.some((h) => isHourHighlighted(h.time)));
 
 	const start = $derived(slot.startHour.toString().padStart(2, '0'));
 	const end = $derived(((slot.startHour + 3) % 24).toString().padStart(2, '0'));
@@ -44,11 +58,16 @@
 	});
 
 	const activitySummary = $derived(summariseHour(summary));
-	const rowScore = $derived(hourTripScore(summary, mode));
+	const rowScore = $derived(Math.min(...slot.hours.map((h) => hourTripScore(h, mode))));
 	const rowCss = $derived(scoreToCss(rowScore));
 </script>
 
-<tr class="slot" style="--row-bg: {rowCss.bg}; --row-border: {rowCss.border};" onclick={onToggle}>
+<tr
+	class="slot"
+	class:highlight={slotHighlighted}
+	style="--row-bg: {rowCss.bg}; --row-border: {rowCss.border};"
+	onclick={onToggle}
+>
 	<td>
 		<span class="expand-caret" class:open={expanded}>▶</span>
 		{start}–{end}
@@ -74,11 +93,15 @@
 </tr>
 {#if expanded}
 	{#each slot.hours as h}
-		<HourCell hour={h} />
+		<HourCell hour={h} {mode} highlighted={isHourHighlighted(h.time)} />
 	{/each}
 {/if}
 
 <style>
+	tr.slot.highlight {
+		outline: 2px solid #38bdf8;
+		outline-offset: -2px;
+	}
 	.row-score {
 		display: inline-block;
 		min-width: 2.2rem;

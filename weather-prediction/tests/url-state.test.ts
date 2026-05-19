@@ -61,6 +61,22 @@ describe('url-state', () => {
 		expect(new URLSearchParams(re).has('minh')).toBe(false);
 	});
 
+	it('decodes valid highlight ISO string', () => {
+		const { decoded } = roundTrip('tab=route&hl=2026-05-21T09:00');
+		expect(decoded.highlight).toBe('2026-05-21T09:00');
+	});
+
+	it('rejects malformed highlight', () => {
+		expect(roundTrip('hl=garbage').decoded.highlight).toBeNull();
+		expect(roundTrip('hl=2026-05-21').decoded.highlight).toBeNull();
+		expect(roundTrip('hl=2026-05-21T9:00').decoded.highlight).toBeNull();
+	});
+
+	it('roundtrips highlight in URL', () => {
+		const { re } = roundTrip('tab=route&hl=2026-05-21T09:00');
+		expect(new URLSearchParams(re).get('hl')).toBe('2026-05-21T09:00');
+	});
+
 	it('clamps duration to 1..12', () => {
 		expect(roundTrip('dur=99').decoded.tripDurationH).toBe(12);
 		expect(roundTrip('dur=0').decoded.tripDurationH).toBe(1);

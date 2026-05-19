@@ -16,6 +16,7 @@ export type ViewState = {
 	tripMode: TripMode;
 	tripDurationH: number;
 	tripMinHour: number;
+	highlight: string | null;
 };
 
 export type ForecastHour = {

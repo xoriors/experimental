@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { view } from '$lib/state.svelte';
-	import { findBestWindows, resolveMode, scoreToCss } from '$lib/trip-score';
+	import { findBestWindows, resolveMode, scoreToCss, type TripWindow } from '$lib/trip-score';
+	import { filterHoursForDay } from '$lib/time';
 	import { round1 } from '$lib/units';
-	import type { FusedHour, TripMode } from '$lib/types';
+	import type { DayKey, FusedHour, TripMode } from '$lib/types';
 
 	type Props = {
 		hours: FusedHour[];
@@ -13,17 +14,43 @@
 	let { hours, timezone, defaultMode }: Props = $props();
 
 	const activeMode = $derived(resolveMode(view.tripMode, hours));
-	const windows = $derived(findBestWindows(hours, view.tripDurationH, activeMode));
-	const top = $derived(windows.slice(0, 5));
-	const best = $derived(windows[0]);
+	const allWindows = $derived(
+		findBestWindows(hours, view.tripDurationH, activeMode, view.tripMinHour)
+	);
+	const bestOverall = $derived<TripWindow | undefined>(allWindows[0]);
+
+	const todayIso = $derived(new Date().toISOString().slice(0, 10));
+
+	type DayLabel = { key: DayKey; label: string };
+	const DAYS: DayLabel[] = [
+		{ key: 'today', label: 'Today' },
+		{ key: 'tomorrow', label: 'Tomorrow' },
+		{ key: 'd2', label: 'Day after' }
+	];
+
+	const bestPerDay = $derived(
+		DAYS.map(({ key, label }) => {
+			const dayHours = filterHoursForDay(hours, key, todayIso);
+			const wins = findBestWindows(dayHours, view.tripDurationH, activeMode, view.tripMinHour);
+			return { key, label, window: wins[0] ?? null };
+		})
+	);
 
 	const DURATIONS = [1, 2, 3, 4, 6, 8, 12];
+	const MIN_HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 	function onModeChange(e: Event) {
 		view.tripMode = (e.target as HTMLSelectElement).value as TripMode;
 	}
 	function onDurationChange(e: Event) {
 		view.tripDurationH = Number((e.target as HTMLSelectElement).value);
+	}
+	function onMinHourChange(e: Event) {
+		view.tripMinHour = Number((e.target as HTMLSelectElement).value);
+	}
+
+	function pad2(n: number): string {
+		return n.toString().padStart(2, '0');
 	}
 
 	function formatDay(iso: string): string {
@@ -60,7 +87,7 @@
 		return parts.join(' · ');
 	}
 
-	const bestCss = $derived(best ? scoreToCss(best.score) : { bg: '', border: 'transparent' });
+	const bestCss = $derived(bestOverall ? scoreToCss(bestOverall.score) : { bg: '', border: 'transparent' });
 </script>
 
 <div class="card trip-finder">
@@ -81,40 +108,53 @@
 				<option value="land">Land</option>
 			</select>
 		</label>
+		<label>
+			<span class="muted">Earliest start</span>
+			<select onchange={onMinHourChange} value={view.tripMinHour}>
+				{#each MIN_HOURS as h}
+					<option value={h}>{pad2(h)}:00</option>
+				{/each}
+			</select>
+		</label>
 		<div class="legend" title="Score 0 (worst) → 100 (best)">
 			<span class="legend-bar"></span>
 			<span class="muted" style="font-size: 0.75em;">0 → 100</span>
 		</div>
 	</div>
 
-	{#if best}
+	{#if bestOverall}
 		<div class="best-pick" style="border-left: 4px solid {bestCss.border}; background: {bestCss.bg};">
 			<div style="font-size: 1.1em;">
-				<strong>★ Best start:</strong> {formatDay(best.startTime)} {best.startTime.slice(11, 16)} —
-				<strong>{best.score}/100</strong>
-				<span class="muted">(avg {best.avgScore})</span>
+				<strong>★ Best across 3 days:</strong> {formatDay(bestOverall.startTime)} {bestOverall.startTime.slice(11, 16)} —
+				<strong>{bestOverall.score}/100</strong>
+				<span class="muted">(avg {bestOverall.avgScore})</span>
 			</div>
 			<div class="muted" style="margin-top: 0.25rem;">
-				{view.tripDurationH}h window: {formatRange(best)} · {summariseConditions(best.hours)}
+				{view.tripDurationH}h window: {formatRange(bestOverall)} · {summariseConditions(bestOverall.hours)}
 			</div>
 		</div>
 
-		{#if top.length > 1}
-			<div style="margin-top: 0.5rem;">
-				<div class="muted" style="font-size: 0.85em; margin-bottom: 0.3rem;">Other options:</div>
-				<ul class="window-list">
-					{#each top.slice(1) as w}
-						{@const css = scoreToCss(w.score)}
-						<li style="border-left: 3px solid {css.border}; background: {css.bg};">
-							<span style="display: inline-block; min-width: 8rem;">{formatDay(w.startTime)} {w.startTime.slice(11, 16)}</span>
-							<span style="display: inline-block; min-width: 6rem;">{formatRange(w)}</span>
-							<strong>{w.score}</strong>
-							<span class="muted" style="margin-left: 0.4rem;">avg {w.avgScore}</span>
-						</li>
-					{/each}
-				</ul>
-			</div>
-		{/if}
+		<div style="margin-top: 0.6rem;">
+			<div class="muted" style="font-size: 0.85em; margin-bottom: 0.3rem;">Best window each day:</div>
+			<ul class="window-list">
+				{#each bestPerDay as entry}
+					{@const w = entry.window}
+					{@const css = w ? scoreToCss(w.score) : { bg: 'transparent', border: 'transparent' }}
+					<li style="border-left: 3px solid {css.border}; background: {css.bg};">
+						<span class="day-label">{entry.label}</span>
+						{#if w}
+							<span class="time-cell">{w.startTime.slice(11, 16)}</span>
+							<span class="range-cell">{formatRange(w)}</span>
+							<strong class="score-cell">{w.score}</strong>
+							<span class="muted avg-cell">avg {w.avgScore}</span>
+							<span class="muted conditions">{summariseConditions(w.hours)}</span>
+						{:else}
+							<span class="muted">no window fits</span>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		</div>
 	{:else}
 		<p class="muted">Not enough forecast data to find a window.</p>
 	{/if}
@@ -147,12 +187,43 @@
 		margin: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: 0.3rem;
 	}
 	.window-list li {
-		padding: 0.3rem 0.6rem;
+		padding: 0.4rem 0.6rem;
 		border-radius: 4px;
 		font-variant-numeric: tabular-nums;
+		display: flex;
+		gap: 0.5rem;
+		align-items: baseline;
+		flex-wrap: wrap;
+	}
+	.day-label {
+		display: inline-block;
+		min-width: 7rem;
+		font-weight: 600;
+	}
+	.time-cell {
+		display: inline-block;
+		min-width: 3.4rem;
+	}
+	.range-cell {
+		display: inline-block;
+		min-width: 7rem;
+	}
+	.score-cell {
+		display: inline-block;
+		min-width: 2.4rem;
+		text-align: right;
+	}
+	.avg-cell {
+		display: inline-block;
+		min-width: 4rem;
+	}
+	.conditions {
+		flex: 1;
+		font-size: 0.85em;
+		min-width: 16rem;
 	}
 	.legend {
 		display: flex;

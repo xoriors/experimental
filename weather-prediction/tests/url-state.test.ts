@@ -44,6 +44,23 @@ describe('url-state', () => {
 		expect(decoded.tripDurationH).toBe(4);
 	});
 
+	it('decodes tripMinHour and clamps to 0..23', () => {
+		expect(roundTrip('minh=8').decoded.tripMinHour).toBe(8);
+		expect(roundTrip('minh=99').decoded.tripMinHour).toBe(23);
+		expect(roundTrip('minh=-5').decoded.tripMinHour).toBe(0);
+		expect(roundTrip('').decoded.tripMinHour).toBe(0);
+	});
+
+	it('includes minh when non-default', () => {
+		const { re } = roundTrip('tab=route&minh=8');
+		expect(new URLSearchParams(re).get('minh')).toBe('8');
+	});
+
+	it('omits minh when default 0', () => {
+		const { re } = roundTrip('tab=route');
+		expect(new URLSearchParams(re).has('minh')).toBe(false);
+	});
+
 	it('clamps duration to 1..12', () => {
 		expect(roundTrip('dur=99').decoded.tripDurationH).toBe(12);
 		expect(roundTrip('dur=0').decoded.tripDurationH).toBe(1);

@@ -40,6 +40,12 @@ function parseDuration(raw: string | null): number {
 	return Math.max(1, Math.min(12, Math.round(n)));
 }
 
+function parseMinHour(raw: string | null): number {
+	const n = Number(raw);
+	if (!Number.isFinite(n)) return 0;
+	return Math.max(0, Math.min(23, Math.round(n)));
+}
+
 export function decodeView(search: URLSearchParams): ViewState {
 	const tab: Tab = isTab(search.get('tab')) ? (search.get('tab') as Tab) : 'route';
 	const day: DayKey = isDay(search.get('day')) ? (search.get('day') as DayKey) : 'today';
@@ -58,8 +64,9 @@ export function decodeView(search: URLSearchParams): ViewState {
 
 	const tripMode: TripMode = isMode(search.get('mode')) ? (search.get('mode') as TripMode) : 'auto';
 	const tripDurationH = search.has('dur') ? parseDuration(search.get('dur')) : 2;
+	const tripMinHour = search.has('minh') ? parseMinHour(search.get('minh')) : 0;
 
-	return { tab, from, to, at, day, expanded, tripMode, tripDurationH };
+	return { tab, from, to, at, day, expanded, tripMode, tripDurationH, tripMinHour };
 }
 
 export function encodeView(v: ViewState): string {
@@ -90,6 +97,7 @@ export function encodeView(v: ViewState): string {
 
 	if (v.tripMode !== 'auto') params.set('mode', v.tripMode);
 	if (v.tripDurationH !== 2) params.set('dur', String(v.tripDurationH));
+	if (v.tripMinHour !== 0) params.set('minh', String(v.tripMinHour));
 
 	return params.toString();
 }

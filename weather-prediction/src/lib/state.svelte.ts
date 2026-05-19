@@ -8,7 +8,8 @@ const initial: ViewState = {
 	day: 'today',
 	expanded: new Set<string>(),
 	tripMode: 'auto',
-	tripDurationH: 2
+	tripDurationH: 2,
+	tripMinHour: 0
 };
 
 export const view = $state<ViewState>({ ...initial, expanded: new Set(initial.expanded) });
@@ -22,6 +23,7 @@ export function setView(next: ViewState): void {
 	view.expanded = new Set(next.expanded);
 	view.tripMode = next.tripMode;
 	view.tripDurationH = next.tripDurationH;
+	view.tripMinHour = next.tripMinHour;
 }
 
 export function toggleExpanded(slot: string): void {

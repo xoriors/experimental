@@ -76,6 +76,18 @@ describe('findBestWindows', () => {
 		expect(findBestWindows(hours, 4, 'land')).toEqual([]);
 	});
 
+	it('respects minStartHour filter', () => {
+		const hours = [
+			mk('2026-05-21T06:00', { waveHsM: 0.3 }),
+			mk('2026-05-21T07:00', { waveHsM: 0.3 }),
+			mk('2026-05-21T08:00', { waveHsM: 0.3 }),
+			mk('2026-05-21T09:00', { waveHsM: 0.3 })
+		];
+		const windows = findBestWindows(hours, 2, 'sea', 8);
+		expect(windows).toHaveLength(1);
+		expect(windows[0].startHour).toBe(8);
+	});
+
 	it('avgScore tiebreaks equal min scores', () => {
 		const hours = [
 			mk('2026-05-21T08:00', { waveHsM: 0.3, gustKn: 8 }),

@@ -29,15 +29,17 @@ export type TripWindow = {
 export function findBestWindows(
 	hours: FusedHour[],
 	durationH: number,
-	mode: ResolvedMode
+	mode: ResolvedMode,
+	minStartHour = 0
 ): TripWindow[] {
 	if (durationH < 1 || hours.length < durationH) return [];
 	const windows: TripWindow[] = [];
 	for (let i = 0; i + durationH <= hours.length; i++) {
 		const slice = hours.slice(i, i + durationH);
-		const scores = slice.map((h) => hourTripScore(h, mode));
 		const match = /T(\d{2}):/.exec(slice[0].time);
 		const startHour = match ? Number(match[1]) : 0;
+		if (startHour < minStartHour) continue;
+		const scores = slice.map((h) => hourTripScore(h, mode));
 		windows.push({
 			startTime: slice[0].time,
 			startHour,

@@ -15,6 +15,7 @@ export type ViewState = {
 	expanded: Set<string>;
 	tripMode: TripMode;
 	tripDurationH: number;
+	tripMinHour: number;
 };
 
 export type ForecastHour = {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { view, toggleExpanded, effectiveInterval, setDayInterval } from '$lib/state.svelte';
+	import { view, toggleExpanded, effectiveConfig, setDayOverride, resetDayOverride } from '$lib/state.svelte';
 	import PlaceSearch from './PlaceSearch.svelte';
 	import MapView from './MapView.svelte';
 	import DayTabs from './DayTabs.svelte';
@@ -8,6 +8,7 @@
 	import { getCurrentPosition } from '$lib/client/geolocation';
 	import { mergeSinglePoint } from '$lib/fusion';
 	import { resolveMode } from '$lib/trip-score';
+	import { filterHoursForDay } from '$lib/time';
 	import type { FusedHour, ForecastHour, LabeledPoint, MarineHour, DayKey } from '$lib/types';
 
 	let loading = $state(false);
@@ -76,8 +77,11 @@
 	});
 
 	const todayIso = $derived(new Date().toISOString().slice(0, 10));
-	const activeMode = $derived(result ? resolveMode(view.tripMode, result.hours) : 'land');
-	const eff = $derived(effectiveInterval(view.day));
+	const eff = $derived(effectiveConfig(view.day));
+	const dayHours = $derived(
+		result ? filterHoursForDay(result.hours, view.day, todayIso) : []
+	);
+	const activeMode = $derived(result ? resolveMode(eff.mode, dayHours) : 'land');
 
 	function pick(p: LabeledPoint) {
 		view.at = p;
@@ -156,13 +160,16 @@
 				allHours={result.hours}
 				day={view.day}
 				mode={activeMode}
-				durationH={view.tripDurationH}
-				min={eff.min}
-				max={eff.max}
+				durationH={eff.durationH}
+				minMin={eff.min}
+				maxMin={eff.max}
 				override={view.intervals[view.day]}
-				topMin={view.tripMinHour}
-				topMax={view.tripMaxHour}
-				onChangeInterval={(min, max) => setDayInterval(view.day, min, max)}
+				topMinMin={view.tripMinMin}
+				topMaxMin={view.tripMaxMin}
+				topDurationH={view.tripDurationH}
+				topMode={view.tripMode}
+				onChangeOverride={(patch) => setDayOverride(view.day, patch)}
+				onResetOverride={() => resetDayOverride(view.day)}
 				expanded={view.expanded}
 				onToggleSlot={toggleExpanded}
 				{todayIso}

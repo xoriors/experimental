@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { view, effectiveInterval } from '$lib/state.svelte';
+	import { view, effectiveConfig } from '$lib/state.svelte';
 	import { findBestWindows, resolveMode, scoreToCss, type TripWindow } from '$lib/trip-score';
 	import { filterHoursForDay } from '$lib/time';
+	import { minToHHMM } from '$lib/url-state';
 	import { round1 } from '$lib/units';
 	import type { DayKey, FusedHour, TripMode } from '$lib/types';
 
@@ -13,15 +14,14 @@
 
 	let { hours, timezone, defaultMode }: Props = $props();
 
+	function toHourBounds(minMin: number, maxMin: number): [number, number] {
+		return [Math.ceil(minMin / 60), Math.floor(maxMin / 60)];
+	}
+
 	const activeMode = $derived(resolveMode(view.tripMode, hours));
+	const topBounds = $derived(toHourBounds(view.tripMinMin, view.tripMaxMin));
 	const allWindows = $derived(
-		findBestWindows(
-			hours,
-			view.tripDurationH,
-			activeMode,
-			view.tripMinHour,
-			view.tripMaxHour
-		)
+		findBestWindows(hours, view.tripDurationH, activeMode, topBounds[0], topBounds[1])
 	);
 	const bestOverall = $derived<TripWindow | undefined>(allWindows[0]);
 
@@ -37,14 +37,16 @@
 	const bestPerDay = $derived(
 		DAYS.map(({ key, label }) => {
 			const dayHours = filterHoursForDay(hours, key, todayIso);
-			const eff = effectiveInterval(key);
-			const wins = findBestWindows(dayHours, view.tripDurationH, activeMode, eff.min, eff.max);
-			return { key, label, window: wins[0] ?? null, eff };
+			const eff = effectiveConfig(key);
+			const mode = resolveMode(eff.mode, dayHours);
+			const [minHr, maxHr] = toHourBounds(eff.min, eff.max);
+			const wins = findBestWindows(dayHours, eff.durationH, mode, minHr, maxHr);
+			return { key, label, window: wins[0] ?? null, eff, mode };
 		})
 	);
 
 	const DURATIONS = [1, 2, 3, 4, 6, 8, 12];
-	const HOURS_LIST = Array.from({ length: 24 }, (_, i) => i);
+	const HALF_HOURS = Array.from({ length: 48 }, (_, i) => i * 30);
 
 	function onModeChange(e: Event) {
 		view.tripMode = (e.target as HTMLSelectElement).value as TripMode;
@@ -52,18 +54,18 @@
 	function onDurationChange(e: Event) {
 		view.tripDurationH = Number((e.target as HTMLSelectElement).value);
 	}
-	function onMinHourChange(e: Event) {
-		view.tripMinHour = Number((e.target as HTMLSelectElement).value);
+	function onMinChange(e: Event) {
+		view.tripMinMin = Number((e.target as HTMLSelectElement).value);
 	}
-	function onMaxHourChange(e: Event) {
-		view.tripMaxHour = Number((e.target as HTMLSelectElement).value);
+	function onMaxChange(e: Event) {
+		view.tripMaxMin = Number((e.target as HTMLSelectElement).value);
 	}
 
 	function pad2(n: number): string {
 		return n.toString().padStart(2, '0');
 	}
 
-	function selectWindow(w: TripWindow) {
+	function selectWindow(w: TripWindow, dur: number) {
 		const date = w.startTime.slice(0, 10);
 		const todayDate = todayIso;
 		const tomorrowDate = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
@@ -78,6 +80,7 @@
 		const next = new Set(view.expanded);
 		next.add(slotKey);
 		view.expanded = next;
+		void dur;
 	}
 
 	function formatDay(iso: string): string {
@@ -120,6 +123,22 @@
 <div class="card trip-finder">
 	<div class="row" style="gap: 1rem; align-items: center;">
 		<label>
+			<span class="muted">Earliest start</span>
+			<select onchange={onMinChange} value={view.tripMinMin}>
+				{#each HALF_HOURS as m}
+					<option value={m}>{minToHHMM(m)}</option>
+				{/each}
+			</select>
+		</label>
+		<label>
+			<span class="muted">Latest start</span>
+			<select onchange={onMaxChange} value={view.tripMaxMin}>
+				{#each HALF_HOURS as m}
+					<option value={m}>{minToHHMM(m)}</option>
+				{/each}
+			</select>
+		</label>
+		<label>
 			<span class="muted">Duration</span>
 			<select onchange={onDurationChange} value={view.tripDurationH}>
 				{#each DURATIONS as d}
@@ -135,22 +154,6 @@
 				<option value="land">Land</option>
 			</select>
 		</label>
-		<label>
-			<span class="muted">Earliest start</span>
-			<select onchange={onMinHourChange} value={view.tripMinHour}>
-				{#each HOURS_LIST as h}
-					<option value={h}>{pad2(h)}:00</option>
-				{/each}
-			</select>
-		</label>
-		<label>
-			<span class="muted">Latest start</span>
-			<select onchange={onMaxHourChange} value={view.tripMaxHour}>
-				{#each HOURS_LIST as h}
-					<option value={h}>{pad2(h)}:00</option>
-				{/each}
-			</select>
-		</label>
 		<div class="legend" title="Score 0 (worst) → 100 (best)">
 			<span class="legend-bar"></span>
 			<span class="muted" style="font-size: 0.75em;">0 → 100</span>
@@ -162,7 +165,7 @@
 			type="button"
 			class="best-pick"
 			style="border-left: 4px solid {bestCss.border}; background: {bestCss.bg};"
-			onclick={() => selectWindow(bestOverall)}
+			onclick={() => selectWindow(bestOverall, view.tripDurationH)}
 			title="Click to highlight in the table below"
 		>
 			<div style="font-size: 1.1em;">
@@ -187,7 +190,7 @@
 								type="button"
 								class="window-row"
 								style="border-left: 3px solid {css.border}; background: {css.bg};"
-								onclick={() => selectWindow(w)}
+								onclick={() => selectWindow(w, entry.eff.durationH)}
 								title="Click to highlight in the table below"
 							>
 								<span class="day-label">{entry.label}</span>
@@ -196,6 +199,9 @@
 								<strong class="score-cell">{w.score}</strong>
 								<span class="muted avg-cell">avg {w.avgScore}</span>
 								<span class="muted conditions">{summariseConditions(w.hours)}</span>
+								{#if entry.eff.durationH !== view.tripDurationH || entry.eff.mode !== view.tripMode}
+									<span class="muted override-badge">{entry.eff.durationH}h · {entry.mode}</span>
+								{/if}
 							</button>
 						{:else}
 							<div class="window-row" style="opacity: 0.6;">
@@ -298,6 +304,13 @@
 		flex: 1;
 		font-size: 0.85em;
 		min-width: 16rem;
+	}
+	.override-badge {
+		font-size: 0.75em;
+		padding: 0.05rem 0.4rem;
+		border-radius: 999px;
+		background: rgba(56, 189, 248, 0.15);
+		color: var(--accent);
 	}
 	.legend {
 		display: flex;

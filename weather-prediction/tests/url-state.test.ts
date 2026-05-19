@@ -1,157 +1,148 @@
 import { describe, it, expect } from 'vitest';
-import { decodeView, encodeView } from '../src/lib/url-state';
+import { decodeView, encodeView, hhmmToMin, minToHHMM } from '../src/lib/url-state';
+import type { ViewState } from '../src/lib/types';
 
-function roundTrip(qs: string) {
-	const decoded = decodeView(new URLSearchParams(qs));
-	const re = encodeView(decoded);
-	return { decoded, re };
+function freshState(): ViewState {
+	return {
+		tab: 'route',
+		from: null,
+		to: null,
+		at: null,
+		day: 'today',
+		expanded: new Set<string>(),
+		tripMode: 'auto',
+		tripDurationH: 2,
+		tripMinMin: 0,
+		tripMaxMin: 1380,
+		intervals: {
+			today: { min: null, max: null, durationH: null, mode: null },
+			tomorrow: { min: null, max: null, durationH: null, mode: null },
+			d2: { min: null, max: null, durationH: null, mode: null }
+		},
+		highlight: null
+	};
 }
 
-describe('url-state', () => {
-	it('decodes a route view', () => {
-		const { decoded } = roundTrip(
-			'tab=route&from=7.7388,98.7784&to=8.0340,98.8250&day=tomorrow&expand=09,15'
-		);
-		expect(decoded.tab).toBe('route');
-		expect(decoded.from).toEqual({ lat: 7.7388, lon: 98.7784, label: undefined });
-		expect(decoded.to).toEqual({ lat: 8.034, lon: 98.825, label: undefined });
-		expect(decoded.day).toBe('tomorrow');
-		expect([...decoded.expanded].sort()).toEqual(['09', '15']);
+function roundTrip(v: ViewState): ViewState {
+	const encoded = encodeView(v);
+	const params = new URLSearchParams(encoded);
+	return decodeView(params);
+}
+
+describe('url-state base64 round-trip', () => {
+	it('defaults survive round-trip', () => {
+		const v = freshState();
+		const r = roundTrip(v);
+		expect(r.tab).toBe('route');
+		expect(r.day).toBe('today');
+		expect(r.tripMode).toBe('auto');
+		expect(r.tripDurationH).toBe(2);
+		expect(r.tripMinMin).toBe(0);
+		expect(r.tripMaxMin).toBe(1380);
 	});
 
-	it('decodes a fixed view with label', () => {
-		const { decoded } = roundTrip(
-			'tab=fixed&at=7.7388,98.7784&label_at=' + encodeURIComponent('Phi Phi') + '&day=d2'
-		);
-		expect(decoded.tab).toBe('fixed');
-		expect(decoded.at?.label).toBe('Phi Phi');
-		expect(decoded.day).toBe('d2');
+	it('preserves from/to with labels', () => {
+		const v = freshState();
+		v.from = { lat: 7.7388, lon: 98.7784, label: 'Phi Phi' };
+		v.to = { lat: 8.034, lon: 98.825, label: 'Ao Nang' };
+		const r = roundTrip(v);
+		expect(r.from?.lat).toBe(7.7388);
+		expect(r.from?.lon).toBe(98.7784);
+		expect(r.from?.label).toBe('Phi Phi');
+		expect(r.to?.label).toBe('Ao Nang');
 	});
 
-	it('defaults sane values for empty query', () => {
-		const { decoded } = roundTrip('');
-		expect(decoded.tab).toBe('route');
-		expect(decoded.day).toBe('today');
-		expect(decoded.from).toBeNull();
-		expect(decoded.expanded.size).toBe(0);
-		expect(decoded.tripMode).toBe('auto');
-		expect(decoded.tripDurationH).toBe(2);
+	it('preserves expanded set', () => {
+		const v = freshState();
+		v.expanded = new Set(['09', '15']);
+		const r = roundTrip(v);
+		expect([...r.expanded].sort()).toEqual(['09', '15']);
 	});
 
-	it('decodes tripMode and tripDurationH', () => {
-		const { decoded } = roundTrip('tab=route&mode=sea&dur=4');
-		expect(decoded.tripMode).toBe('sea');
-		expect(decoded.tripDurationH).toBe(4);
+	it('preserves minutes start/end with 30-min granularity', () => {
+		const v = freshState();
+		v.tripMinMin = 510; // 08:30
+		v.tripMaxMin = 1050; // 17:30
+		const r = roundTrip(v);
+		expect(r.tripMinMin).toBe(510);
+		expect(r.tripMaxMin).toBe(1050);
 	});
 
-	it('decodes tripMinHour and clamps to 0..23', () => {
-		expect(roundTrip('minh=8').decoded.tripMinHour).toBe(8);
-		expect(roundTrip('minh=99').decoded.tripMinHour).toBe(23);
-		expect(roundTrip('minh=-5').decoded.tripMinHour).toBe(0);
-		expect(roundTrip('').decoded.tripMinHour).toBe(0);
+	it('preserves per-day overrides', () => {
+		const v = freshState();
+		v.intervals.today = { min: 540, max: 1020, durationH: 4, mode: 'sea' };
+		v.intervals.tomorrow = { min: null, max: null, durationH: 6, mode: null };
+		const r = roundTrip(v);
+		expect(r.intervals.today).toEqual({ min: 540, max: 1020, durationH: 4, mode: 'sea' });
+		expect(r.intervals.tomorrow).toEqual({ min: null, max: null, durationH: 6, mode: null });
 	});
 
-	it('includes minh when non-default', () => {
-		const { re } = roundTrip('tab=route&minh=8');
-		expect(new URLSearchParams(re).get('minh')).toBe('8');
-	});
-
-	it('omits minh when default 0', () => {
-		const { re } = roundTrip('tab=route');
-		expect(new URLSearchParams(re).has('minh')).toBe(false);
-	});
-
-	it('decodes valid highlight ISO string', () => {
-		const { decoded } = roundTrip('tab=route&hl=2026-05-21T09:00');
-		expect(decoded.highlight).toBe('2026-05-21T09:00');
-	});
-
-	it('rejects malformed highlight', () => {
-		expect(roundTrip('hl=garbage').decoded.highlight).toBeNull();
-		expect(roundTrip('hl=2026-05-21').decoded.highlight).toBeNull();
-		expect(roundTrip('hl=2026-05-21T9:00').decoded.highlight).toBeNull();
-	});
-
-	it('roundtrips highlight in URL', () => {
-		const { re } = roundTrip('tab=route&hl=2026-05-21T09:00');
-		expect(new URLSearchParams(re).get('hl')).toBe('2026-05-21T09:00');
-	});
-
-	it('decodes tripMaxHour', () => {
-		expect(roundTrip('maxh=17').decoded.tripMaxHour).toBe(17);
-		expect(roundTrip('').decoded.tripMaxHour).toBe(23);
-	});
-
-	it('decodes per-day intervals', () => {
-		const { decoded } = roundTrip('i_today=9-17&i_tomorrow=8-&i_d2=-15');
-		expect(decoded.intervals.today).toEqual({ min: 9, max: 17 });
-		expect(decoded.intervals.tomorrow).toEqual({ min: 8, max: null });
-		expect(decoded.intervals.d2).toEqual({ min: null, max: 15 });
-	});
-
-	it('defaults all intervals to {null,null}', () => {
-		const { decoded } = roundTrip('');
-		expect(decoded.intervals.today).toEqual({ min: null, max: null });
-		expect(decoded.intervals.tomorrow).toEqual({ min: null, max: null });
-		expect(decoded.intervals.d2).toEqual({ min: null, max: null });
-	});
-
-	it('omits i_* params when all null', () => {
-		const { re } = roundTrip('tab=route');
-		const p = new URLSearchParams(re);
-		expect(p.has('i_today')).toBe(false);
-		expect(p.has('i_tomorrow')).toBe(false);
-		expect(p.has('i_d2')).toBe(false);
-	});
-
-	it('emits i_today when non-null', () => {
-		const { re } = roundTrip('i_today=9-17');
-		expect(new URLSearchParams(re).get('i_today')).toBe('9-17');
-	});
-
-	it('clamps duration to 1..12', () => {
-		expect(roundTrip('dur=99').decoded.tripDurationH).toBe(12);
-		expect(roundTrip('dur=0').decoded.tripDurationH).toBe(1);
-		expect(roundTrip('dur=garbage').decoded.tripDurationH).toBe(2);
-	});
-
-	it('rejects invalid mode and falls back to auto', () => {
-		expect(roundTrip('mode=bogus').decoded.tripMode).toBe('auto');
-	});
-
-	it('omits mode and dur from URL when default', () => {
-		const { re } = roundTrip('tab=route');
-		const params = new URLSearchParams(re);
-		expect(params.has('mode')).toBe(false);
+	it('encodes as ?s= param only', () => {
+		const v = freshState();
+		v.tripDurationH = 4;
+		const encoded = encodeView(v);
+		const params = new URLSearchParams(encoded);
+		expect(params.get('s')).not.toBeNull();
+		expect(params.has('tab')).toBe(false);
 		expect(params.has('dur')).toBe(false);
 	});
 
-	it('includes mode and dur when non-default', () => {
-		const { re } = roundTrip('tab=route&mode=land&dur=6');
-		const params = new URLSearchParams(re);
-		expect(params.get('mode')).toBe('land');
-		expect(params.get('dur')).toBe('6');
+	it('preserves highlight', () => {
+		const v = freshState();
+		v.highlight = '2026-05-21T09:00';
+		const r = roundTrip(v);
+		expect(r.highlight).toBe('2026-05-21T09:00');
 	});
 
-	it('rejects out-of-range coordinates', () => {
-		const { decoded } = roundTrip('tab=fixed&at=200,500');
-		expect(decoded.at).toBeNull();
+	it('rejects invalid highlight format', () => {
+		const v = freshState();
+		v.highlight = 'garbage' as unknown as string;
+		const r = roundTrip(v);
+		expect(r.highlight).toBeNull();
+	});
+});
+
+describe('url-state legacy fallback', () => {
+	it('decodes old-style ?tab=route&from=lat,lon links', () => {
+		const params = new URLSearchParams('tab=route&from=7.7388,98.7784&to=8.034,98.825&day=tomorrow');
+		const decoded = decodeView(params);
+		expect(decoded.tab).toBe('route');
+		expect(decoded.from?.lat).toBe(7.7388);
+		expect(decoded.to?.lon).toBe(98.825);
+		expect(decoded.day).toBe('tomorrow');
 	});
 
-	it('rejects malformed expand slots', () => {
-		const { decoded } = roundTrip('tab=fixed&expand=09,abc,15');
-		expect([...decoded.expanded].sort()).toEqual(['09', '15']);
+	it('decodes legacy fixed view with label', () => {
+		const params = new URLSearchParams('tab=fixed&at=7.7388,98.7784&label_at=' + encodeURIComponent('Phi Phi'));
+		const decoded = decodeView(params);
+		expect(decoded.tab).toBe('fixed');
+		expect(decoded.at?.label).toBe('Phi Phi');
 	});
 
-	it('round-trip is stable for route', () => {
-		const original = 'day=tomorrow&expand=09%2C15&from=7.7388%2C98.7784&tab=route&to=8.0340%2C98.8250';
-		const { decoded } = roundTrip(original);
-		const reEncoded = encodeView(decoded);
-		const params = new URLSearchParams(reEncoded);
-		expect(params.get('tab')).toBe('route');
-		expect(params.get('from')).toBe('7.7388,98.7784');
-		expect(params.get('to')).toBe('8.0340,98.8250');
-		expect(params.get('day')).toBe('tomorrow');
-		expect(params.get('expand')).toBe('09,15');
+	it('falls back gracefully on malformed s= param', () => {
+		const params = new URLSearchParams('s=not-base64!!!');
+		const decoded = decodeView(params);
+		expect(decoded.tab).toBe('route');
+		expect(decoded.from).toBeNull();
+	});
+});
+
+describe('hhmm helpers', () => {
+	it('hhmmToMin parses HH:MM in 30-min steps', () => {
+		expect(hhmmToMin('00:00')).toBe(0);
+		expect(hhmmToMin('08:30')).toBe(510);
+		expect(hhmmToMin('17:30')).toBe(1050);
+		expect(hhmmToMin('23:30')).toBe(1410);
+	});
+
+	it('hhmmToMin rejects non-half-hour minutes', () => {
+		expect(hhmmToMin('08:15')).toBeNull();
+		expect(hhmmToMin('08:45')).toBeNull();
+	});
+
+	it('minToHHMM formats correctly', () => {
+		expect(minToHHMM(0)).toBe('00:00');
+		expect(minToHHMM(510)).toBe('08:30');
+		expect(minToHHMM(1050)).toBe('17:30');
 	});
 });

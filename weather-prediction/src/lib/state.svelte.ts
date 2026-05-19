@@ -1,4 +1,4 @@
-import type { DayKey, ViewState } from './types';
+import type { DayKey, TripMode, ViewState } from './types';
 
 const initial: ViewState = {
 	tab: 'route',
@@ -9,12 +9,12 @@ const initial: ViewState = {
 	expanded: new Set<string>(),
 	tripMode: 'auto',
 	tripDurationH: 2,
-	tripMinHour: 0,
-	tripMaxHour: 23,
+	tripMinMin: 0,
+	tripMaxMin: 1380,
 	intervals: {
-		today: { min: null, max: null },
-		tomorrow: { min: null, max: null },
-		d2: { min: null, max: null }
+		today: { min: null, max: null, durationH: null, mode: null },
+		tomorrow: { min: null, max: null, durationH: null, mode: null },
+		d2: { min: null, max: null, durationH: null, mode: null }
 	},
 	highlight: null
 };
@@ -38,8 +38,8 @@ export function setView(next: ViewState): void {
 	view.expanded = new Set(next.expanded);
 	view.tripMode = next.tripMode;
 	view.tripDurationH = next.tripDurationH;
-	view.tripMinHour = next.tripMinHour;
-	view.tripMaxHour = next.tripMaxHour;
+	view.tripMinMin = next.tripMinMin;
+	view.tripMaxMin = next.tripMaxMin;
 	view.intervals = {
 		today: { ...next.intervals.today },
 		tomorrow: { ...next.intervals.tomorrow },
@@ -55,21 +55,36 @@ export function toggleExpanded(slot: string): void {
 	view.expanded = next;
 }
 
-export function effectiveInterval(day: DayKey): { min: number; max: number } {
-	const override = view.intervals[day];
+export type EffectiveDayConfig = {
+	min: number;
+	max: number;
+	durationH: number;
+	mode: TripMode;
+};
+
+export function effectiveConfig(day: DayKey): EffectiveDayConfig {
+	const o = view.intervals[day];
 	return {
-		min: override.min ?? view.tripMinHour,
-		max: override.max ?? view.tripMaxHour
+		min: o.min ?? view.tripMinMin,
+		max: o.max ?? view.tripMaxMin,
+		durationH: o.durationH ?? view.tripDurationH,
+		mode: o.mode ?? view.tripMode
 	};
 }
 
-export function setDayInterval(day: DayKey, min: number | null, max: number | null): void {
+export function setDayOverride(
+	day: DayKey,
+	patch: Partial<{ min: number | null; max: number | null; durationH: number | null; mode: TripMode | null }>
+): void {
 	view.intervals = {
 		...view.intervals,
-		[day]: { min, max }
+		[day]: { ...view.intervals[day], ...patch }
 	};
 }
 
-export function resetDayInterval(day: DayKey): void {
-	setDayInterval(day, null, null);
+export function resetDayOverride(day: DayKey): void {
+	view.intervals = {
+		...view.intervals,
+		[day]: { min: null, max: null, durationH: null, mode: null }
+	};
 }

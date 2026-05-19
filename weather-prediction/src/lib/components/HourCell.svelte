@@ -29,6 +29,7 @@
 	class="detail hour"
 	class:highlight={highlighted}
 	class:outside
+	data-hour-time={hour.time}
 	style="--row-bg: {css.bg}; --row-border: {css.border};"
 >
 	<td>
@@ -51,6 +52,7 @@
 <style>
 	tr.hour {
 		background: var(--row-bg, transparent);
+		scroll-margin-top: 1rem;
 	}
 	tr.hour > td:first-child {
 		border-left: 4px solid var(--row-border, transparent);

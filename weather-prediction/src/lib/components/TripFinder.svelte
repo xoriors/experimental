@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { view, effectiveConfig } from '$lib/state.svelte';
 	import { findBestWindows, resolveMode, scoreToCss, type TripWindow } from '$lib/trip-score';
 	import { filterHoursForDay } from '$lib/time';
@@ -65,7 +66,7 @@
 		return n.toString().padStart(2, '0');
 	}
 
-	function selectWindow(w: TripWindow, dur: number) {
+	async function selectWindow(w: TripWindow, dur: number) {
 		const date = w.startTime.slice(0, 10);
 		const todayDate = todayIso;
 		const tomorrowDate = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
@@ -81,6 +82,15 @@
 		next.add(slotKey);
 		view.expanded = next;
 		void dur;
+
+		await tick();
+		await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+		if (typeof document === 'undefined') return;
+		const sel = `[data-hour-time="${CSS.escape(w.startTime)}"]`;
+		const el = document.querySelector(sel) ?? document.querySelector(`[data-slot-start="${slotKey}"]`);
+		if (el && 'scrollIntoView' in el) {
+			(el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+		}
 	}
 
 	function formatDay(iso: string): string {

@@ -80,6 +80,7 @@
 	class="slot"
 	class:highlight={slotHighlighted}
 	class:disabled={slotScore == null}
+	data-slot-start={start}
 	style="--row-bg: {rowCss.bg}; --row-border: {rowCss.border};"
 	onclick={onToggle}
 >
@@ -120,6 +121,9 @@
 {/if}
 
 <style>
+	tr.slot {
+		scroll-margin-top: 1rem;
+	}
 	tr.slot.highlight {
 		outline: 2px solid #38bdf8;
 		outline-offset: -2px;

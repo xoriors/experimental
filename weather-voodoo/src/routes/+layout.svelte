@@ -42,7 +42,7 @@
 
 <div class="container">
 	<header>
-		<h1>🌦️ Weather Prediction</h1>
+		<h1>🌦️ Weather Voodoo</h1>
 		<ShareBar />
 	</header>
 	{@render children?.()}

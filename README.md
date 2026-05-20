@@ -9,7 +9,7 @@ stable release.
 
 # Projects
 
-- [`weather-prediction/`](./weather-prediction/) — SvelteKit webapp for fused hour-by-hour weather forecasts along a route or at a fixed location, with trip-window scoring, activity recommendations, and shareable URLs. [Live](https://weather-prediction-khaki.vercel.app) · [Docs](./weather-prediction/README.md)
+- [`weather-voodoo/`](./weather-voodoo/) — SvelteKit webapp for fused hour-by-hour weather forecasts along a route or at a fixed location, with trip-window scoring, activity recommendations, and shareable URLs. [Live](https://weather-voodoo.vercel.app) · [Docs](./weather-voodoo/README.md)
 - [`llm-git-conflict-resolve/`](./llm-git-conflict-resolve/) — Use an LLM to resolve git merge conflicts
 - [`llm-linter/`](./llm-linter/) — LLM-driven code linting
 - [`llm-password-reset/`](./llm-password-reset/) — LLM password-reset experiment

@@ -20,10 +20,10 @@ if ! printf 'y\n' | npx --yes plugins add vercel/vercel-plugin; then
 	echo "[session-start] Vercel plugin install failed; continuing without it." >&2
 fi
 
-# 2. Pre-install weather-prediction dependencies so dev/test/build are ready.
-if [ -f "$CLAUDE_PROJECT_DIR/weather-prediction/package.json" ]; then
-	echo "[session-start] Installing weather-prediction dependencies..."
-	cd "$CLAUDE_PROJECT_DIR/weather-prediction"
+# 2. Pre-install weather-voodoo dependencies so dev/test/build are ready.
+if [ -f "$CLAUDE_PROJECT_DIR/weather-voodoo/package.json" ]; then
+	echo "[session-start] Installing weather-voodoo dependencies..."
+	cd "$CLAUDE_PROJECT_DIR/weather-voodoo"
 	pnpm install --prefer-offline --reporter=append-only
 fi
 

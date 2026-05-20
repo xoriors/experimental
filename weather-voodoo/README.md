@@ -1,8 +1,8 @@
-# Weather Prediction
+# Weather Voodoo
 
 A SvelteKit webapp that gives hour-by-hour fused weather forecasts for a **route** (e.g. a ferry crossing) or a **fixed location**, ranks the best time windows to travel by trip duration, and produces shareable URLs that reproduce the exact view.
 
-🌐 **Live**: [weather-prediction-khaki.vercel.app](https://weather-prediction-khaki.vercel.app)
+🌐 **Live**: [weather-voodoo.vercel.app](https://weather-voodoo.vercel.app) (legacy alias: [weather-prediction-khaki.vercel.app](https://weather-prediction-khaki.vercel.app))
 
 ![status](https://img.shields.io/badge/tests-50%20passing-brightgreen)
 ![stack](https://img.shields.io/badge/stack-SvelteKit%202%20%C2%B7%20Svelte%205%20%C2%B7%20TS-blue)
@@ -87,7 +87,7 @@ Thresholds documented inline in `src/lib/activities.ts`. The **sea** trip-score 
 Click **Share** in the header → copies the current URL via Clipboard API (or invokes `navigator.share()` on mobile). The URL is a single base64-encoded JSON blob:
 
 ```
-https://weather-prediction-khaki.vercel.app/?s=eyJ0IjoicgZ2c…
+https://weather-voodoo.vercel.app/?s=eyJ0IjoicgZ2c…
 ```
 
 It captures **every** input: tab, from / to / at locations, day, expanded 3h slots, earliest/latest/duration/mode (top + per-day overrides), and the highlighted window. Opening the link in a fresh tab restores the exact view.
@@ -124,7 +124,7 @@ Without any keys the app is fully functional (MapLibre + Open-Meteo only). OpenW
 ## Quickstart (local)
 
 ```bash
-cd weather-prediction
+cd weather-voodoo
 pnpm install
 cp .env.example .env.local          # optional — see Environment variables below
 pnpm dev                            # http://localhost:5173
@@ -143,7 +143,7 @@ pnpm test       # vitest — fusion, activities, url-state, geo, trip-score (45 
 
 ## Environment variables
 
-Create `weather-prediction/.env.local` (it's in `.gitignore`):
+Create `weather-voodoo/.env.local` (it's in `.gitignore`):
 
 ```bash
 # Required for OpenWeather UV / AQI / alerts. Server-side only.
@@ -174,7 +174,7 @@ Also set a **daily quota cap** in the Cloud Console (Maps gives ~$200/mo free cr
 
 ```bash
 pnpm install -g vercel               # if not already installed
-cd weather-prediction                # ← important: deploy from inside this dir
+cd weather-voodoo                    # ← important: deploy from inside this dir
 vercel link                          # links to the Vercel project
 vercel env add OPENWEATHER_API_KEY production   # paste the key when prompted
 vercel env add PUBLIC_GOOGLE_MAPS_API_KEY production    # optional
@@ -183,15 +183,15 @@ vercel env add PUBLIC_GOOGLE_MAPS_API_KEY production    # optional
 ### Deploy
 
 ```bash
-cd weather-prediction
+cd weather-voodoo
 vercel deploy --prod --yes           # builds + uploads + promotes to production
                                      # also updates the custom alias
 ```
 
 The first deploy returns two URLs:
 
-- **Per-deployment URL** like `https://weather-prediction-1j7sh7wgm-<scope>.vercel.app` — gated by Vercel Authentication by default (returns 401 for the public). Useful only for the project owner.
-- **Production alias** like `https://weather-prediction-khaki.vercel.app` — public; this is the one to share.
+- **Per-deployment URL** like `https://weather-voodoo-<hash>-<scope>.vercel.app` — gated by Vercel Authentication by default (returns 401 for the public). Useful only for the project owner.
+- **Production alias** like `https://weather-voodoo-<short>.vercel.app` — public; this is the one to share. The legacy `https://weather-prediction-khaki.vercel.app` URL is kept as an alias so old share links keep working.
 
 After a preview deployment, add the preview URL to your Google Cloud API key's HTTP-referrer allowlist (otherwise the Maps script will be blocked client-side).
 
@@ -207,7 +207,7 @@ to every `/api/*` response so Vercel's edge cache absorbs repeated calls.
 
 ### Common pitfall
 
-When running `vercel deploy`, your working directory matters. If you run it from the repo root (`/home/user/experimental`) you'll deploy a **different** Vercel project. Always `cd weather-prediction` first — there's a `.vercel/project.json` there linking to the right project.
+When running `vercel deploy`, your working directory matters. If you run it from the repo root (`/home/user/experimental`) you'll deploy a **different** Vercel project. Always `cd weather-voodoo` first — there's a `.vercel/project.json` there linking to the right project.
 
 ---
 

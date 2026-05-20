@@ -193,14 +193,14 @@
 		<table class="forecast">
 			<thead>
 				<tr>
-					<th>Time</th>
-					<th></th>
-					<th>Temp</th>
-					<th>Wind / gust</th>
-					<th>Rain / Pₚ</th>
-					<th>Cloud</th>
-					<th>Vis</th>
-					<th>Wave</th>
+					<th title="Hour (HH:00) or aggregated range (HH–HH) in the destination's local timezone. Click a single-hour row to expand 3-hour summaries.">Time</th>
+					<th title="Weather conditions icon: ☀ clear, 🌤 partly cloudy, ☁ overcast, 🌦 light rain, 🌧 rain, ⛈ thunderstorm."></th>
+					<th title="Air temperature at 2 m height, in degrees Celsius.">Temp</th>
+					<th title="Sustained wind speed / peak gust, in knots (kn), followed by cardinal direction the wind is coming FROM (e.g. W = westerly).">Wind / gust</th>
+					<th title="Total precipitation in millimetres per hour / Pₚ = probability of precipitation (0–100%).">Rain / Pₚ</th>
+					<th title="Cloud cover, 0% = clear sky, 100% = fully overcast.">Cloud</th>
+					<th title="Horizontal visibility, in kilometres. Lower values (< 2 km) indicate fog, haze, or heavy rain.">Vis</th>
+					<th title="Significant wave height (H_s) in metres — the average of the highest one-third of waves. Marine forecast only; missing for inland points.">Wave</th>
 				</tr>
 			</thead>
 			<tbody>

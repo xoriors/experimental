@@ -2,7 +2,7 @@
 	import { tick } from 'svelte';
 	import { view, effectiveConfig } from '$lib/state.svelte';
 	import { findBestWindows, resolveMode, scoreToCss, type TripWindow } from '$lib/trip-score';
-	import { filterHoursForDay } from '$lib/time';
+	import { filterHoursForDay, localIsoDate } from '$lib/time';
 	import { minToHHMM, hhmmToMin } from '$lib/url-state';
 	import { round1 } from '$lib/units';
 	import type { DayKey, FusedHour, TripMode } from '$lib/types';
@@ -26,7 +26,7 @@
 	);
 	const bestOverall = $derived<TripWindow | undefined>(allWindows[0]);
 
-	const todayIso = $derived(new Date().toISOString().slice(0, 10));
+	const todayIso = $derived(localIsoDate());
 
 	type DayLabel = { key: DayKey; label: string };
 	const DAYS: DayLabel[] = [
@@ -71,16 +71,9 @@
 		view.tripMaxMin = parseTimeInput((e.target as HTMLInputElement).value, view.tripMaxMin);
 	}
 
-	function nowMinutesInForecastTz(): number {
-		const parts = new Intl.DateTimeFormat('en-GB', {
-			timeZone: timezone,
-			hour: '2-digit',
-			minute: '2-digit',
-			hour12: false
-		}).formatToParts(new Date());
-		const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
-		const m = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
-		return h * 60 + m;
+	function nowMinutesLocal(): number {
+		const d = new Date();
+		return d.getHours() * 60 + d.getMinutes();
 	}
 
 	function nearestHalfHour(min: number): number {
@@ -88,10 +81,10 @@
 	}
 
 	function setMinNow() {
-		view.tripMinMin = nearestHalfHour(nowMinutesInForecastTz());
+		view.tripMinMin = nearestHalfHour(nowMinutesLocal());
 	}
 	function setMaxNow() {
-		view.tripMaxMin = nearestHalfHour(nowMinutesInForecastTz());
+		view.tripMaxMin = nearestHalfHour(nowMinutesLocal());
 	}
 
 	function pad2(n: number): string {
@@ -101,7 +94,7 @@
 	async function selectWindow(w: TripWindow, dur: number) {
 		const date = w.startTime.slice(0, 10);
 		const todayDate = todayIso;
-		const tomorrowDate = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
+		const tomorrowDate = localIsoDate(new Date(Date.now() + 86400_000));
 		if (date === todayDate) view.day = 'today';
 		else if (date === tomorrowDate) view.day = 'tomorrow';
 		else view.day = 'd2';

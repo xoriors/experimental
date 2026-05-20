@@ -6,7 +6,7 @@
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
 	import { resolveMode } from '$lib/trip-score';
-	import { filterHoursForDay } from '$lib/time';
+	import { filterHoursForDay, localIsoDate } from '$lib/time';
 	import type { FusedHour, LabeledPoint, DayKey } from '$lib/types';
 
 	let loading = $state(false);
@@ -55,7 +55,7 @@
 		return () => ac.abort();
 	});
 
-	const todayIso = $derived(new Date().toISOString().slice(0, 10));
+	const todayIso = $derived(localIsoDate());
 	const eff = $derived(effectiveConfig(view.day));
 	const dayHours = $derived(
 		result ? filterHoursForDay(result.hours, view.day, todayIso) : []

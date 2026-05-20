@@ -22,10 +22,17 @@ export function dateOfIso(iso: string): string {
 	return iso.slice(0, 10);
 }
 
+export function localIsoDate(d: Date = new Date()): string {
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, '0');
+	const day = String(d.getDate()).padStart(2, '0');
+	return `${y}-${m}-${day}`;
+}
+
 export function isoOfDayOffset(reference: Date, offset: number): string {
 	const d = new Date(reference);
 	d.setDate(d.getDate() + offset);
-	return d.toISOString().slice(0, 10);
+	return localIsoDate(d);
 }
 
 export function filterHoursForDay<T extends { time: string }>(
@@ -33,8 +40,9 @@ export function filterHoursForDay<T extends { time: string }>(
 	day: DayKey,
 	referenceIso: string
 ): T[] {
-	const target = new Date(referenceIso);
+	const [yy, mm, dd] = referenceIso.split('-').map(Number);
+	const target = new Date(yy, (mm ?? 1) - 1, dd ?? 1);
 	target.setDate(target.getDate() + dayOffset(day));
-	const targetDate = target.toISOString().slice(0, 10);
+	const targetDate = localIsoDate(target);
 	return hours.filter((h) => dateOfIso(h.time) === targetDate);
 }

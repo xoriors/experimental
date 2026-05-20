@@ -151,7 +151,8 @@ input[type='search'] {
 }
 
 table.forecast {
-	width: 100%;
+	width: max-content;
+	min-width: 100%;
 	border-collapse: separate;
 	border-spacing: 0;
 }
@@ -168,11 +169,6 @@ table.forecast thead th,
 table.forecast tr.slot > td,
 table.forecast tr.hour > td {
 	white-space: nowrap;
-}
-table.forecast thead th:not(:nth-child(3)):not(:nth-child(4)),
-table.forecast tr.slot > td:not(:nth-child(3)):not(:nth-child(4)),
-table.forecast tr.hour > td:not(:nth-child(3)):not(:nth-child(4)) {
-	width: 1%;
 }
 table.forecast th:first-child,
 table.forecast td:first-child {
@@ -234,6 +230,15 @@ table.forecast tbody th:first-child {
 	background: var(--bg-elev);
 	z-index: 1;
 	box-shadow: inset -1px 0 0 var(--border), inset 0 -1px 0 var(--border);
+}
+
+table.forecast tr.slot.highlight > td:first-child,
+table.forecast tr.hour.highlight > td:first-child {
+	box-shadow:
+		inset 0 2px 0 #38bdf8,
+		inset 0 -2px 0 #38bdf8,
+		inset 2px 0 0 #38bdf8,
+		inset -1px 0 0 var(--border);
 }
 
 table.forecast tr.detail:not(.hour) td:first-child {

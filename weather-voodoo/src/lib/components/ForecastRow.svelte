@@ -99,6 +99,8 @@
 	<td>
 		<span class="expand-caret" class:open={expanded}>▶</span>
 		{start}–{end}
+	</td>
+	<td>
 		<span class="row-score" title="Best start within this block (window score 0–100)">
 			{slotScore == null ? '—' : slotScore}
 		</span>
@@ -114,7 +116,7 @@
 	</td>
 </tr>
 <tr class="detail">
-	<td colspan="8">
+	<td colspan="9">
 		<div class="activity-line">{activitySummary}</div>
 		{#if coastal}
 			<MarineBlock hour={summary} />

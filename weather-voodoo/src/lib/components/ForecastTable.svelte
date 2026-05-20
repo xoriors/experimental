@@ -141,6 +141,10 @@
 			label: 'Time',
 			text: "Hour (HH:00) or aggregated range (HH–HH) in the destination's local timezone. Click a single-hour row to expand 3-hour summaries."
 		},
+		score: {
+			label: 'Score',
+			text: 'Trip score 0–100 for a trip starting at this hour (or the best score within the 3-hour block on aggregate rows). Combines wind, gust, rain, wave, visibility and activity verdicts.'
+		},
 		icon: {
 			label: 'Conditions',
 			text: 'Weather conditions icon: ☀ clear, 🌤 partly cloudy, ☁ overcast, 🌦 light rain, 🌧 rain, ⛈ thunderstorm.'
@@ -174,6 +178,37 @@
 	function onKey(e: KeyboardEvent) {
 		if (e.key === 'Escape') closeTip();
 	}
+
+	let scrollEl: HTMLDivElement | undefined = $state.raw();
+	let mirrorEl: HTMLDivElement | undefined = $state.raw();
+	let realTableEl: HTMLTableElement | undefined = $state.raw();
+	let colWidths = $state<number[]>([]);
+
+	$effect(() => {
+		const src = scrollEl;
+		const dst = mirrorEl;
+		if (!src || !dst) return;
+		dst.scrollLeft = src.scrollLeft;
+		const onScroll = () => {
+			dst.scrollLeft = src.scrollLeft;
+		};
+		src.addEventListener('scroll', onScroll, { passive: true });
+		return () => src.removeEventListener('scroll', onScroll);
+	});
+
+	$effect(() => {
+		const el = realTableEl;
+		if (!el) return;
+		const sync = () => {
+			const ths = el.querySelectorAll<HTMLTableCellElement>('thead th');
+			colWidths = Array.from(ths, (th) => th.getBoundingClientRect().width);
+		};
+		sync();
+		const ro = new ResizeObserver(sync);
+		ro.observe(el);
+		el.querySelectorAll('thead th').forEach((th) => ro.observe(th));
+		return () => ro.disconnect();
+	});
 </script>
 
 <svelte:window onkeydown={onKey} />
@@ -262,20 +297,32 @@
 			</div>
 		</div>
 	</details>
-	<div class="forecast-scroll">
-		<table class="forecast">
-			<thead>
-				<tr>
-					<th><button type="button" class="th-info" title={colTips.time.text} onclick={() => showTip('time')}>Time</button></th>
-					<th><button type="button" class="th-info icon-only" title={colTips.icon.text} aria-label="Conditions icon legend" onclick={() => showTip('icon')}><span aria-hidden="true">ⓘ</span></button></th>
-					<th><button type="button" class="th-info" title={colTips.temp.text} onclick={() => showTip('temp')}>Temp</button></th>
-					<th><button type="button" class="th-info" title={colTips.wind.text} onclick={() => showTip('wind')}>Wind / gust</button></th>
-					<th><button type="button" class="th-info" title={colTips.rain.text} onclick={() => showTip('rain')}>Rain / Pₚ</button></th>
-					<th><button type="button" class="th-info" title={colTips.cloud.text} onclick={() => showTip('cloud')}>Cloud</button></th>
-					<th><button type="button" class="th-info" title={colTips.vis.text} onclick={() => showTip('vis')}>Vis</button></th>
-					<th><button type="button" class="th-info" title={colTips.wave.text} onclick={() => showTip('wave')}>Wave</button></th>
-				</tr>
-			</thead>
+	{#snippet theadRow()}
+		<tr>
+			<th><button type="button" class="th-info" title={colTips.time.text} onclick={() => showTip('time')}>Time</button></th>
+			<th><button type="button" class="th-info" title={colTips.score.text} onclick={() => showTip('score')}>Score</button></th>
+			<th><button type="button" class="th-info icon-only" title={colTips.icon.text} aria-label="Conditions icon legend" onclick={() => showTip('icon')}><span aria-hidden="true">ⓘ</span></button></th>
+			<th><button type="button" class="th-info" title={colTips.temp.text} onclick={() => showTip('temp')}>Temp</button></th>
+			<th><button type="button" class="th-info" title={colTips.wind.text} onclick={() => showTip('wind')}>Wind / gust</button></th>
+			<th><button type="button" class="th-info" title={colTips.rain.text} onclick={() => showTip('rain')}>Rain / Pₚ</button></th>
+			<th><button type="button" class="th-info" title={colTips.cloud.text} onclick={() => showTip('cloud')}>Cloud</button></th>
+			<th><button type="button" class="th-info" title={colTips.vis.text} onclick={() => showTip('vis')}>Vis</button></th>
+			<th><button type="button" class="th-info" title={colTips.wave.text} onclick={() => showTip('wave')}>Wave</button></th>
+		</tr>
+	{/snippet}
+	<div class="thead-mirror" bind:this={mirrorEl} aria-hidden="true">
+		<table class="forecast forecast-mirror-table">
+			<colgroup>
+				{#each colWidths as w}
+					<col style="width: {w}px" />
+				{/each}
+			</colgroup>
+			<thead>{@render theadRow()}</thead>
+		</table>
+	</div>
+	<div class="forecast-scroll" bind:this={scrollEl}>
+		<table class="forecast" bind:this={realTableEl}>
+			<thead class="real-thead-hidden">{@render theadRow()}</thead>
 			<tbody>
 				{#each slots as slot}
 					{@const key = slot.startHour.toString().padStart(2, '0')}

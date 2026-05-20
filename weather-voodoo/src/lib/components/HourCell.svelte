@@ -43,6 +43,8 @@
 >
 	<td>
 		{timeLabel}
+	</td>
+	<td>
 		<span class="hour-score" class:outside-chip={outside} title={chipTitle}>
 			{score == null ? '—' : score}
 		</span>

@@ -17,9 +17,19 @@
 		mode: 'sea' | 'land';
 		hourScores: Map<string, number | null>;
 		outsideInterval: Set<string>;
+		outsideStartRange: Set<string>;
 	};
 
-	let { slot, expanded, onToggle, coastal, mode, hourScores, outsideInterval }: Props = $props();
+	let {
+		slot,
+		expanded,
+		onToggle,
+		coastal,
+		mode,
+		hourScores,
+		outsideInterval,
+		outsideStartRange
+	}: Props = $props();
 
 	const highlightStartMs = $derived(view.highlight ? Date.parse(view.highlight + ':00Z') : null);
 	const highlightEndMs = $derived(
@@ -64,12 +74,14 @@
 	const slotScore = $derived.by(() => {
 		const valid: number[] = [];
 		for (const h of slot.hours) {
-			if (outsideInterval.has(h.time)) continue;
+			if (outsideStartRange.has(h.time)) continue;
 			const s = hourScores.get(h.time);
 			if (s != null) valid.push(s);
 		}
 		return valid.length ? Math.max(...valid) : null;
 	});
+
+	const slotCovered = $derived(slot.hours.some((h) => !outsideInterval.has(h.time)));
 
 	const rowCss = $derived(
 		slotScore == null ? { bg: 'transparent', border: 'transparent' } : scoreToCss(slotScore)
@@ -79,7 +91,7 @@
 <tr
 	class="slot"
 	class:highlight={slotHighlighted}
-	class:disabled={slotScore == null}
+	class:disabled={!slotCovered}
 	data-slot-start={start}
 	style="--row-bg: {rowCss.bg}; --row-border: {rowCss.border};"
 	onclick={onToggle}
@@ -115,6 +127,7 @@
 			hour={h}
 			score={hourScores.get(h.time) ?? null}
 			outside={outsideInterval.has(h.time)}
+			coveredOnly={!outsideInterval.has(h.time) && outsideStartRange.has(h.time)}
 			highlighted={isHourHighlighted(h.time)}
 		/>
 	{/each}

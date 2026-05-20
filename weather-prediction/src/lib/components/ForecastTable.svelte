@@ -2,7 +2,7 @@
 	import type { DayOverride, DayKey, FusedHour, TripMode } from '$lib/types';
 	import { aggregate3h } from '$lib/fusion';
 	import { filterHoursForDay } from '$lib/time';
-	import { windowScoreAt } from '$lib/trip-score';
+	import { hourTripScore, windowScoreAt } from '$lib/trip-score';
 	import { minToHHMM } from '$lib/url-state';
 	import ForecastRow from './ForecastRow.svelte';
 
@@ -48,7 +48,18 @@
 	const slots = $derived(aggregate3h(dayHours));
 	const coastal = $derived(dayHours.some((h) => h.waveHsM != null));
 
-	const hourBounds = $derived<[number, number]>([Math.ceil(minMin / 60), Math.floor(maxMin / 60)]);
+	// Hours that can be a valid trip start (used for "best startable trip" slot score).
+	const startBounds = $derived<[number, number]>([
+		Math.ceil(minMin / 60),
+		Math.floor(maxMin / 60)
+	]);
+	// Hours touched by any valid trip — extends back to floor(earliest) and forward by the
+	// trip duration so the table colors every hour the user's trip could span, not just
+	// the hours when a trip can begin.
+	const coveredBounds = $derived<[number, number]>([
+		Math.floor(minMin / 60),
+		Math.ceil((maxMin + durationH * 60) / 60) - 1
+	]);
 
 	const hourScores = $derived.by(() => {
 		const map = new Map<string, number | null>();
@@ -56,7 +67,16 @@
 		for (let i = 0; i < allHours.length; i++) indexByTime.set(allHours[i].time, i);
 		for (const h of dayHours) {
 			const idx = indexByTime.get(h.time);
-			map.set(h.time, idx == null ? null : windowScoreAt(allHours, idx, durationH, mode));
+			if (idx == null) {
+				map.set(h.time, null);
+				continue;
+			}
+			const startHour = Number(h.time.slice(11, 13));
+			const isValidStart = startHour >= startBounds[0] && startHour <= startBounds[1];
+			map.set(
+				h.time,
+				isValidStart ? windowScoreAt(allHours, idx, durationH, mode) : hourTripScore(h, mode)
+			);
 		}
 		return map;
 	});
@@ -65,7 +85,16 @@
 		const s = new Set<string>();
 		for (const h of dayHours) {
 			const startHour = Number(h.time.slice(11, 13));
-			if (startHour < hourBounds[0] || startHour > hourBounds[1]) s.add(h.time);
+			if (startHour < coveredBounds[0] || startHour > coveredBounds[1]) s.add(h.time);
+		}
+		return s;
+	});
+
+	const outsideStartRange = $derived.by(() => {
+		const s = new Set<string>();
+		for (const h of dayHours) {
+			const startHour = Number(h.time.slice(11, 13));
+			if (startHour < startBounds[0] || startHour > startBounds[1]) s.add(h.time);
 		}
 		return s;
 	});
@@ -167,6 +196,7 @@
 						{mode}
 						{hourScores}
 						{outsideInterval}
+						{outsideStartRange}
 					/>
 				{/each}
 			</tbody>

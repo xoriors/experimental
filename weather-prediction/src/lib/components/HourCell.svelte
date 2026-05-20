@@ -8,10 +8,17 @@
 		hour: FusedHour;
 		score: number | null;
 		outside?: boolean;
+		coveredOnly?: boolean;
 		highlighted?: boolean;
 	};
 
-	let { hour, score, outside = false, highlighted = false }: Props = $props();
+	let {
+		hour,
+		score,
+		outside = false,
+		coveredOnly = false,
+		highlighted = false
+	}: Props = $props();
 	const timeLabel = $derived(hour.time.slice(11, 16));
 	const css = $derived(
 		score == null || outside
@@ -20,8 +27,10 @@
 	);
 	const chipTitle = $derived(
 		outside
-			? `${score ?? '-'} — outside your start window; adjust Earliest/Latest to include this hour`
-			: 'Score 0–100 for a trip starting at this hour'
+			? `${score ?? '-'} — outside your trip window; adjust Earliest/Latest to include this hour`
+			: coveredOnly
+				? `${score ?? '-'} — during your trip but not a valid start time (score is for this hour's conditions)`
+				: 'Score 0–100 for a trip starting at this hour'
 	);
 </script>
 

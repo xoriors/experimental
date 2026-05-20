@@ -62,9 +62,9 @@ Inside each day tab, a "for this day" bar has its own Earliest / Latest / Durati
 The forecast table has a **0–100 score chip next to every time label**, plus a continuous **red→green HSL gradient** on the row background matching the score:
 
 - **3h aggregate row** — score = max of in-window hour scores (best startable hour in the block)
-- **Expanded hourly row** — score = window score if started at that hour (i.e. worst hour over the next N hours)
+- **Expanded hourly row** — score = window score if this hour is a valid start (worst hour over the next N hours), or this hour's own conditions score if it's covered by the latest trip but isn't a valid start
 
-Hours that fall **outside your start window** (before `Earliest` or after `Latest`) are dimmed to 50% opacity with a tooltip explaining why — you can still see their score, you just can't pick them as a start time.
+The table colors every hour from `Earliest` through `Latest + Duration` — i.e. every hour the trip could span, not only valid start hours. Hours that can't be a start time but are still covered by some trip show their own conditions score with a clarifying tooltip. Hours completely outside any valid trip are dimmed to 50% opacity.
 
 ### Activity verdicts
 

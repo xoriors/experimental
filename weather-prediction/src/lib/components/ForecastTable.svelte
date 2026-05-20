@@ -63,9 +63,16 @@
 
 	const outsideInterval = $derived.by(() => {
 		const s = new Set<string>();
+		const tripEndMin = maxMin + durationH * 60;
 		for (const h of dayHours) {
-			const startHour = Number(h.time.slice(11, 13));
-			if (startHour < hourBounds[0] || startHour > hourBounds[1]) s.add(h.time);
+			const hourNum = Number(h.time.slice(11, 13));
+			const hourStartMin = hourNum * 60;
+			const hourEndMin = hourStartMin + 60;
+			// Hour is "in interval" if its time range overlaps with the trip-window range
+			// [earliest_start, latest_start + duration). This includes both valid-start
+			// hours AND tail hours where you'd be traveling but couldn't start.
+			const overlaps = hourStartMin < tripEndMin && hourEndMin > minMin;
+			if (!overlaps) s.add(h.time);
 		}
 		return s;
 	});

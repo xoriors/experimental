@@ -29,9 +29,10 @@ function roundTrip(v: ViewState): ViewState {
 	return decodeView(params);
 }
 
-describe('url-state base64 round-trip', () => {
-	it('defaults survive round-trip', () => {
+describe('url-state key=value round-trip', () => {
+	it('defaults round-trip to an empty string', () => {
 		const v = freshState();
+		expect(encodeView(v)).toBe('');
 		const r = roundTrip(v);
 		expect(r.tab).toBe('route');
 		expect(r.day).toBe('today');
@@ -61,8 +62,8 @@ describe('url-state base64 round-trip', () => {
 
 	it('preserves minutes start/end with 30-min granularity', () => {
 		const v = freshState();
-		v.tripMinMin = 510; // 08:30
-		v.tripMaxMin = 1050; // 17:30
+		v.tripMinMin = 510;
+		v.tripMaxMin = 1050;
 		const r = roundTrip(v);
 		expect(r.tripMinMin).toBe(510);
 		expect(r.tripMaxMin).toBe(1050);
@@ -77,14 +78,28 @@ describe('url-state base64 round-trip', () => {
 		expect(r.intervals.tomorrow).toEqual({ min: null, max: null, durationH: 6, mode: null });
 	});
 
-	it('encodes as ?s= param only', () => {
+	it('encodes as readable key=value pairs without base64', () => {
 		const v = freshState();
+		v.tab = 'fixed';
 		v.tripDurationH = 4;
+		v.at = { lat: 7.7388, lon: 98.7784, label: 'Phi Phi' };
+		const encoded = encodeView(v);
+		expect(encoded).not.toContain('s=');
+		const params = new URLSearchParams(encoded);
+		expect(params.get('t')).toBe('fixed');
+		expect(params.get('dh')).toBe('4');
+		expect(params.get('a')).toBe('7.7388,98.7784');
+		expect(params.get('al')).toBe('Phi Phi');
+	});
+
+	it('omits keys whose values match the defaults', () => {
+		const v = freshState();
+		v.day = 'tomorrow';
 		const encoded = encodeView(v);
 		const params = new URLSearchParams(encoded);
-		expect(params.get('s')).not.toBeNull();
-		expect(params.has('tab')).toBe(false);
-		expect(params.has('dur')).toBe(false);
+		expect(params.has('t')).toBe(false);
+		expect(params.has('md')).toBe(false);
+		expect(params.get('d')).toBe('tomorrow');
 	});
 
 	it('preserves highlight', () => {
@@ -113,10 +128,22 @@ describe('url-state legacy fallback', () => {
 	});
 
 	it('decodes legacy fixed view with label', () => {
-		const params = new URLSearchParams('tab=fixed&at=7.7388,98.7784&label_at=' + encodeURIComponent('Phi Phi'));
+		const params = new URLSearchParams(
+			'tab=fixed&at=7.7388,98.7784&label_at=' + encodeURIComponent('Phi Phi')
+		);
 		const decoded = decodeView(params);
 		expect(decoded.tab).toBe('fixed');
 		expect(decoded.at?.label).toBe('Phi Phi');
+	});
+
+	it('decodes legacy base64 ?s= blob', () => {
+		const obj = { t: 'fixed', a: [7.7388, 98.7784, 'Phi Phi'], d: 'tomorrow' };
+		const b64 = btoa(JSON.stringify(obj)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+		const params = new URLSearchParams('s=' + b64);
+		const decoded = decodeView(params);
+		expect(decoded.tab).toBe('fixed');
+		expect(decoded.at?.label).toBe('Phi Phi');
+		expect(decoded.day).toBe('tomorrow');
 	});
 
 	it('falls back gracefully on malformed s= param', () => {

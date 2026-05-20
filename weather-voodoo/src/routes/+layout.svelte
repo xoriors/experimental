@@ -1,7 +1,5 @@
 <script lang="ts">
 	import '../app.css';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import { decodeView, encodeView, viewsEqual } from '$lib/url-state';
@@ -12,22 +10,40 @@
 	let initialized = $state(false);
 	let lastSerialized = $state<string>('');
 
+	function paramsFromLocation(): URLSearchParams {
+		const hash = window.location.hash.startsWith('#')
+			? window.location.hash.slice(1)
+			: window.location.hash;
+		if (hash) return new URLSearchParams(hash);
+		return new URLSearchParams(window.location.search);
+	}
+
 	onMount(() => {
-		const url = new URL(window.location.href);
-		const decoded = decodeView(url.searchParams);
+		const decoded = decodeView(paramsFromLocation());
 		setView(decoded);
 		lastSerialized = encodeView(decoded);
 		initialized = true;
 
-		const sub = page.subscribe(($page) => {
-			if (!$page.url) return;
-			const next = decodeView($page.url.searchParams);
+		if (window.location.search) {
+			const target = lastSerialized
+				? `${window.location.pathname}#${lastSerialized}`
+				: window.location.pathname;
+			history.replaceState(history.state, '', target);
+		}
+
+		const onHash = () => {
+			const next = decodeView(paramsFromLocation());
 			if (!viewsEqual(next, view)) {
 				setView(next);
 				lastSerialized = encodeView(next);
 			}
-		});
-		return sub;
+		};
+		window.addEventListener('hashchange', onHash);
+		window.addEventListener('popstate', onHash);
+		return () => {
+			window.removeEventListener('hashchange', onHash);
+			window.removeEventListener('popstate', onHash);
+		};
 	});
 
 	$effect(() => {
@@ -35,8 +51,10 @@
 		const serialized = encodeView(view);
 		if (serialized === lastSerialized) return;
 		lastSerialized = serialized;
-		const target = `/?${serialized}`;
-		goto(target, { replaceState: true, keepFocus: true, noScroll: true });
+		const target = serialized
+			? `${window.location.pathname}#${serialized}`
+			: window.location.pathname;
+		history.replaceState(history.state, '', target);
 	});
 </script>
 

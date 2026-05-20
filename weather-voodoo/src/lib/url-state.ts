@@ -1,17 +1,26 @@
 import type { DayKey, DayOverride, LabeledPoint, Tab, TripMode, ViewState } from './types';
 
+const DEFAULTS = {
+	tab: 'route' as Tab,
+	day: 'today' as DayKey,
+	tripMode: 'auto' as TripMode,
+	tripDurationH: 2,
+	tripMinMin: 0,
+	tripMaxMin: 1380
+};
+
 function defaultState(): ViewState {
 	return {
-		tab: 'route',
+		tab: DEFAULTS.tab,
 		from: null,
 		to: null,
 		at: null,
-		day: 'today',
+		day: DEFAULTS.day,
 		expanded: new Set<string>(),
-		tripMode: 'auto',
-		tripDurationH: 2,
-		tripMinMin: 0,
-		tripMaxMin: 1380,
+		tripMode: DEFAULTS.tripMode,
+		tripDurationH: DEFAULTS.tripDurationH,
+		tripMinMin: DEFAULTS.tripMinMin,
+		tripMaxMin: DEFAULTS.tripMaxMin,
 		intervals: {
 			today: { min: null, max: null, durationH: null, mode: null },
 			tomorrow: { min: null, max: null, durationH: null, mode: null },
@@ -19,15 +28,6 @@ function defaultState(): ViewState {
 		},
 		highlight: null
 	};
-}
-
-function urlSafeB64Encode(s: string): string {
-	const utf8 = typeof TextEncoder !== 'undefined'
-		? new TextEncoder().encode(s)
-		: Buffer.from(s, 'utf-8');
-	let bin = '';
-	for (const byte of utf8) bin += String.fromCharCode(byte);
-	return btoa(bin).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 function urlSafeB64Decode(s: string): string {
@@ -39,20 +39,6 @@ function urlSafeB64Decode(s: string): string {
 	return typeof TextDecoder !== 'undefined'
 		? new TextDecoder().decode(bytes)
 		: Buffer.from(bytes).toString('utf-8');
-}
-
-function pointToTuple(p: LabeledPoint): [number, number, string | undefined] {
-	return [Number(p.lat.toFixed(4)), Number(p.lon.toFixed(4)), p.label];
-}
-
-function tupleToPoint(t: unknown): LabeledPoint | null {
-	if (!Array.isArray(t) || t.length < 2) return null;
-	const lat = Number(t[0]);
-	const lon = Number(t[1]);
-	if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-	if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
-	const label = typeof t[2] === 'string' ? t[2] : undefined;
-	return { lat, lon, label };
 }
 
 function isTab(x: unknown): x is Tab {
@@ -71,47 +57,124 @@ function clampMin(n: unknown, lo: number, hi: number, fallback: number): number 
 	return Math.max(lo, Math.min(hi, Math.round(v)));
 }
 
-function decodeOverride(o: unknown): DayOverride {
-	if (!o || typeof o !== 'object') return { min: null, max: null, durationH: null, mode: null };
-	const r = o as Record<string, unknown>;
+function pointCoord(p: LabeledPoint): string {
+	return `${Number(p.lat.toFixed(4))},${Number(p.lon.toFixed(4))}`;
+}
+
+function parsePoint(coord: string | null, label: string | null): LabeledPoint | null {
+	if (!coord) return null;
+	const parts = coord.split(',');
+	const lat = Number(parts[0]);
+	const lon = Number(parts[1]);
+	if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+	if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+	return { lat, lon, label: label || undefined };
+}
+
+function encodeOverride(o: DayOverride): string | null {
+	if (o.min === null && o.max === null && o.durationH === null && o.mode === null) return null;
+	const min = o.min === null ? '' : String(o.min);
+	const max = o.max === null ? '' : String(o.max);
+	const dur = o.durationH === null ? '' : String(o.durationH);
+	const mode = o.mode === null ? '' : o.mode;
+	return `${min},${max},${dur},${mode}`;
+}
+
+function parseOverride(s: string): DayOverride {
+	const parts = s.split(',');
 	return {
-		min: r.min === null || r.min === undefined ? null : clampMin(r.min, 0, 1410, 0),
-		max: r.max === null || r.max === undefined ? null : clampMin(r.max, 0, 1410, 1380),
-		durationH: r.durationH === null || r.durationH === undefined ? null : clampMin(r.durationH, 1, 12, 2),
-		mode: isMode(r.mode) ? r.mode : null
+		min: parts[0] ? clampMin(parts[0], 0, 1410, 0) : null,
+		max: parts[1] ? clampMin(parts[1], 0, 1410, 1380) : null,
+		durationH: parts[2] ? clampMin(parts[2], 1, 12, 2) : null,
+		mode: isMode(parts[3]) ? parts[3] : null
 	};
 }
 
 export function encodeView(v: ViewState): string {
-	const obj = {
-		t: v.tab,
-		f: v.from ? pointToTuple(v.from) : null,
-		o: v.to ? pointToTuple(v.to) : null,
-		a: v.at ? pointToTuple(v.at) : null,
-		d: v.day,
-		e: [...v.expanded].sort(),
-		md: v.tripMode,
-		dh: v.tripDurationH,
-		mn: v.tripMinMin,
-		mx: v.tripMaxMin,
-		iv: v.intervals,
-		hl: v.highlight
-	};
-	const json = JSON.stringify(obj);
-	return 's=' + urlSafeB64Encode(json);
+	const p = new URLSearchParams();
+	if (v.tab !== DEFAULTS.tab) p.set('t', v.tab);
+	if (v.from) {
+		p.set('f', pointCoord(v.from));
+		if (v.from.label) p.set('fl', v.from.label);
+	}
+	if (v.to) {
+		p.set('o', pointCoord(v.to));
+		if (v.to.label) p.set('ol', v.to.label);
+	}
+	if (v.at) {
+		p.set('a', pointCoord(v.at));
+		if (v.at.label) p.set('al', v.at.label);
+	}
+	if (v.day !== DEFAULTS.day) p.set('d', v.day);
+	if (v.expanded.size > 0) p.set('e', [...v.expanded].sort().join(','));
+	if (v.tripMode !== DEFAULTS.tripMode) p.set('md', v.tripMode);
+	if (v.tripDurationH !== DEFAULTS.tripDurationH) p.set('dh', String(v.tripDurationH));
+	if (v.tripMinMin !== DEFAULTS.tripMinMin) p.set('mn', String(v.tripMinMin));
+	if (v.tripMaxMin !== DEFAULTS.tripMaxMin) p.set('mx', String(v.tripMaxMin));
+	for (const key of ['today', 'tomorrow', 'd2'] as DayKey[]) {
+		const enc = encodeOverride(v.intervals[key]);
+		if (enc !== null) p.set('iv_' + key, enc);
+	}
+	if (v.highlight) p.set('hl', v.highlight);
+	return p.toString();
 }
 
-function decodeBlob(b64: string): ViewState | null {
+function decodeShortKeys(p: URLSearchParams): ViewState {
+	const base = defaultState();
+	const t = p.get('t');
+	if (isTab(t)) base.tab = t;
+	const d = p.get('d');
+	if (isDay(d)) base.day = d;
+	base.from = parsePoint(p.get('f'), p.get('fl'));
+	base.to = parsePoint(p.get('o'), p.get('ol'));
+	base.at = parsePoint(p.get('a'), p.get('al'));
+	const e = p.get('e');
+	if (e) {
+		base.expanded = new Set(e.split(',').filter((s) => /^\d{2}$/.test(s)));
+	}
+	const md = p.get('md');
+	if (isMode(md)) base.tripMode = md;
+	if (p.has('dh')) base.tripDurationH = clampMin(p.get('dh'), 1, 12, base.tripDurationH);
+	if (p.has('mn')) base.tripMinMin = clampMin(p.get('mn'), 0, 1410, base.tripMinMin);
+	if (p.has('mx')) base.tripMaxMin = clampMin(p.get('mx'), 0, 1410, base.tripMaxMin);
+	for (const key of ['today', 'tomorrow', 'd2'] as DayKey[]) {
+		const iv = p.get('iv_' + key);
+		if (iv) base.intervals[key] = parseOverride(iv);
+	}
+	const hl = p.get('hl');
+	if (hl && /^\d{4}-\d{2}-\d{2}T\d{2}:00$/.test(hl)) base.highlight = hl;
+	return base;
+}
+
+function decodeLegacyBlob(b64: string): ViewState | null {
 	try {
-		const json = urlSafeB64Decode(b64);
-		const obj = JSON.parse(json) as Record<string, unknown>;
+		const obj = JSON.parse(urlSafeB64Decode(b64)) as Record<string, unknown>;
 		const base = defaultState();
 		const expandedRaw = Array.isArray(obj.e) ? obj.e : [];
 		const expanded = new Set<string>(
 			expandedRaw.filter((s): s is string => typeof s === 'string' && /^\d{2}$/.test(s))
 		);
-		const hl = obj.hl;
 		const intervalsRaw = obj.iv as Record<string, unknown> | undefined;
+		const decodeIv = (raw: unknown): DayOverride => {
+			if (!raw || typeof raw !== 'object') return { min: null, max: null, durationH: null, mode: null };
+			const r = raw as Record<string, unknown>;
+			return {
+				min: r.min === null || r.min === undefined ? null : clampMin(r.min, 0, 1410, 0),
+				max: r.max === null || r.max === undefined ? null : clampMin(r.max, 0, 1410, 1380),
+				durationH: r.durationH === null || r.durationH === undefined ? null : clampMin(r.durationH, 1, 12, 2),
+				mode: isMode(r.mode) ? r.mode : null
+			};
+		};
+		const tupleToPoint = (t: unknown): LabeledPoint | null => {
+			if (!Array.isArray(t) || t.length < 2) return null;
+			const lat = Number(t[0]);
+			const lon = Number(t[1]);
+			if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+			if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+			const label = typeof t[2] === 'string' ? t[2] : undefined;
+			return { lat, lon, label };
+		};
+		const hl = obj.hl;
 		return {
 			tab: isTab(obj.t) ? obj.t : base.tab,
 			from: tupleToPoint(obj.f),
@@ -124,64 +187,48 @@ function decodeBlob(b64: string): ViewState | null {
 			tripMinMin: clampMin(obj.mn, 0, 1410, base.tripMinMin),
 			tripMaxMin: clampMin(obj.mx, 0, 1410, base.tripMaxMin),
 			intervals: {
-				today: decodeOverride(intervalsRaw?.today),
-				tomorrow: decodeOverride(intervalsRaw?.tomorrow),
-				d2: decodeOverride(intervalsRaw?.d2)
+				today: decodeIv(intervalsRaw?.today),
+				tomorrow: decodeIv(intervalsRaw?.tomorrow),
+				d2: decodeIv(intervalsRaw?.d2)
 			},
-			highlight:
-				typeof hl === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:00$/.test(hl) ? hl : null
+			highlight: typeof hl === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:00$/.test(hl) ? hl : null
 		};
 	} catch {
 		return null;
 	}
 }
 
-function decodeLegacy(search: URLSearchParams): ViewState {
+function decodeLegacyQS(search: URLSearchParams): ViewState {
 	const base = defaultState();
 	const tab = search.get('tab');
 	if (isTab(tab)) base.tab = tab;
 	const day = search.get('day');
 	if (isDay(day)) base.day = day;
-	const fromRaw = search.get('from');
-	if (fromRaw) {
-		const parts = fromRaw.split(',');
+	const parseLegacyPoint = (raw: string | null, labelKey: string): LabeledPoint | null => {
+		if (!raw) return null;
+		const parts = raw.split(',');
 		const lat = Number(parts[0]);
 		const lon = Number(parts[1]);
-		if (Number.isFinite(lat) && Number.isFinite(lon)) {
-			const labelRaw = search.get('label_from');
-			base.from = { lat, lon, label: labelRaw ? decodeURIComponent(labelRaw) : undefined };
-		}
-	}
-	const toRaw = search.get('to');
-	if (toRaw) {
-		const parts = toRaw.split(',');
-		const lat = Number(parts[0]);
-		const lon = Number(parts[1]);
-		if (Number.isFinite(lat) && Number.isFinite(lon)) {
-			const labelRaw = search.get('label_to');
-			base.to = { lat, lon, label: labelRaw ? decodeURIComponent(labelRaw) : undefined };
-		}
-	}
-	const atRaw = search.get('at');
-	if (atRaw) {
-		const parts = atRaw.split(',');
-		const lat = Number(parts[0]);
-		const lon = Number(parts[1]);
-		if (Number.isFinite(lat) && Number.isFinite(lon)) {
-			const labelRaw = search.get('label_at');
-			base.at = { lat, lon, label: labelRaw ? decodeURIComponent(labelRaw) : undefined };
-		}
-	}
+		if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+		const labelRaw = search.get(labelKey);
+		return { lat, lon, label: labelRaw ? decodeURIComponent(labelRaw) : undefined };
+	};
+	base.from = parseLegacyPoint(search.get('from'), 'label_from');
+	base.to = parseLegacyPoint(search.get('to'), 'label_to');
+	base.at = parseLegacyPoint(search.get('at'), 'label_at');
 	return base;
 }
 
-export function decodeView(search: URLSearchParams): ViewState {
-	const blob = search.get('s');
+export function decodeView(params: URLSearchParams): ViewState {
+	const blob = params.get('s');
 	if (blob) {
-		const decoded = decodeBlob(blob);
+		const decoded = decodeLegacyBlob(blob);
 		if (decoded) return decoded;
 	}
-	return decodeLegacy(search);
+	if (params.has('tab') || params.has('from') || params.has('to') || params.has('at')) {
+		return decodeLegacyQS(params);
+	}
+	return decodeShortKeys(params);
 }
 
 export function viewsEqual(a: ViewState, b: ViewState): boolean {

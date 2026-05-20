@@ -84,11 +84,13 @@ Thresholds documented inline in `src/lib/activities.ts`. The **sea** trip-score 
 
 ### Share links
 
-Click **Share** in the header → copies the current URL via Clipboard API (or invokes `navigator.share()` on mobile). The URL is a single base64-encoded JSON blob:
+Click **Share** in the header → copies the current URL via Clipboard API (or invokes `navigator.share()` on mobile). Filters are encoded as `key=value` pairs in the URL fragment (after `#`), so they never hit the server and stay readable:
 
 ```
-https://weather-voodoo.vercel.app/?s=eyJ0IjoicgZ2c…
+https://weather-voodoo.vercel.app/#t=route&f=7.7388,98.7784&fl=Phi+Phi&o=8.034,98.825&ol=Ao+Nang&d=tomorrow&dh=4
 ```
+
+Legacy `?s=<base64>` and `?tab=…&from=…` share links from earlier versions still resolve.
 
 It captures **every** input: tab, from / to / at locations, day, expanded 3h slots, earliest/latest/duration/mode (top + per-day overrides), and the highlighted window. Opening the link in a fresh tab restores the exact view.
 

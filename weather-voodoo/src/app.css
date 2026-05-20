@@ -164,6 +164,14 @@ table.forecast td {
 	font-variant-numeric: tabular-nums;
 }
 
+table.forecast th:first-child,
+table.forecast td:first-child {
+	width: 1%;
+	white-space: nowrap;
+	padding-right: 0.35rem;
+	padding-left: 0.4rem;
+}
+
 table.forecast thead.real-thead-hidden {
 	visibility: hidden;
 }
@@ -178,13 +186,9 @@ table.forecast thead.real-thead-hidden {
 	margin-bottom: -1px;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
-	pointer-events: none;
 }
 .thead-mirror::-webkit-scrollbar {
 	display: none;
-}
-.thead-mirror button {
-	pointer-events: auto;
 }
 .thead-mirror table.forecast {
 	border-collapse: separate;

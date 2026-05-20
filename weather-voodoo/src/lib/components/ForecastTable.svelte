@@ -141,10 +141,6 @@
 			label: 'Time',
 			text: "Hour (HH:00) or aggregated range (HH–HH) in the destination's local timezone. Click a single-hour row to expand 3-hour summaries."
 		},
-		score: {
-			label: 'Score',
-			text: 'Trip score 0–100 for a trip starting at this hour (or the best score within the 3-hour block on aggregate rows). Combines wind, gust, rain, wave, visibility and activity verdicts.'
-		},
 		icon: {
 			label: 'Conditions',
 			text: 'Weather conditions icon: ☀ clear, 🌤 partly cloudy, ☁ overcast, 🌦 light rain, 🌧 rain, ⛈ thunderstorm.'
@@ -300,7 +296,6 @@
 	{#snippet theadRow()}
 		<tr>
 			<th><button type="button" class="th-info" title={colTips.time.text} onclick={() => showTip('time')}>Time</button></th>
-			<th><button type="button" class="th-info" title={colTips.score.text} onclick={() => showTip('score')}>Score</button></th>
 			<th><button type="button" class="th-info icon-only" title={colTips.icon.text} aria-label="Conditions icon legend" onclick={() => showTip('icon')}><span aria-hidden="true">ⓘ</span></button></th>
 			<th><button type="button" class="th-info" title={colTips.temp.text} onclick={() => showTip('temp')}>Temp</button></th>
 			<th><button type="button" class="th-info" title={colTips.wind.text} onclick={() => showTip('wind')}>Wind / gust</button></th>

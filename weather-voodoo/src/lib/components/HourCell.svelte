@@ -43,8 +43,6 @@
 >
 	<td>
 		{timeLabel}
-	</td>
-	<td>
 		<span class="hour-score" class:outside-chip={outside} title={chipTitle}>
 			{score == null ? '—' : score}
 		</span>
@@ -73,9 +71,9 @@
 	}
 	.hour-score {
 		display: inline-block;
-		min-width: 2rem;
-		margin-left: 0.4rem;
-		padding: 0.05rem 0.4rem;
+		min-width: 1.4rem;
+		margin-left: 0.25rem;
+		padding: 0.05rem 0.3rem;
 		font-size: 0.75em;
 		font-weight: 600;
 		border-radius: 999px;

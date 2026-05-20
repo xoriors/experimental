@@ -149,15 +149,22 @@ input[type='search'] {
 
 table.forecast {
 	width: 100%;
-	border-collapse: collapse;
+	border-collapse: separate;
+	border-spacing: 0;
 }
 
 table.forecast th,
 table.forecast td {
 	text-align: left;
 	padding: 0.5rem 0.6rem;
-	border-bottom: 1px solid var(--border);
+	box-shadow: inset 0 -1px 0 var(--border);
 	font-variant-numeric: tabular-nums;
+}
+
+table.forecast thead {
+	position: sticky;
+	top: 0;
+	z-index: 3;
 }
 
 table.forecast th {

@@ -3,7 +3,7 @@
 	import { view, effectiveConfig } from '$lib/state.svelte';
 	import { findBestWindows, resolveMode, scoreToCss, type TripWindow } from '$lib/trip-score';
 	import { filterHoursForDay } from '$lib/time';
-	import { minToHHMM } from '$lib/url-state';
+	import { minToHHMM, hhmmToMin } from '$lib/url-state';
 	import { round1 } from '$lib/units';
 	import type { DayKey, FusedHour, TripMode } from '$lib/types';
 
@@ -47,7 +47,6 @@
 	);
 
 	const DURATIONS = [1, 2, 3, 4, 6, 8, 12];
-	const HALF_HOURS = Array.from({ length: 48 }, (_, i) => i * 30);
 
 	function onModeChange(e: Event) {
 		view.tripMode = (e.target as HTMLSelectElement).value as TripMode;
@@ -55,11 +54,21 @@
 	function onDurationChange(e: Event) {
 		view.tripDurationH = Number((e.target as HTMLSelectElement).value);
 	}
+	function parseTimeInput(value: string, fallback: number): number {
+		const parsed = hhmmToMin(value);
+		if (parsed !== null) return parsed;
+		const m = /^(\d{1,2}):(\d{2})$/.exec(value);
+		if (!m) return fallback;
+		const h = Number(m[1]);
+		const mm = Number(m[2]);
+		if (!Number.isFinite(h) || !Number.isFinite(mm)) return fallback;
+		return nearestHalfHour(h * 60 + mm);
+	}
 	function onMinChange(e: Event) {
-		view.tripMinMin = Number((e.target as HTMLSelectElement).value);
+		view.tripMinMin = parseTimeInput((e.target as HTMLInputElement).value, view.tripMinMin);
 	}
 	function onMaxChange(e: Event) {
-		view.tripMaxMin = Number((e.target as HTMLSelectElement).value);
+		view.tripMaxMin = parseTimeInput((e.target as HTMLInputElement).value, view.tripMaxMin);
 	}
 
 	function nowMinutesInForecastTz(): number {
@@ -157,20 +166,26 @@
 	<div class="row" style="gap: 1rem; align-items: center;">
 		<label>
 			<span class="muted">Earliest start</span>
-			<select onchange={onMinChange} value={view.tripMinMin}>
-				{#each HALF_HOURS as m}
-					<option value={m}>{minToHHMM(m)}</option>
-				{/each}
-			</select>
+			<input
+				type="time"
+				step="1800"
+				min="00:00"
+				max="23:30"
+				value={minToHHMM(view.tripMinMin)}
+				onchange={onMinChange}
+			/>
 			<button type="button" class="now-btn" onclick={setMinNow} title="Set to nearest half-hour to now">Now</button>
 		</label>
 		<label>
 			<span class="muted">Latest start</span>
-			<select onchange={onMaxChange} value={view.tripMaxMin}>
-				{#each HALF_HOURS as m}
-					<option value={m}>{minToHHMM(m)}</option>
-				{/each}
-			</select>
+			<input
+				type="time"
+				step="1800"
+				min="00:00"
+				max="23:30"
+				value={minToHHMM(view.tripMaxMin)}
+				onchange={onMaxChange}
+			/>
 			<button type="button" class="now-btn" onclick={setMaxNow} title="Set to nearest half-hour to now">Now</button>
 		</label>
 		<label>
@@ -260,7 +275,8 @@
 </div>
 
 <style>
-	.trip-finder select {
+	.trip-finder select,
+	.trip-finder input[type='time'] {
 		background: var(--bg);
 		color: var(--fg);
 		border: 1px solid var(--border);
@@ -268,6 +284,11 @@
 		padding: 0.4rem 0.5rem;
 		margin-left: 0.4rem;
 		font: inherit;
+		font-variant-numeric: tabular-nums;
+	}
+	.trip-finder input[type='time']::-webkit-calendar-picker-indicator {
+		filter: invert(0.7);
+		cursor: pointer;
 	}
 	.now-btn {
 		background: var(--bg);
@@ -355,7 +376,8 @@
 		min-width: 12rem;
 	}
 	@media (max-width: 720px) {
-		.trip-finder select {
+		.trip-finder select,
+		.trip-finder input[type='time'] {
 			padding: 0.35rem 0.45rem;
 			margin-left: 0.25rem;
 		}

@@ -343,9 +343,11 @@ tr.detail td {
 
 	table.forecast th,
 	table.forecast td {
-		padding: 0.4rem 0.45rem;
-		font-size: 0.88em;
-		white-space: nowrap;
+		padding: 0.35rem 0.35rem;
+		font-size: 0.82em;
+	}
+	table.forecast {
+		table-layout: auto;
 	}
 
 	.muted {

@@ -3,7 +3,7 @@
 	import { aggregate3h } from '$lib/fusion';
 	import { filterHoursForDay } from '$lib/time';
 	import { hourTripScore, windowScoreAt } from '$lib/trip-score';
-	import { minToHHMM } from '$lib/url-state';
+	import { minToHHMM, hhmmToMin } from '$lib/url-state';
 	import ForecastRow from './ForecastRow.svelte';
 
 	type Props = {
@@ -103,15 +103,27 @@
 		override.min !== null || override.max !== null || override.durationH !== null || override.mode !== null
 	);
 
-	const HALF_HOURS = Array.from({ length: 48 }, (_, i) => i * 30);
 	const DURATIONS = [1, 2, 3, 4, 6, 8, 12];
 
+	function snapHalfHour(min: number): number {
+		return Math.max(0, Math.min(1410, Math.round(min / 30) * 30));
+	}
+	function parseTimeInput(value: string, fallback: number): number {
+		const parsed = hhmmToMin(value);
+		if (parsed !== null) return parsed;
+		const m = /^(\d{1,2}):(\d{2})$/.exec(value);
+		if (!m) return fallback;
+		const h = Number(m[1]);
+		const mm = Number(m[2]);
+		if (!Number.isFinite(h) || !Number.isFinite(mm)) return fallback;
+		return snapHalfHour(h * 60 + mm);
+	}
 	function onMinChange(e: Event) {
-		const v = Number((e.target as HTMLSelectElement).value);
+		const v = parseTimeInput((e.target as HTMLInputElement).value, minMin);
 		onChangeOverride({ min: v === topMinMin ? null : v });
 	}
 	function onMaxChange(e: Event) {
-		const v = Number((e.target as HTMLSelectElement).value);
+		const v = parseTimeInput((e.target as HTMLInputElement).value, maxMin);
 		onChangeOverride({ max: v === topMaxMin ? null : v });
 	}
 	function onDurationChange(e: Event) {
@@ -128,19 +140,25 @@
 	<span class="muted" style="font-size: 0.85em; margin-right: 0.4rem;">For this day:</span>
 	<label>
 		<span class="muted">earliest</span>
-		<select value={minMin} onchange={onMinChange}>
-			{#each HALF_HOURS as m}
-				<option value={m}>{minToHHMM(m)}</option>
-			{/each}
-		</select>
+		<input
+			type="time"
+			step="1800"
+			min="00:00"
+			max="23:30"
+			value={minToHHMM(minMin)}
+			onchange={onMinChange}
+		/>
 	</label>
 	<label>
 		<span class="muted">latest</span>
-		<select value={maxMin} onchange={onMaxChange}>
-			{#each HALF_HOURS as m}
-				<option value={m}>{minToHHMM(m)}</option>
-			{/each}
-		</select>
+		<input
+			type="time"
+			step="1800"
+			min="00:00"
+			max="23:30"
+			value={minToHHMM(maxMin)}
+			onchange={onMaxChange}
+		/>
 	</label>
 	<label>
 		<span class="muted">duration</span>
@@ -214,7 +232,8 @@
 		margin-bottom: 0.5rem;
 		border-bottom: 1px solid var(--border);
 	}
-	.interval-bar select {
+	.interval-bar select,
+	.interval-bar input[type='time'] {
 		background: var(--bg);
 		color: var(--fg);
 		border: 1px solid var(--border);
@@ -222,13 +241,19 @@
 		padding: 0.3rem 0.5rem;
 		margin-left: 0.3rem;
 		font: inherit;
+		font-variant-numeric: tabular-nums;
+	}
+	.interval-bar input[type='time']::-webkit-calendar-picker-indicator {
+		filter: invert(0.7);
+		cursor: pointer;
 	}
 	@media (max-width: 720px) {
 		.interval-bar {
 			gap: 0.4rem;
 			font-size: 0.88em;
 		}
-		.interval-bar select {
+		.interval-bar select,
+		.interval-bar input[type='time'] {
 			padding: 0.25rem 0.4rem;
 			margin-left: 0.2rem;
 		}

@@ -62,6 +62,29 @@
 		view.tripMaxMin = Number((e.target as HTMLSelectElement).value);
 	}
 
+	function nowMinutesInForecastTz(): number {
+		const parts = new Intl.DateTimeFormat('en-GB', {
+			timeZone: timezone,
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false
+		}).formatToParts(new Date());
+		const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+		const m = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+		return h * 60 + m;
+	}
+
+	function nearestHalfHour(min: number): number {
+		return Math.max(0, Math.min(1410, Math.round(min / 30) * 30));
+	}
+
+	function setMinNow() {
+		view.tripMinMin = nearestHalfHour(nowMinutesInForecastTz());
+	}
+	function setMaxNow() {
+		view.tripMaxMin = nearestHalfHour(nowMinutesInForecastTz());
+	}
+
 	function pad2(n: number): string {
 		return n.toString().padStart(2, '0');
 	}
@@ -139,6 +162,7 @@
 					<option value={m}>{minToHHMM(m)}</option>
 				{/each}
 			</select>
+			<button type="button" class="now-btn" onclick={setMinNow} title="Set to nearest half-hour to now">Now</button>
 		</label>
 		<label>
 			<span class="muted">Latest start</span>
@@ -147,6 +171,7 @@
 					<option value={m}>{minToHHMM(m)}</option>
 				{/each}
 			</select>
+			<button type="button" class="now-btn" onclick={setMaxNow} title="Set to nearest half-hour to now">Now</button>
 		</label>
 		<label>
 			<span class="muted">Duration</span>
@@ -243,6 +268,20 @@
 		padding: 0.4rem 0.5rem;
 		margin-left: 0.4rem;
 		font: inherit;
+	}
+	.now-btn {
+		background: var(--bg);
+		color: var(--fg);
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		padding: 0.4rem 0.55rem;
+		margin-left: 0.3rem;
+		font: inherit;
+		font-size: 0.85em;
+		cursor: pointer;
+	}
+	.now-btn:hover {
+		background: var(--bg-elevated, rgba(255, 255, 255, 0.05));
 	}
 	.best-pick {
 		display: block;

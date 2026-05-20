@@ -141,11 +141,10 @@
 			label: 'Time',
 			text: "Hour (HH:00) or aggregated range (HH–HH) in the destination's local timezone. Click a single-hour row to expand 3-hour summaries."
 		},
-		icon: {
-			label: 'Conditions',
-			text: 'Weather conditions icon: ☀ clear, 🌤 partly cloudy, ☁ overcast, 🌦 light rain, 🌧 rain, ⛈ thunderstorm.'
+		temp: {
+			label: 'Temp',
+			text: 'Air temperature at 2 m height, in degrees Celsius. The icon to the left summarises conditions: ☀ clear, 🌤 partly cloudy, ☁ overcast, 🌦 light rain, 🌧 rain, ⛈ thunderstorm.'
 		},
-		temp: { label: 'Temp', text: 'Air temperature at 2 m height, in degrees Celsius.' },
 		wind: {
 			label: 'Wind / gust',
 			text: 'Sustained wind speed / peak gust, in knots (kn), followed by the cardinal direction the wind is coming FROM (e.g. W = westerly). Good < 12 kn, breezy 12–22, small-craft warning > 22.'
@@ -296,7 +295,6 @@
 	{#snippet theadRow()}
 		<tr>
 			<th><button type="button" class="th-info" title={colTips.time.text} onclick={() => showTip('time')}>Time</button></th>
-			<th><button type="button" class="th-info icon-only" title={colTips.icon.text} aria-label="Conditions icon legend" onclick={() => showTip('icon')}><span aria-hidden="true">ⓘ</span></button></th>
 			<th><button type="button" class="th-info" title={colTips.temp.text} onclick={() => showTip('temp')}>Temp</button></th>
 			<th><button type="button" class="th-info" title={colTips.wind.text} onclick={() => showTip('wind')}>Wind / gust</button></th>
 			<th><button type="button" class="th-info" title={colTips.rain.text} onclick={() => showTip('rain')}>Rain / Pₚ</button></th>

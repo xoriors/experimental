@@ -164,12 +164,26 @@ table.forecast td {
 	font-variant-numeric: tabular-nums;
 }
 
+table.forecast thead th,
+table.forecast tr.slot > td,
+table.forecast tr.hour > td {
+	white-space: nowrap;
+}
+table.forecast thead th:not(:nth-child(3)):not(:nth-child(4)),
+table.forecast tr.slot > td:not(:nth-child(3)):not(:nth-child(4)),
+table.forecast tr.hour > td:not(:nth-child(3)):not(:nth-child(4)) {
+	width: 1%;
+}
 table.forecast th:first-child,
 table.forecast td:first-child {
-	width: 1%;
-	white-space: nowrap;
 	padding-right: 0.35rem;
 	padding-left: 0.4rem;
+}
+table.forecast td.cond-temp {
+	white-space: nowrap;
+}
+table.forecast td.cond-temp > span:first-child {
+	margin-right: 0.25rem;
 }
 
 table.forecast thead.real-thead-hidden {

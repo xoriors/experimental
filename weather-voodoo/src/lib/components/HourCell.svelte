@@ -47,8 +47,10 @@
 			{score == null ? '—' : score}
 		</span>
 	</td>
-	<td><WxIcon code={hour.weatherCode} /></td>
-	<td>{round1(hour.tempC)}°</td>
+	<td class="cond-temp">
+		<WxIcon code={hour.weatherCode} />
+		<span>{round1(hour.tempC)}°</span>
+	</td>
 	<td>{round1(hour.windKn)} / {round1(hour.gustKn)} kn {degToCompass(hour.windDirDeg)}</td>
 	<td>{round1(hour.precipMmH)} mm <span class="muted">({hour.pop}%)</span></td>
 	<td>{round1(hour.cloudPct)}%</td>

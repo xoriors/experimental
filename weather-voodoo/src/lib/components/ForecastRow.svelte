@@ -103,8 +103,10 @@
 			{slotScore == null ? '—' : slotScore}
 		</span>
 	</td>
-	<td><WxIcon code={slot.agg.weatherCode} /></td>
-	<td>{round1(slot.agg.tempC)}°</td>
+	<td class="cond-temp">
+		<WxIcon code={slot.agg.weatherCode} />
+		<span>{round1(slot.agg.tempC)}°</span>
+	</td>
 	<td>{round1(slot.agg.windKn)} / {round1(slot.agg.gustKn)} kn {degToCompass(slot.hours[0]?.windDirDeg ?? 0)}</td>
 	<td>{round1(slot.agg.precipMmH)} mm <span class="muted">({slot.agg.pop}%)</span></td>
 	<td>{round1(slot.agg.cloudPct)}%</td>
@@ -114,7 +116,7 @@
 	</td>
 </tr>
 <tr class="detail">
-	<td colspan="8">
+	<td colspan="7">
 		<div class="activity-line">{activitySummary}</div>
 		{#if coastal}
 			<MarineBlock hour={summary} />

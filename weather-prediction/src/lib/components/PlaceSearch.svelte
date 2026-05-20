@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { env as pubEnv } from '$env/dynamic/public';
+	import { PUBLIC_GOOGLE_MAPS_API_KEY } from '$env/static/public';
 	import { onMount } from 'svelte';
 	import { loadGoogleMaps } from '$lib/client/googleMaps';
 	import type { LabeledPoint } from '$lib/types';
@@ -28,7 +28,7 @@
 	let googleReady = $state(false);
 	let timer: ReturnType<typeof setTimeout> | null = null;
 
-	const apiKey = pubEnv.PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
+	const apiKey = PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 	onMount(() => {
 		if (!apiKey || !input) return;

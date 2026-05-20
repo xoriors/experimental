@@ -69,6 +69,15 @@ describe('url-state key=value round-trip', () => {
 		expect(r.tripMaxMin).toBe(1050);
 	});
 
+	it('snaps non-30-min URL values to the 30-min grid', () => {
+		const url = 'mn=735&mx=1055&iv_today=735%2C1055%2C%2C';
+		const r = decodeView(new URLSearchParams(url));
+		expect(r.tripMinMin).toBe(750);
+		expect(r.tripMaxMin).toBe(1050);
+		expect(r.intervals.today.min).toBe(750);
+		expect(r.intervals.today.max).toBe(1050);
+	});
+
 	it('preserves per-day overrides', () => {
 		const v = freshState();
 		v.intervals.today = { min: 540, max: 1020, durationH: 4, mode: 'sea' };

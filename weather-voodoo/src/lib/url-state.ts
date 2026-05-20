@@ -57,6 +57,12 @@ function clampMin(n: unknown, lo: number, hi: number, fallback: number): number 
 	return Math.max(lo, Math.min(hi, Math.round(v)));
 }
 
+function clampHalfHour(n: unknown, fallback: number): number {
+	const v = Number(n);
+	if (!Number.isFinite(v)) return fallback;
+	return Math.max(0, Math.min(1410, Math.round(v / 30) * 30));
+}
+
 function pointCoord(p: LabeledPoint): string {
 	return `${Number(p.lat.toFixed(4))},${Number(p.lon.toFixed(4))}`;
 }
@@ -83,8 +89,8 @@ function encodeOverride(o: DayOverride): string | null {
 function parseOverride(s: string): DayOverride {
 	const parts = s.split(',');
 	return {
-		min: parts[0] ? clampMin(parts[0], 0, 1410, 0) : null,
-		max: parts[1] ? clampMin(parts[1], 0, 1410, 1380) : null,
+		min: parts[0] ? clampHalfHour(parts[0], 0) : null,
+		max: parts[1] ? clampHalfHour(parts[1], 1380) : null,
 		durationH: parts[2] ? clampMin(parts[2], 1, 12, 2) : null,
 		mode: isMode(parts[3]) ? parts[3] : null
 	};
@@ -135,8 +141,8 @@ function decodeShortKeys(p: URLSearchParams): ViewState {
 	const md = p.get('md');
 	if (isMode(md)) base.tripMode = md;
 	if (p.has('dh')) base.tripDurationH = clampMin(p.get('dh'), 1, 12, base.tripDurationH);
-	if (p.has('mn')) base.tripMinMin = clampMin(p.get('mn'), 0, 1410, base.tripMinMin);
-	if (p.has('mx')) base.tripMaxMin = clampMin(p.get('mx'), 0, 1410, base.tripMaxMin);
+	if (p.has('mn')) base.tripMinMin = clampHalfHour(p.get('mn'), base.tripMinMin);
+	if (p.has('mx')) base.tripMaxMin = clampHalfHour(p.get('mx'), base.tripMaxMin);
 	for (const key of ['today', 'tomorrow', 'd2'] as DayKey[]) {
 		const iv = p.get('iv_' + key);
 		if (iv) base.intervals[key] = parseOverride(iv);
@@ -159,8 +165,8 @@ function decodeLegacyBlob(b64: string): ViewState | null {
 			if (!raw || typeof raw !== 'object') return { min: null, max: null, durationH: null, mode: null };
 			const r = raw as Record<string, unknown>;
 			return {
-				min: r.min === null || r.min === undefined ? null : clampMin(r.min, 0, 1410, 0),
-				max: r.max === null || r.max === undefined ? null : clampMin(r.max, 0, 1410, 1380),
+				min: r.min === null || r.min === undefined ? null : clampHalfHour(r.min, 0),
+				max: r.max === null || r.max === undefined ? null : clampHalfHour(r.max, 1380),
 				durationH: r.durationH === null || r.durationH === undefined ? null : clampMin(r.durationH, 1, 12, 2),
 				mode: isMode(r.mode) ? r.mode : null
 			};
@@ -184,8 +190,8 @@ function decodeLegacyBlob(b64: string): ViewState | null {
 			expanded,
 			tripMode: isMode(obj.md) ? obj.md : base.tripMode,
 			tripDurationH: clampMin(obj.dh, 1, 12, base.tripDurationH),
-			tripMinMin: clampMin(obj.mn, 0, 1410, base.tripMinMin),
-			tripMaxMin: clampMin(obj.mx, 0, 1410, base.tripMaxMin),
+			tripMinMin: clampHalfHour(obj.mn, base.tripMinMin),
+			tripMaxMin: clampHalfHour(obj.mx, base.tripMaxMin),
 			intervals: {
 				today: decodeIv(intervalsRaw?.today),
 				tomorrow: decodeIv(intervalsRaw?.tomorrow),

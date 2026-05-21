@@ -9,7 +9,7 @@ const DEFAULTS = {
 	tripMaxMin: 1380
 };
 
-function defaultState(): ViewState {
+export function defaultState(): ViewState {
 	return {
 		tab: DEFAULTS.tab,
 		from: null,

@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
-	import { decodeView, encodeView, viewsEqual } from '$lib/url-state';
+	import { decodeView, defaultState, encodeView, viewsEqual } from '$lib/url-state';
 	import { setView, view } from '$lib/state.svelte';
 	import ShareBar from '$lib/components/ShareBar.svelte';
 
@@ -16,6 +16,15 @@
 			: window.location.hash;
 		if (hash) return new URLSearchParams(hash);
 		return new URLSearchParams(window.location.search);
+	}
+
+	function resetAll(e?: Event) {
+		e?.preventDefault();
+		setView(defaultState());
+		if (browser) {
+			history.replaceState(history.state, '', window.location.pathname);
+			lastSerialized = '';
+		}
 	}
 
 	onMount(() => {
@@ -60,8 +69,15 @@
 
 <div class="container">
 	<header>
-		<h1>🌦️ Weather Voodoo</h1>
-		<ShareBar />
+		<h1>
+			<a
+				href="/"
+				class="home-link"
+				onclick={resetAll}
+				title="Reset all selections and go home"
+			>🌦️ Weather Voodoo</a>
+		</h1>
+		<ShareBar onReset={resetAll} />
 	</header>
 	{@render children?.()}
 </div>
@@ -79,5 +95,13 @@
 		font-size: 1.25rem;
 		flex: 1 1 auto;
 		min-width: 0;
+	}
+	.home-link {
+		color: inherit;
+		text-decoration: none;
+		cursor: pointer;
+	}
+	.home-link:hover {
+		opacity: 0.85;
 	}
 </style>

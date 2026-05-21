@@ -1,4 +1,5 @@
 <script lang="ts">
+	let { onReset }: { onReset?: () => void } = $props();
 	let toast = $state<string | null>(null);
 	let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -47,6 +48,16 @@
 </script>
 
 <div class="share-bar">
+	{#if onReset}
+		<button
+			class="btn-ghost"
+			onclick={() => {
+				onReset?.();
+				show('Reset');
+			}}
+			title="Clear all selections"
+		>↻ Reset</button>
+	{/if}
 	<button class="btn-ghost" onclick={copy} title="Copy link to clipboard">📋 Copy link</button>
 	<button class="btn" onclick={share} title="Share via OS">🔗 Share</button>
 </div>

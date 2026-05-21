@@ -4,15 +4,29 @@ import type { LatLng } from '$lib/types';
 import { cached, roundCoord } from './cache';
 import { haversineKm } from '$lib/geo';
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
-/** Padding around the from→to bbox (degrees) when querying Overpass. */
-const BBOX_PAD_DEG = 0.4;
+/** Overpass mirrors, tried in order. First successful response wins. */
+const OVERPASS_MIRRORS = [
+	'https://overpass.kumi.systems/api/interpreter',
+	'https://overpass-api.de/api/interpreter',
+	'https://lz4.overpass-api.de/api/interpreter',
+	'https://overpass.osm.ch/api/interpreter'
+];
+/** Per-mirror network timeout in ms. */
+const OVERPASS_TIMEOUT_MS = 12_000;
 /** Reject sea-routing when from→to span exceeds this many degrees. */
 const MAX_SPAN_DEG = 6;
 /** Reject when the snap distance from from or to to the nearest ferry vertex exceeds this. */
 const MAX_SNAP_KM = 50;
 /** TTL for cached Overpass responses (24 h — ferry tags change rarely). */
 const TTL_MS = 24 * 60 * 60 * 1000;
+
+function bboxPadDeg(from: LatLng, to: LatLng): number {
+	// Shrink the bbox for short hops so the Overpass payload stays small.
+	const span = Math.max(Math.abs(from.lat - to.lat), Math.abs(from.lon - to.lon));
+	if (span < 0.5) return 0.15;
+	if (span < 1.5) return 0.25;
+	return 0.4;
+}
 
 type OverpassWay = {
 	id: number;
@@ -23,11 +37,30 @@ type OverpassWay = {
 type OverpassResponse = { elements: OverpassWay[] };
 
 function bbox(from: LatLng, to: LatLng): { south: number; west: number; north: number; east: number } {
-	const south = Math.min(from.lat, to.lat) - BBOX_PAD_DEG;
-	const north = Math.max(from.lat, to.lat) + BBOX_PAD_DEG;
-	const west = Math.min(from.lon, to.lon) - BBOX_PAD_DEG;
-	const east = Math.max(from.lon, to.lon) + BBOX_PAD_DEG;
+	const pad = bboxPadDeg(from, to);
+	const south = Math.min(from.lat, to.lat) - pad;
+	const north = Math.max(from.lat, to.lat) + pad;
+	const west = Math.min(from.lon, to.lon) - pad;
+	const east = Math.max(from.lon, to.lon) + pad;
 	return { south, west, north, east };
+}
+
+async function postOverpass(mirror: string, body: string): Promise<Response> {
+	const ctrl = new AbortController();
+	const t = setTimeout(() => ctrl.abort(), OVERPASS_TIMEOUT_MS);
+	try {
+		return await fetch(mirror, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/x-www-form-urlencoded',
+				'user-agent': 'weather-voodoo (https://weather-voodoo.vercel.app)'
+			},
+			body,
+			signal: ctrl.signal
+		});
+	} finally {
+		clearTimeout(t);
+	}
 }
 
 async function fetchFerryWays(from: LatLng, to: LatLng): Promise<OverpassWay[]> {
@@ -36,18 +69,29 @@ async function fetchFerryWays(from: LatLng, to: LatLng): Promise<OverpassWay[]> 
 	return cached(
 		key,
 		async () => {
-			const query = `[out:json][timeout:25];way["route"="ferry"](${b.south},${b.west},${b.north},${b.east});out geom;`;
-			const res = await fetch(OVERPASS_URL, {
-				method: 'POST',
-				headers: {
-					'content-type': 'application/x-www-form-urlencoded',
-					'user-agent': 'weather-voodoo (https://weather-voodoo.vercel.app)'
-				},
-				body: 'data=' + encodeURIComponent(query)
-			});
-			if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
-			const data = (await res.json()) as OverpassResponse;
-			return data.elements.filter((e) => e.type === 'way' && Array.isArray(e.geometry) && e.geometry.length >= 2);
+			// Use a tight server-side Overpass timeout so a slow mirror returns
+			// quickly and lets us fall through to the next one.
+			const query = `[out:json][timeout:10];way["route"="ferry"](${b.south},${b.west},${b.north},${b.east});out geom;`;
+			const body = 'data=' + encodeURIComponent(query);
+			const failures: string[] = [];
+			for (const mirror of OVERPASS_MIRRORS) {
+				try {
+					const res = await postOverpass(mirror, body);
+					if (!res.ok) {
+						failures.push(`${new URL(mirror).host}: HTTP ${res.status}`);
+						continue;
+					}
+					const data = (await res.json()) as OverpassResponse;
+					return data.elements.filter(
+						(e) => e.type === 'way' && Array.isArray(e.geometry) && e.geometry.length >= 2
+					);
+				} catch (e) {
+					failures.push(
+						`${new URL(mirror).host}: ${e instanceof Error ? e.name + ': ' + e.message : String(e)}`
+					);
+				}
+			}
+			throw new Error('All Overpass mirrors failed — ' + failures.join(' | '));
 		},
 		TTL_MS
 	);

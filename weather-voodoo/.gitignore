@@ -8,3 +8,6 @@ dist
 .env.*.local
 *.log
 .DS_Store
+playwright-report
+test-results
+static/build-id.txt

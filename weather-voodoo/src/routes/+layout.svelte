@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { decodeView, defaultState, encodeView, viewsEqual } from '$lib/url-state';
 	import { setView, view } from '$lib/state.svelte';
+	import { loadPlaces } from '$lib/client/recentPlaces.svelte';
 	import ShareBar from '$lib/components/ShareBar.svelte';
 
 	let { children } = $props();
@@ -28,6 +29,7 @@
 	}
 
 	onMount(() => {
+		loadPlaces();
 		const decoded = decodeView(paramsFromLocation());
 		setView(decoded);
 		lastSerialized = encodeView(decoded);

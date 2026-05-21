@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { view, toggleExpanded, effectiveConfig, setDayOverride, resetDayOverride } from '$lib/state.svelte';
 	import PlaceSearch from './PlaceSearch.svelte';
+	import PlacesChips from './PlacesChips.svelte';
 	import MapView from './MapView.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
 	import { resolveMode } from '$lib/trip-score';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
+	import { addRecent } from '$lib/client/recentPlaces.svelte';
 	import type { FusedHour, LabeledPoint, DayKey } from '$lib/types';
 
 	let loading = $state(false);
@@ -64,9 +66,20 @@
 
 	function pickFrom(p: LabeledPoint) {
 		view.from = p;
+		if (p.label) addRecent(p);
 	}
 	function pickTo(p: LabeledPoint) {
 		view.to = p;
+		if (p.label) addRecent(p);
+	}
+	function pickFromChip(p: LabeledPoint) {
+		if (!view.from) {
+			pickFrom(p);
+		} else if (!view.to) {
+			pickTo(p);
+		} else {
+			pickTo(p);
+		}
 	}
 	function onMapPick(p: { lat: number; lon: number }) {
 		if (!view.from) view.from = { ...p };
@@ -83,6 +96,7 @@
 		<PlaceSearch placeholder="From — search or click on map" initial={view.from?.label} onSelect={pickFrom} />
 		<PlaceSearch placeholder="To — search or click on map" initial={view.to?.label} onSelect={pickTo} />
 	</div>
+	<PlacesChips onPick={pickFromChip} />
 	<div class="muted" style="margin-top: 0.5rem;">
 		{#if view.from}<span>From: {view.from.label ?? `${view.from.lat.toFixed(3)}, ${view.from.lon.toFixed(3)}`}</span>{/if}
 		{#if view.from && view.to}<span> · </span>{/if}

@@ -64,6 +64,8 @@
 	);
 	const activeMode = $derived(result ? resolveMode(eff.mode, dayHours) : 'sea');
 
+	let lastFocused: 'from' | 'to' | null = $state(null);
+
 	function pickFrom(p: LabeledPoint) {
 		view.from = p;
 		if (p.label) addRecent(p);
@@ -73,7 +75,11 @@
 		if (p.label) addRecent(p);
 	}
 	function pickFromChip(p: LabeledPoint) {
-		if (!view.from) {
+		if (lastFocused === 'from') {
+			pickFrom(p);
+		} else if (lastFocused === 'to') {
+			pickTo(p);
+		} else if (!view.from) {
 			pickFrom(p);
 		} else if (!view.to) {
 			pickTo(p);
@@ -93,8 +99,18 @@
 
 <div class="card">
 	<div class="row">
-		<PlaceSearch placeholder="From — search or click on map" initial={view.from?.label} onSelect={pickFrom} />
-		<PlaceSearch placeholder="To — search or click on map" initial={view.to?.label} onSelect={pickTo} />
+		<PlaceSearch
+			placeholder="From — search or click on map"
+			initial={view.from?.label}
+			onSelect={pickFrom}
+			onFocus={() => (lastFocused = 'from')}
+		/>
+		<PlaceSearch
+			placeholder="To — search or click on map"
+			initial={view.to?.label}
+			onSelect={pickTo}
+			onFocus={() => (lastFocused = 'to')}
+		/>
 	</div>
 	<PlacesChips onPick={pickFromChip} />
 	<div class="muted" style="margin-top: 0.5rem;">

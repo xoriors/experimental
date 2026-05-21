@@ -8,9 +8,10 @@
 		placeholder?: string;
 		initial?: string;
 		onSelect: (p: LabeledPoint) => void;
+		onFocus?: () => void;
 	};
 
-	let { placeholder = 'Search a place…', initial = '', onSelect }: Props = $props();
+	let { placeholder = 'Search a place…', initial = '', onSelect, onFocus }: Props = $props();
 
 	let q = $state(initial ?? '');
 	let lastInitial = $state(initial ?? '');
@@ -95,6 +96,7 @@
 		bind:this={input}
 		bind:value={q}
 		oninput={onInput}
+		onfocus={() => onFocus?.()}
 		{placeholder}
 		class="input"
 		type="search"

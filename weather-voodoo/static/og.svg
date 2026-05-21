@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+	<defs>
+		<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+			<stop offset="0" stop-color="#0b1220" />
+			<stop offset="1" stop-color="#0f1d3a" />
+		</linearGradient>
+		<linearGradient id="score" x1="0" y1="0" x2="1" y2="0">
+			<stop offset="0" stop-color="#ef4444" />
+			<stop offset="0.45" stop-color="#facc15" />
+			<stop offset="1" stop-color="#4ade80" />
+		</linearGradient>
+		<filter id="soft" x="-10%" y="-10%" width="120%" height="120%">
+			<feGaussianBlur stdDeviation="6" />
+		</filter>
+	</defs>
+
+	<rect width="1200" height="630" fill="url(#bg)" />
+
+	<!-- subtle map-grid texture -->
+	<g opacity="0.06" stroke="#7dd3fc" stroke-width="1">
+		<path d="M0 80 H1200 M0 160 H1200 M0 240 H1200 M0 320 H1200 M0 400 H1200 M0 480 H1200 M0 560 H1200" />
+		<path d="M80 0 V630 M200 0 V630 M320 0 V630 M440 0 V630 M560 0 V630 M680 0 V630 M800 0 V630 M920 0 V630 M1040 0 V630 M1160 0 V630" />
+	</g>
+
+	<!-- left column: title -->
+	<g transform="translate(72, 96)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+		<text font-size="120" y="0" dominant-baseline="hanging">🌦️</text>
+		<text x="0" y="170" font-size="70" font-weight="700" fill="#f8fafc">Weather Voodoo</text>
+		<text x="0" y="240" font-size="34" fill="#cbd5e1">The best hours of the next 3 days</text>
+		<text x="0" y="284" font-size="34" fill="#cbd5e1">for any outdoor or marine trip.</text>
+
+		<g transform="translate(0, 360)">
+			<rect x="0" y="0" width="44" height="44" rx="8" fill="#0ea5e9" opacity="0.16" />
+			<text x="12" y="32" font-size="26" fill="#7dd3fc">⛵</text>
+			<text x="60" y="32" font-size="22" fill="#e2e8f0">Wind · gust · wave · rain · vis · activity verdicts</text>
+		</g>
+		<g transform="translate(0, 412)">
+			<rect x="0" y="0" width="44" height="44" rx="8" fill="#4ade80" opacity="0.16" />
+			<text x="11" y="32" font-size="26" fill="#86efac">★</text>
+			<text x="60" y="32" font-size="22" fill="#e2e8f0">Surfaces the top window per day automatically</text>
+		</g>
+		<g transform="translate(0, 464)">
+			<rect x="0" y="0" width="44" height="44" rx="8" fill="#f472b6" opacity="0.16" />
+			<text x="11" y="32" font-size="26" fill="#fbcfe8">📍</text>
+			<text x="60" y="32" font-size="22" fill="#e2e8f0">One-tap "Use my location" · saved places · share by URL</text>
+		</g>
+
+		<text x="0" y="510" font-size="22" fill="#7dd3fc">weather-voodoo.vercel.app</text>
+	</g>
+
+	<!-- right column: mock table card -->
+	<g transform="translate(660, 96)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+		<rect x="0" y="0" width="468" height="438" rx="18" fill="#0f172a" stroke="#1e293b" stroke-width="1" />
+
+		<!-- title -->
+		<text x="20" y="40" font-size="20" fill="#cbd5e1">Tomorrow · Phi Phi → Ao Nang</text>
+		<text x="20" y="66" font-size="14" fill="#94a3b8">2h sea window · best 10:00 → 12:00 · score 88</text>
+
+		<!-- score gradient legend -->
+		<rect x="20" y="86" width="428" height="8" rx="4" fill="url(#score)" />
+		<text x="20" y="112" font-size="12" fill="#64748b">0</text>
+		<text x="438" y="112" font-size="12" fill="#64748b" text-anchor="end">100</text>
+
+		<!-- rows -->
+		<g transform="translate(20, 130)" font-size="14">
+			<!-- header -->
+			<g fill="#94a3b8">
+				<text x="0" y="0">TIME</text>
+				<text x="120" y="0">TEMP</text>
+				<text x="200" y="0">WIND</text>
+				<text x="330" y="0">RAIN</text>
+				<text x="412" y="0">WAVE</text>
+			</g>
+			<!-- 07-10 (green) -->
+			<g transform="translate(0, 16)">
+				<rect x="-8" y="0" width="444" height="34" rx="6" fill="rgba(74,222,128,0.18)" />
+				<rect x="-8" y="0" width="4" height="34" fill="#4ade80" />
+				<text x="0" y="22" fill="#e2e8f0">07–10  88</text>
+				<text x="120" y="22" fill="#cbd5e1">☀ 28°</text>
+				<text x="200" y="22" fill="#cbd5e1">5 / 11 NW</text>
+				<text x="330" y="22" fill="#cbd5e1">0 mm</text>
+				<text x="412" y="22" fill="#cbd5e1">0.4 m</text>
+			</g>
+			<!-- 10-13 (best, ★) -->
+			<g transform="translate(0, 58)">
+				<rect x="-8" y="0" width="444" height="34" rx="6" fill="rgba(74,222,128,0.32)" stroke="#38bdf8" stroke-width="2" />
+				<rect x="-8" y="0" width="4" height="34" fill="#4ade80" />
+				<text x="0" y="22" fill="#f8fafc" font-weight="700">10–13  88 ★</text>
+				<text x="120" y="22" fill="#f8fafc">🌤 28°</text>
+				<text x="200" y="22" fill="#f8fafc">6 / 12 W</text>
+				<text x="330" y="22" fill="#f8fafc">0.1 mm</text>
+				<text x="412" y="22" fill="#f8fafc">0.5 m</text>
+			</g>
+			<!-- 13-16 (yellow) -->
+			<g transform="translate(0, 100)">
+				<rect x="-8" y="0" width="444" height="34" rx="6" fill="rgba(250,204,21,0.18)" />
+				<rect x="-8" y="0" width="4" height="34" fill="#facc15" />
+				<text x="0" y="22" fill="#e2e8f0">13–16  62</text>
+				<text x="120" y="22" fill="#cbd5e1">⛅ 30°</text>
+				<text x="200" y="22" fill="#cbd5e1">10 / 18 W</text>
+				<text x="330" y="22" fill="#cbd5e1">0.3 mm</text>
+				<text x="412" y="22" fill="#cbd5e1">0.8 m</text>
+			</g>
+			<!-- 16-19 (orange) -->
+			<g transform="translate(0, 142)">
+				<rect x="-8" y="0" width="444" height="34" rx="6" fill="rgba(251,146,60,0.20)" />
+				<rect x="-8" y="0" width="4" height="34" fill="#fb923c" />
+				<text x="0" y="22" fill="#e2e8f0">16–19  41</text>
+				<text x="120" y="22" fill="#cbd5e1">🌧 29°</text>
+				<text x="200" y="22" fill="#cbd5e1">15 / 24 W</text>
+				<text x="330" y="22" fill="#cbd5e1">2.5 mm</text>
+				<text x="412" y="22" fill="#cbd5e1">1.2 m</text>
+			</g>
+			<!-- 19-22 (red) -->
+			<g transform="translate(0, 184)">
+				<rect x="-8" y="0" width="444" height="34" rx="6" fill="rgba(239,68,68,0.20)" />
+				<rect x="-8" y="0" width="4" height="34" fill="#ef4444" />
+				<text x="0" y="22" fill="#e2e8f0">19–22  22 🌙</text>
+				<text x="120" y="22" fill="#cbd5e1">⛈ 27°</text>
+				<text x="200" y="22" fill="#cbd5e1">22 / 35 SW</text>
+				<text x="330" y="22" fill="#cbd5e1">6.0 mm</text>
+				<text x="412" y="22" fill="#cbd5e1">1.8 m</text>
+			</g>
+		</g>
+	</g>
+</svg>

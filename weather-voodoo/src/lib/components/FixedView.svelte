@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { view, toggleExpanded, effectiveConfig, setDayOverride, resetDayOverride } from '$lib/state.svelte';
 	import PlaceSearch from './PlaceSearch.svelte';
+	import PlacesChips from './PlacesChips.svelte';
 	import MapView from './MapView.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
 	import { getCurrentPosition } from '$lib/client/geolocation';
+	import { addRecent } from '$lib/client/recentPlaces.svelte';
 	import { mergeSinglePoint } from '$lib/fusion';
 	import { resolveMode } from '$lib/trip-score';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
@@ -85,6 +87,7 @@
 
 	function pick(p: LabeledPoint) {
 		view.at = p;
+		if (p.label) addRecent(p);
 	}
 	function onMapPick(p: { lat: number; lon: number }) {
 		view.at = { ...p };
@@ -110,6 +113,7 @@
 				// keep coord fallback label
 			}
 			view.at = { lat, lon, label };
+			addRecent({ lat, lon, label });
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Geolocation failed';
 		} finally {
@@ -127,6 +131,7 @@
 			{geolocating ? 'Locating…' : '📍 Use my location'}
 		</button>
 	</div>
+	<PlacesChips onPick={pick} />
 	<div class="muted" style="margin-top: 0.5rem;">
 		{#if view.at}
 			<span>{view.at.label ?? `${view.at.lat.toFixed(3)}, ${view.at.lon.toFixed(3)}`}</span>

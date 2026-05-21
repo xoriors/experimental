@@ -6,20 +6,23 @@ set -euo pipefail
 echo '{"async": true, "asyncTimeout": 300000}'
 
 # Only run in Claude Code on the web (ephemeral remote containers).
+# Locally, install once with: npx plugins add vercel/vercel-plugin
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
 	exit 0
 fi
 
 : "${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR must be set}"
 
-# NOTE: We intentionally do NOT auto-install third-party Claude plugins here.
-# Auto-installing `vercel/vercel-plugin` on every remote session is a latent
-# supply-chain exposure (namespace squat / upstream compromise would run on
-# every cold container). If you need the plugin in a remote session, install
-# it manually once with a pinned reference, e.g.:
-#     npx plugins add vercel/vercel-plugin@<commit-sha>
+# 1. Install the Vercel plugin into ~/.claude/plugins via the Claude marketplace.
+#    Idempotent: the installer skips work if already registered. `printf 'y\n'`
+#    answers the interactive "Install? [Y/n]" prompt without piping `yes`
+#    (which would cause SIGPIPE under pipefail).
+echo "[session-start] Ensuring Vercel plugin is installed..."
+if ! printf 'y\n' | npx --yes plugins add vercel/vercel-plugin; then
+	echo "[session-start] Vercel plugin install failed; continuing without it." >&2
+fi
 
-# Pre-install weather-voodoo dependencies so dev/test/build are ready.
+# 2. Pre-install weather-voodoo dependencies so dev/test/build are ready.
 if [ -f "$CLAUDE_PROJECT_DIR/weather-voodoo/package.json" ]; then
 	echo "[session-start] Installing weather-voodoo dependencies..."
 	cd "$CLAUDE_PROJECT_DIR/weather-voodoo"

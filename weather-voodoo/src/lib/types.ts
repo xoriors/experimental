@@ -63,6 +63,8 @@ export type FusedHour = ForecastHour & {
 	swellHsM: number | null;
 };
 
+export type DaylightDay = { date: string; sunrise: string; sunset: string };
+
 export type Activity =
 	| 'swimming'
 	| 'sunbathing'

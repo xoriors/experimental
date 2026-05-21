@@ -1,7 +1,8 @@
 <script lang="ts">
-	import type { FusedHour } from '$lib/types';
+	import type { DaylightDay, FusedHour } from '$lib/types';
 	import { degToCompass, round1 } from '$lib/units';
 	import { scoreToCss } from '$lib/trip-score';
+	import { isDaylight, sunPhase } from '$lib/daylight';
 	import WxIcon from './icons/WxIcon.svelte';
 
 	type Props = {
@@ -10,6 +11,7 @@
 		outside?: boolean;
 		coveredOnly?: boolean;
 		highlighted?: boolean;
+		dayInfo?: DaylightDay;
 	};
 
 	let {
@@ -17,9 +19,12 @@
 		score,
 		outside = false,
 		coveredOnly = false,
-		highlighted = false
+		highlighted = false,
+		dayInfo
 	}: Props = $props();
 	const timeLabel = $derived(hour.time.slice(11, 16));
+	const phase = $derived(sunPhase(hour.time, dayInfo));
+	const isNight = $derived(!isDaylight(hour.time, dayInfo));
 	const css = $derived(
 		score == null || outside
 			? { bg: 'transparent', border: 'transparent' }
@@ -38,11 +43,13 @@
 	class="detail hour"
 	class:highlight={highlighted}
 	class:outside
+	class:night={isNight}
 	data-hour-time={hour.time}
 	style="--row-bg: {css.bg}; --row-border: {css.border};"
 >
 	<td>
 		{timeLabel}
+		{#if phase === 'sunrise-hour'}<span class="sun-marker" title="Sunrise">🌅</span>{:else if phase === 'sunset-hour'}<span class="sun-marker" title="Sunset">🌇</span>{:else if isNight}<span class="sun-marker" title="Night">🌙</span>{/if}
 		<span class="hour-score" class:outside-chip={outside} title={chipTitle}>
 			{score == null ? '—' : score}
 		</span>
@@ -64,6 +71,15 @@
 	tr.hour {
 		background: var(--row-bg, transparent);
 		scroll-margin-top: 1rem;
+	}
+	tr.hour.night :global(td) {
+		background-image: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.4));
+	}
+	.sun-marker {
+		margin-left: 0.25rem;
+		margin-right: 0.05rem;
+		font-size: 0.92em;
+		vertical-align: -1px;
 	}
 	tr.hour > td:first-child {
 		border-left: 4px solid var(--row-border, transparent);

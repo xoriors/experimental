@@ -36,6 +36,7 @@ function buildForecastUrl(lat: number, lon: number, days: number): string {
 		latitude: lat.toString(),
 		longitude: lon.toString(),
 		hourly: FORECAST_VARS,
+		daily: 'sunrise,sunset',
 		forecast_days: days.toString(),
 		timezone: 'auto',
 		wind_speed_unit: 'kn'
@@ -75,6 +76,11 @@ type RawForecast = {
 		surface_pressure: number[];
 		uv_index?: (number | null)[];
 	};
+	daily?: {
+		time: string[];
+		sunrise: string[];
+		sunset: string[];
+	};
 };
 
 type RawMarine = {
@@ -90,7 +96,8 @@ type RawMarine = {
 	};
 };
 
-export type ForecastResult = { timezone: string; hours: ForecastHour[] };
+export type DaylightDay = { date: string; sunrise: string; sunset: string };
+export type ForecastResult = { timezone: string; hours: ForecastHour[]; daylight: DaylightDay[] };
 export type MarineResult = { timezone: string; hours: MarineHour[] } | null;
 
 export async function fetchForecast(lat: number, lon: number, days = 3): Promise<ForecastResult> {
@@ -103,7 +110,15 @@ export async function fetchForecast(lat: number, lon: number, days = 3): Promise
 		if (!res.ok) throw new Error(`Open-Meteo forecast HTTP ${res.status}`);
 		const data = (await res.json()) as RawForecast;
 		const h = data.hourly;
-		if (!h) return { timezone: data.timezone ?? 'UTC', hours: [] };
+		const d = data.daily;
+		const daylight: DaylightDay[] = d
+			? d.time.map((date, i) => ({
+					date,
+					sunrise: d.sunrise[i] ?? '',
+					sunset: d.sunset[i] ?? ''
+				}))
+			: [];
+		if (!h) return { timezone: data.timezone ?? 'UTC', hours: [], daylight };
 
 		const hours: ForecastHour[] = h.time.map((t, i) => ({
 			time: t,
@@ -123,7 +138,7 @@ export async function fetchForecast(lat: number, lon: number, days = 3): Promise
 			pressureHpa: h.surface_pressure[i] ?? 0,
 			uv: h.uv_index?.[i] ?? undefined
 		}));
-		return { timezone: data.timezone ?? 'UTC', hours };
+		return { timezone: data.timezone ?? 'UTC', hours, daylight };
 	});
 }
 

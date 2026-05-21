@@ -1,7 +1,8 @@
 <script lang="ts">
-	import type { DayOverride, DayKey, FusedHour, TripMode } from '$lib/types';
+	import type { DayOverride, DayKey, DaylightDay, FusedHour, TripMode } from '$lib/types';
 	import { aggregate3h } from '$lib/fusion';
 	import { filterHoursForDay } from '$lib/time';
+	import { dayLookup } from '$lib/daylight';
 	import { hourTripScore, windowScoreAt } from '$lib/trip-score';
 	import { minToHHMM, hhmmToMin } from '$lib/url-state';
 	import ForecastRow from './ForecastRow.svelte';
@@ -23,6 +24,7 @@
 		expanded: Set<string>;
 		onToggleSlot: (slot: string) => void;
 		todayIso: string;
+		daylight?: DaylightDay[];
 	};
 
 	let {
@@ -41,8 +43,19 @@
 		onResetOverride,
 		expanded,
 		onToggleSlot,
-		todayIso
+		todayIso,
+		daylight = []
 	}: Props = $props();
+
+	const daylightMap = $derived(dayLookup(daylight));
+	const todayDaylight = $derived(() => {
+		const [y, m, d] = todayIso.split('-').map(Number);
+		const target = new Date(y, (m ?? 1) - 1, d ?? 1);
+		const off = day === 'today' ? 0 : day === 'tomorrow' ? 1 : 2;
+		target.setDate(target.getDate() + off);
+		const iso = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}-${String(target.getDate()).padStart(2, '0')}`;
+		return daylightMap.get(iso);
+	});
 
 	const dayHours = $derived(filterHoursForDay(allHours, day, todayIso));
 	const slots = $derived(aggregate3h(dayHours));
@@ -208,6 +221,17 @@
 
 <svelte:window onkeydown={onKey} />
 
+{#if todayDaylight()}
+	{@const dl = todayDaylight()}
+	{#if dl}
+		<div class="sun-times muted">
+			<span>☀️ Sunrise <strong>{dl.sunrise.slice(11, 16)}</strong></span>
+			<span>·</span>
+			<span>🌙 Sunset <strong>{dl.sunset.slice(11, 16)}</strong></span>
+		</div>
+	{/if}
+{/if}
+
 <div class="interval-bar">
 	<span class="muted" style="font-size: 0.85em; margin-right: 0.4rem;">For this day:</span>
 	<label>
@@ -328,6 +352,7 @@
 						{hourScores}
 						{outsideInterval}
 						{outsideStartRange}
+						dayInfo={todayDaylight()}
 					/>
 				{/each}
 			</tbody>
@@ -359,6 +384,17 @@
 {/if}
 
 <style>
+	.sun-times {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+		font-size: 0.85em;
+		padding: 0.35rem 0.1rem 0.45rem;
+	}
+	.sun-times strong {
+		color: var(--fg);
+		font-variant-numeric: tabular-nums;
+	}
 	.interval-bar {
 		display: flex;
 		gap: 0.6rem;

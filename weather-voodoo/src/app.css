@@ -116,7 +116,13 @@ input[type='search'] {
 .day-tabs {
 	display: flex;
 	gap: 0.5rem;
-	margin: 1rem 0;
+	margin: 0 0 0.5rem;
+	padding: 0.6rem 0 0.5rem;
+	position: sticky;
+	top: 0;
+	z-index: 15;
+	background: var(--bg);
+	box-shadow: 0 4px 8px -4px rgba(0, 0, 0, 0.4);
 }
 
 .day-tab {
@@ -188,7 +194,7 @@ table.forecast thead.real-thead-hidden {
 
 .thead-mirror {
 	position: sticky;
-	top: 0;
+	top: var(--day-tabs-h, 0px);
 	z-index: 10;
 	overflow-x: scroll;
 	overflow-y: hidden;
@@ -382,7 +388,8 @@ tr.detail td {
 
 	.day-tabs {
 		gap: 0.35rem;
-		margin: 0.6rem 0;
+		margin: 0 0 0.4rem;
+		padding: 0.45rem 0 0.35rem;
 	}
 
 	.day-tab {

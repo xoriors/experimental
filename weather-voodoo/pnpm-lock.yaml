@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      geojson-path-finder:
+        specifier: ^2.1.0
+        version: 2.1.0
       maplibre-gl:
         specifier: ^4.7.0
         version: 4.7.1
@@ -27,6 +30,9 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^4.0.0
         version: 4.0.4(svelte@5.55.8)(vite@5.4.21(@types/node@25.9.0))
+      '@types/geojson':
+        specifier: ^7946.0.16
+        version: 7946.0.16
       '@types/google.maps':
         specifier: ^3.58.1
         version: 3.64.1

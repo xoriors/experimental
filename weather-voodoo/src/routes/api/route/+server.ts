@@ -1,8 +1,10 @@
 import { error, json } from '@sveltejs/kit';
 import { fetchForecast, fetchMarine } from '$lib/server/openmeteo';
 import { computeSeaRoute } from '$lib/server/sea-routing';
+import { computeFerryRoute } from '$lib/server/osm-ferry';
 import { fuseRoute } from '$lib/fusion';
 import { sampleAlongPolyline, sampleAlongRoute } from '$lib/geo';
+import type { LatLng } from '$lib/types';
 import type { RequestHandler } from './$types';
 
 function parsePoint(raw: string | null): { lat: number; lon: number } | null {
@@ -23,11 +25,46 @@ export const GET: RequestHandler = async ({ url }) => {
 	const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? '3'), 1), 5);
 	const land = url.searchParams.get('land') === '1';
 
-	const sea = land ? null : computeSeaRoute(from, to);
-	const routePolyline = sea ? sea.polyline : [from, to];
-	const points = sea
-		? sampleAlongPolyline(sea.polyline, samples)
-		: sampleAlongRoute(from, to, samples);
+	type RouteMeta =
+		| { kind: 'ferry'; lengthKm: number; wayCount: number; originSnapKm: number; destinationSnapKm: number }
+		| { kind: 'sea'; lengthKm: number; greatCircleKm: number; detourRatio: number }
+		| { kind: 'straight' };
+
+	let routePolyline: LatLng[] = [from, to];
+	let routeMeta: RouteMeta = { kind: 'straight' };
+
+	if (!land) {
+		// Prefer OSM ferry routing — uses real `route=ferry` tagging from
+		// OpenStreetMap, which is dense enough for short coastal hops where
+		// the Eurostat marnet is too coarse.
+		const ferry = await computeFerryRoute(from, to);
+		if (ferry) {
+			routePolyline = ferry.polyline;
+			routeMeta = {
+				kind: 'ferry',
+				lengthKm: ferry.lengthKm,
+				wayCount: ferry.wayCount,
+				originSnapKm: ferry.originSnapKm,
+				destinationSnapKm: ferry.destinationSnapKm
+			};
+		} else {
+			const sea = computeSeaRoute(from, to);
+			if (sea) {
+				routePolyline = sea.polyline;
+				routeMeta = {
+					kind: 'sea',
+					lengthKm: sea.lengthKm,
+					greatCircleKm: sea.greatCircleKm,
+					detourRatio: sea.detourRatio
+				};
+			}
+		}
+	}
+
+	const points =
+		routeMeta.kind === 'straight'
+			? sampleAlongRoute(from, to, samples)
+			: sampleAlongPolyline(routePolyline, samples);
 
 	try {
 		const results = await Promise.all(
@@ -44,14 +81,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				hours,
 				daylight: results[0]?.daylight ?? [],
 				polyline: routePolyline,
-				route: sea
-					? {
-							kind: 'sea',
-							lengthKm: sea.lengthKm,
-							greatCircleKm: sea.greatCircleKm,
-							detourRatio: sea.detourRatio
-						}
-					: { kind: 'straight' }
+				route: routeMeta
 			},
 			{ headers: { 'cache-control': 'public, s-maxage=600, stale-while-revalidate=3600' } }
 		);

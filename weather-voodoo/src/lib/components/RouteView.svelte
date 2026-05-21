@@ -9,11 +9,13 @@
 	import { resolveMode } from '$lib/trip-score';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
 	import { addRecent } from '$lib/client/recentPlaces.svelte';
-	import type { FusedHour, LabeledPoint, DayKey } from '$lib/types';
+	import type { DaylightDay, FusedHour, LabeledPoint, DayKey } from '$lib/types';
 
 	let loading = $state(false);
 	let error = $state<string | null>(null);
-	let result = $state<{ hours: FusedHour[]; timezone: string } | null>(null);
+	let result = $state<{ hours: FusedHour[]; timezone: string; daylight: DaylightDay[] } | null>(
+		null
+	);
 
 	const markers = $derived(
 		[view.from, view.to].filter((m): m is LabeledPoint => m !== null)
@@ -44,8 +46,12 @@
 		)
 			.then(async (r) => {
 				if (!r.ok) throw new Error(`HTTP ${r.status}`);
-				const data = (await r.json()) as { hours: FusedHour[]; timezone: string };
-				result = data;
+				const data = (await r.json()) as {
+					hours: FusedHour[];
+					timezone: string;
+					daylight?: DaylightDay[];
+				};
+				result = { hours: data.hours, timezone: data.timezone, daylight: data.daylight ?? [] };
 			})
 			.catch((e: unknown) => {
 				if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -154,6 +160,7 @@
 				expanded={view.expanded}
 				onToggleSlot={toggleExpanded}
 				{todayIso}
+				daylight={result.daylight}
 			/>
 		{/if}
 	</div>

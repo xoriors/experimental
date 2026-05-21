@@ -39,9 +39,13 @@ fi
 echo "==> Vercel preview deploy"
 vercel pull --yes --environment=preview >/dev/null 2>&1
 vercel build >/dev/null
-DEPLOY_JSON=$(vercel deploy --prebuilt --no-wait --json 2>/dev/null || vercel deploy --prebuilt 2>&1 | tail -1)
-URL=$(echo "$DEPLOY_JSON" | python3 -c "import sys, json; d=sys.stdin.read().strip(); print(json.loads(d).get('url', '') if d.startswith('{') else d)" 2>/dev/null || echo "$DEPLOY_JSON")
-URL=$(echo "$URL" | sed -E 's#^https?://##')
+DEPLOY_OUT=$(vercel deploy --prebuilt 2>&1)
+URL=$(echo "$DEPLOY_OUT" | grep -oE 'https://[a-z0-9-]+\.vercel\.app' | head -1 | sed 's#^https://##')
+if [ -z "$URL" ]; then
+  echo "Failed to parse deploy URL. Last 20 lines:"
+  echo "$DEPLOY_OUT" | tail -20
+  exit 1
+fi
 
 PROJECT_ID=$(python3 -c "import json; print(json.load(open('.vercel/project.json'))['projectId'])")
 TEAM_ID=$(python3 -c "import json; print(json.load(open('.vercel/project.json'))['orgId'])")

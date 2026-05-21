@@ -99,7 +99,17 @@
 		error = null;
 		try {
 			const { lat, lon } = await getCurrentPosition();
-			view.at = { lat, lon, label: 'My location' };
+			let label = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+			try {
+				const r = await fetch(`/api/reverse-geocode?lat=${lat}&lon=${lon}`);
+				if (r.ok) {
+					const data = (await r.json()) as { label?: string };
+					if (data.label) label = data.label;
+				}
+			} catch {
+				// keep coord fallback label
+			}
+			view.at = { lat, lon, label };
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Geolocation failed';
 		} finally {

@@ -6,12 +6,16 @@ type PathFinderCtor = new (
 	findPath(a: Feature<Point>, b: Feature<Point>): { path: Position[]; weight: number } | undefined;
 };
 
-// geojson-path-finder ships a CJS `exports.default = PathFinder` build. Under
-// Vercel's Node.js bundler the default import sometimes resolves to the whole
-// module namespace, so `new PathFinder(...)` throws "not a constructor". Pick
-// the default off whichever shape we get.
-const PathFinder = ((PathFinderMod as unknown as { default?: PathFinderCtor }).default ??
-	(PathFinderMod as unknown as PathFinderCtor)) as PathFinderCtor;
+// geojson-path-finder ships a CJS build with `exports.default = PathFinder`.
+// Node's CJS-to-ESM interop wraps that, so `import * as M` gives:
+//   M.default       => the CJS module object  ({ default: PathFinder, pathToGeoJSON })
+//   M.default.default => the actual class
+// Different bundlers / runtimes peel one layer or two — handle all three.
+type MaybeWrapped = { default?: MaybeWrapped | PathFinderCtor } & Record<string, unknown>;
+const _mod = PathFinderMod as unknown as MaybeWrapped;
+const _layer1 = (_mod.default ?? _mod) as MaybeWrapped;
+const _layer2 = ((_layer1 as MaybeWrapped).default ?? _layer1) as MaybeWrapped;
+const PathFinder = (typeof _layer2 === 'function' ? _layer2 : _layer1) as unknown as PathFinderCtor;
 import type { Feature, FeatureCollection, LineString, Point, Position } from 'geojson';
 import type { LatLng } from '$lib/types';
 import { cached, roundCoord } from './cache';

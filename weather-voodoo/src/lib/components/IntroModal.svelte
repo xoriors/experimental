@@ -37,6 +37,9 @@
 			<li><strong>Fixed location</strong>: one spot (beach, hike, sunset).</li>
 			<li>Pick a duration, a time window, and Sea / Land mode — the table colours each hour by score.</li>
 		</ul>
+		<p class="install-hint">
+			📲 Install to your home screen (iOS Share → <em>Add to Home Screen</em>; Android menu → <em>Install app</em>) — it works offline once the shell is cached.
+		</p>
 		<div class="intro-actions">
 			<a class="btn-ghost" href="/help" onclick={onClose}>Read the full help</a>
 			<button type="button" class="btn" onclick={onClose}>Got it</button>
@@ -80,6 +83,14 @@
 	}
 	.intro-card li {
 		margin-bottom: 0.25rem;
+	}
+	.install-hint {
+		font-size: 0.88em;
+		color: var(--fg-dim);
+		background: rgba(255, 255, 255, 0.05);
+		padding: 0.5rem 0.7rem;
+		border-radius: 8px;
+		margin: 0 0 1rem 0;
 	}
 	.intro-actions {
 		display: flex;

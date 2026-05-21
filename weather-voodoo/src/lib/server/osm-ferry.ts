@@ -1,4 +1,17 @@
-import PathFinder from 'geojson-path-finder';
+import * as PathFinderMod from 'geojson-path-finder';
+
+type PathFinderCtor = new (
+	network: FeatureCollection<LineString>
+) => {
+	findPath(a: Feature<Point>, b: Feature<Point>): { path: Position[]; weight: number } | undefined;
+};
+
+// geojson-path-finder ships a CJS `exports.default = PathFinder` build. Under
+// Vercel's Node.js bundler the default import sometimes resolves to the whole
+// module namespace, so `new PathFinder(...)` throws "not a constructor". Pick
+// the default off whichever shape we get.
+const PathFinder = ((PathFinderMod as unknown as { default?: PathFinderCtor }).default ??
+	(PathFinderMod as unknown as PathFinderCtor)) as PathFinderCtor;
 import type { Feature, FeatureCollection, LineString, Point, Position } from 'geojson';
 import type { LatLng } from '$lib/types';
 import { cached, roundCoord } from './cache';
@@ -184,7 +197,7 @@ export async function computeFerryRoute(
 	}
 
 	const fc = waysToFeatureCollection(ways);
-	let pf: PathFinder<unknown, Record<string, unknown>>;
+	let pf: InstanceType<typeof PathFinder>;
 	try {
 		pf = new PathFinder(fc);
 	} catch (e) {

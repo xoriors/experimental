@@ -7,7 +7,8 @@
 	import WxIcon from './icons/WxIcon.svelte';
 	import HourCell from './HourCell.svelte';
 	import MarineBlock from './MarineBlock.svelte';
-	import type { FusedHour } from '$lib/types';
+	import type { DaylightDay, FusedHour } from '$lib/types';
+	import { isDaylight, sunPhase } from '$lib/daylight';
 
 	type Props = {
 		slot: ThreeHourAggregate;
@@ -18,6 +19,7 @@
 		hourScores: Map<string, number | null>;
 		outsideInterval: Set<string>;
 		outsideStartRange: Set<string>;
+		dayInfo?: DaylightDay;
 	};
 
 	let {
@@ -28,8 +30,19 @@
 		mode,
 		hourScores,
 		outsideInterval,
-		outsideStartRange
+		outsideStartRange,
+		dayInfo
 	}: Props = $props();
+
+	const slotNight = $derived(
+		slot.hours.length > 0 && slot.hours.every((h) => !isDaylight(h.time, dayInfo))
+	);
+	const slotMixed = $derived(
+		!slotNight && slot.hours.some((h) => !isDaylight(h.time, dayInfo))
+	);
+	const slotPhases = $derived(slot.hours.map((h) => sunPhase(h.time, dayInfo)));
+	const slotHasSunrise = $derived(slotPhases.some((p) => p === 'sunrise-hour'));
+	const slotHasSunset = $derived(slotPhases.some((p) => p === 'sunset-hour'));
 
 	const highlightStartMs = $derived(view.highlight ? Date.parse(view.highlight + ':00Z') : null);
 	const highlightEndMs = $derived(
@@ -92,6 +105,8 @@
 	class="slot"
 	class:highlight={slotHighlighted}
 	class:disabled={!slotCovered}
+	class:night={slotNight}
+	class:dim={slotMixed}
 	data-slot-start={start}
 	style="--row-bg: {rowCss.bg}; --row-border: {rowCss.border};"
 	onclick={onToggle}
@@ -99,6 +114,7 @@
 	<td>
 		<span class="expand-caret" class:open={expanded}>▶</span>
 		{start}–{end}
+		{#if slotHasSunrise}<span class="sun-marker" title="Sunrise in this block">🌅</span>{:else if slotHasSunset}<span class="sun-marker" title="Sunset in this block">🌇</span>{:else if slotNight}<span class="sun-marker" title="Night">🌙</span>{/if}
 		<span class="row-score" title="Best start within this block (window score 0–100)">
 			{slotScore == null ? '—' : slotScore}
 		</span>
@@ -131,6 +147,7 @@
 			outside={outsideInterval.has(h.time)}
 			coveredOnly={!outsideInterval.has(h.time) && outsideStartRange.has(h.time)}
 			highlighted={isHourHighlighted(h.time)}
+			{dayInfo}
 		/>
 	{/each}
 {/if}
@@ -145,6 +162,17 @@
 	}
 	tr.slot.disabled {
 		opacity: 0.55;
+	}
+	tr.slot.night :global(td) {
+		background-image: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.4));
+	}
+	tr.slot.dim :global(td) {
+		background-image: linear-gradient(rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0.18));
+	}
+	.sun-marker {
+		margin-left: 0.3rem;
+		font-size: 0.92em;
+		vertical-align: -1px;
 	}
 	.row-score {
 		display: inline-block;

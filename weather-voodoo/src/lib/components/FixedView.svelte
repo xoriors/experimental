@@ -11,11 +11,13 @@
 	import { mergeSinglePoint } from '$lib/fusion';
 	import { resolveMode } from '$lib/trip-score';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
-	import type { FusedHour, ForecastHour, LabeledPoint, MarineHour, DayKey } from '$lib/types';
+	import type { DaylightDay, FusedHour, ForecastHour, LabeledPoint, MarineHour, DayKey } from '$lib/types';
 
 	let loading = $state(false);
 	let error = $state<string | null>(null);
-	let result = $state<{ hours: FusedHour[]; timezone: string } | null>(null);
+	let result = $state<{ hours: FusedHour[]; timezone: string; daylight: DaylightDay[] } | null>(
+		null
+	);
 	let owmAlerts = $state<{ event: string; description: string }[]>([]);
 	let aqi = $state<number | null>(null);
 
@@ -34,7 +36,14 @@
 		Promise.all([
 			fetch(`/api/forecast?lat=${at.lat.toFixed(4)}&lon=${at.lon.toFixed(4)}&days=3`, {
 				signal: ac.signal
-			}).then((r) => r.json() as Promise<{ timezone: string; hours: ForecastHour[] }>),
+			}).then(
+				(r) =>
+					r.json() as Promise<{
+						timezone: string;
+						hours: ForecastHour[];
+						daylight?: DaylightDay[];
+					}>
+			),
 			fetch(`/api/marine?lat=${at.lat.toFixed(4)}&lon=${at.lon.toFixed(4)}&days=3`, {
 				signal: ac.signal
 			})
@@ -44,7 +53,8 @@
 			.then(([f, m]) => {
 				result = {
 					timezone: f.timezone,
-					hours: mergeSinglePoint(f.hours, m.hours.length ? m.hours : null)
+					hours: mergeSinglePoint(f.hours, m.hours.length ? m.hours : null),
+					daylight: f.daylight ?? []
 				};
 			})
 			.catch((e: unknown) => {
@@ -188,6 +198,7 @@
 				expanded={view.expanded}
 				onToggleSlot={toggleExpanded}
 				{todayIso}
+				daylight={result.daylight}
 			/>
 		{/if}
 	</div>

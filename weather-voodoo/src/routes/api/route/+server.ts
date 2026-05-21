@@ -27,7 +27,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		const results = await Promise.all(
 			points.map(async (p) => {
 				const [f, m] = await Promise.all([fetchForecast(p.lat, p.lon, days), fetchMarine(p.lat, p.lon, days)]);
-				return { forecast: f.hours, marine: m?.hours ?? null, timezone: f.timezone };
+				return { forecast: f.hours, marine: m?.hours ?? null, timezone: f.timezone, daylight: f.daylight };
 			})
 		);
 		const hours = fuseRoute(results);
@@ -35,7 +35,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			{
 				timezone: results[0]?.timezone ?? 'UTC',
 				samplePoints: points,
-				hours
+				hours,
+				daylight: results[0]?.daylight ?? []
 			},
 			{ headers: { 'cache-control': 'public, s-maxage=600, stale-while-revalidate=3600' } }
 		);

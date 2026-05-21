@@ -99,6 +99,23 @@ export function findBestWindows(
 	return windows.sort((a, b) => b.score - a.score || b.avgScore - a.avgScore);
 }
 
+export function pickTopNonOverlapping(windows: TripWindow[], n: number): TripWindow[] {
+	const picked: TripWindow[] = [];
+	for (const w of windows) {
+		const wStart = Date.parse(w.startTime + ':00Z');
+		const wEnd = wStart + w.durationH * 3600_000;
+		const overlaps = picked.some((p) => {
+			const pStart = Date.parse(p.startTime + ':00Z');
+			const pEnd = pStart + p.durationH * 3600_000;
+			return wStart < pEnd && pStart < wEnd;
+		});
+		if (overlaps) continue;
+		picked.push(w);
+		if (picked.length >= n) break;
+	}
+	return picked;
+}
+
 export function windowScoreAt(
 	allHours: FusedHour[],
 	startIdx: number,

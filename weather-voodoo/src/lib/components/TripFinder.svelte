@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { view, effectiveConfig } from '$lib/state.svelte';
-	import { findBestWindows, resolveMode, scoreToCss, type TripWindow } from '$lib/trip-score';
+	import {
+		findBestWindows,
+		pickTopNonOverlapping,
+		resolveMode,
+		scoreToCss,
+		type TripWindow
+	} from '$lib/trip-score';
 	import { filterHoursForDay, localIsoDate, localNowIso } from '$lib/time';
 	import { minToHHMM, hhmmToMin } from '$lib/url-state';
 	import { round1 } from '$lib/units';
@@ -25,7 +31,9 @@
 	const allWindows = $derived(
 		findBestWindows(hours, view.tripDurationH, activeMode, topBounds[0], topBounds[1], nowIso)
 	);
-	const bestOverall = $derived<TripWindow | undefined>(allWindows[0]);
+	const topOverall = $derived(pickTopNonOverlapping(allWindows, 2));
+	const bestOverall = $derived<TripWindow | undefined>(topOverall[0]);
+	const secondOverall = $derived<TripWindow | undefined>(topOverall[1]);
 
 	const todayIso = $derived(localIsoDate());
 
@@ -43,7 +51,8 @@
 			const mode = resolveMode(eff.mode, dayHours);
 			const [minHr, maxHr] = toHourBounds(eff.min, eff.max);
 			const wins = findBestWindows(dayHours, eff.durationH, mode, minHr, maxHr, nowIso);
-			return { key, label, window: wins[0] ?? null, eff, mode };
+			const top = pickTopNonOverlapping(wins, 2);
+			return { key, label, windows: top, eff, mode };
 		})
 	);
 
@@ -222,36 +231,59 @@
 			</div>
 		</button>
 
+		{#if secondOverall}
+			{@const secondCss = scoreToCss(secondOverall.score)}
+			<button
+				type="button"
+				class="best-pick best-pick--alt"
+				style="border-left: 4px solid {secondCss.border}; background: {secondCss.bg};"
+				onclick={() => selectWindow(secondOverall, view.tripDurationH)}
+				title="Click to highlight in the table below"
+			>
+				<div>
+					<strong>2nd best:</strong> {formatDay(secondOverall.startTime)} {secondOverall.startTime.slice(11, 16)} —
+					<strong>{secondOverall.score}/100</strong>
+					<span class="muted">(avg {secondOverall.avgScore})</span>
+				</div>
+				<div class="muted" style="margin-top: 0.2rem;">
+					{view.tripDurationH}h window: {formatRange(secondOverall)} · {summariseConditions(secondOverall.hours)}
+				</div>
+			</button>
+		{/if}
+
 		<div style="margin-top: 0.6rem;">
-			<div class="muted" style="font-size: 0.85em; margin-bottom: 0.3rem;">Best window each day:</div>
+			<div class="muted" style="font-size: 0.85em; margin-bottom: 0.3rem;">Best windows each day:</div>
 			<ul class="window-list">
 				{#each bestPerDay as entry}
-					{@const w = entry.window}
-					{@const css = w ? scoreToCss(w.score) : { bg: 'transparent', border: 'transparent' }}
 					<li>
-						{#if w}
-							<button
-								type="button"
-								class="window-row"
-								style="border-left: 3px solid {css.border}; background: {css.bg};"
-								onclick={() => selectWindow(w, entry.eff.durationH)}
-								title="Click to highlight in the table below"
-							>
-								<span class="day-label">{entry.label}</span>
-								<span class="time-cell">{w.startTime.slice(11, 16)}</span>
-								<span class="range-cell">{formatRange(w)}</span>
-								<strong class="score-cell">{w.score}</strong>
-								<span class="muted avg-cell">avg {w.avgScore}</span>
-								<span class="muted conditions">{summariseConditions(w.hours)}</span>
-								{#if entry.eff.durationH !== view.tripDurationH || entry.eff.mode !== view.tripMode}
-									<span class="muted override-badge">{entry.eff.durationH}h · {entry.mode}</span>
-								{/if}
-							</button>
-						{:else}
+						{#if entry.windows.length === 0}
 							<div class="window-row" style="opacity: 0.6;">
 								<span class="day-label">{entry.label}</span>
 								<span class="muted">no window fits</span>
 							</div>
+						{:else}
+							{#each entry.windows as w, idx}
+								{@const css = scoreToCss(w.score)}
+								<button
+									type="button"
+									class="window-row"
+									class:window-row--alt={idx > 0}
+									style="border-left: 3px solid {css.border}; background: {css.bg};"
+									onclick={() => selectWindow(w, entry.eff.durationH)}
+									title="Click to highlight in the table below"
+								>
+									<span class="day-label">{idx === 0 ? entry.label : ''}</span>
+									{#if idx > 0}<span class="muted alt-prefix">2nd</span>{/if}
+									<span class="time-cell">{w.startTime.slice(11, 16)}</span>
+									<span class="range-cell">{formatRange(w)}</span>
+									<strong class="score-cell">{w.score}</strong>
+									<span class="muted avg-cell">avg {w.avgScore}</span>
+									<span class="muted conditions">{summariseConditions(w.hours)}</span>
+									{#if idx === 0 && (entry.eff.durationH !== view.tripDurationH || entry.eff.mode !== view.tripMode)}
+										<span class="muted override-badge">{entry.eff.durationH}h · {entry.mode}</span>
+									{/if}
+								</button>
+							{/each}
 						{/if}
 					</li>
 				{/each}
@@ -309,6 +341,20 @@
 		color: var(--fg);
 		cursor: pointer;
 		font: inherit;
+	}
+	.best-pick--alt {
+		margin-top: 0.4rem;
+		padding: 0.45rem 0.75rem;
+		font-size: 0.92em;
+		opacity: 0.92;
+	}
+	.window-row--alt {
+		margin-top: -0.1rem;
+		opacity: 0.92;
+	}
+	.alt-prefix {
+		font-size: 0.78em;
+		margin-right: 0.25rem;
 	}
 	.best-pick:hover {
 		filter: brightness(1.2);

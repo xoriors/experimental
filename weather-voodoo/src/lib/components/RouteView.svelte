@@ -30,13 +30,9 @@
 	);
 
 	const polyline = $derived(
-		result?.polyline ??
-			(view.from && view.to
-				? [
-						{ lat: view.from.lat, lon: view.from.lon },
-						{ lat: view.to.lat, lon: view.to.lon }
-					]
-				: undefined)
+		// While the route is being computed, don't draw a line — a straight-line
+		// placeholder is misleading because the actual path may be very different.
+		loading ? undefined : (result?.polyline ?? undefined)
 	);
 
 	$effect(() => {
@@ -145,7 +141,12 @@
 		{#if view.to}<span>To: {view.to.label ?? `${view.to.lat.toFixed(3)}, ${view.to.lon.toFixed(3)}`}</span>{/if}
 		{#if !view.from && !view.to}<span>Tap the map to drop a pin — first tap is From, second is To.</span>{/if}
 	</div>
-	{#if result?.route.kind === 'ferry'}
+	{#if loading && view.from && view.to}
+		<div class="muted route-meta route-loading">
+			<span class="spinner" aria-hidden="true"></span>
+			Computing best sea route &amp; fetching forecasts… first request in a region can take up to 15 s.
+		</div>
+	{:else if result?.route.kind === 'ferry'}
 		<div class="muted route-meta">
 			⛴️ Ferry route via OpenStreetMap: <strong>{result.route.lengthKm.toFixed(0)} km</strong>
 			<span title="number of distinct ferry ways considered">({result.route.wayCount} ways in the area)</span>
@@ -162,8 +163,14 @@
 	{/if}
 </div>
 
-<div class="card" style="padding: 0;">
+<div class="card map-card" class:loading-overlay={loading} style="padding: 0;">
 	<MapView {markers} {polyline} onPick={onMapPick} />
+	{#if loading && view.from && view.to}
+		<div class="map-loading" aria-live="polite">
+			<span class="spinner" aria-hidden="true"></span>
+			Computing route…
+		</div>
+	{/if}
 </div>
 
 {#if view.from && view.to}
@@ -209,5 +216,44 @@
 	.route-meta strong {
 		color: var(--fg);
 		font-variant-numeric: tabular-nums;
+	}
+	.route-loading {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+	}
+	.spinner {
+		display: inline-block;
+		width: 14px;
+		height: 14px;
+		border: 2px solid currentColor;
+		border-top-color: transparent;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+		flex-shrink: 0;
+	}
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+	.map-card {
+		position: relative;
+	}
+	.map-loading {
+		position: absolute;
+		top: 0.6rem;
+		left: 50%;
+		transform: translateX(-50%);
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.4rem 0.8rem;
+		background: rgba(15, 23, 42, 0.85);
+		color: var(--fg);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		font-size: 0.85em;
+		z-index: 1;
+		pointer-events: none;
+		backdrop-filter: blur(4px);
 	}
 </style>

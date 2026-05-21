@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	type RouteMeta =
 		| { kind: 'ferry'; lengthKm: number; wayCount: number; originSnapKm: number; destinationSnapKm: number }
 		| { kind: 'sea'; lengthKm: number; greatCircleKm: number; detourRatio: number }
-		| { kind: 'straight' };
+		| { kind: 'straight'; ferryFallback?: string; ferryDetail?: string };
 
 	let routePolyline: LatLng[] = [from, to];
 	let routeMeta: RouteMeta = { kind: 'straight' };
@@ -38,14 +38,14 @@ export const GET: RequestHandler = async ({ url }) => {
 		// OpenStreetMap, which is dense enough for short coastal hops where
 		// the Eurostat marnet is too coarse.
 		const ferry = await computeFerryRoute(from, to);
-		if (ferry) {
-			routePolyline = ferry.polyline;
+		if (ferry.ok) {
+			routePolyline = ferry.result.polyline;
 			routeMeta = {
 				kind: 'ferry',
-				lengthKm: ferry.lengthKm,
-				wayCount: ferry.wayCount,
-				originSnapKm: ferry.originSnapKm,
-				destinationSnapKm: ferry.destinationSnapKm
+				lengthKm: ferry.result.lengthKm,
+				wayCount: ferry.result.wayCount,
+				originSnapKm: ferry.result.originSnapKm,
+				destinationSnapKm: ferry.result.destinationSnapKm
 			};
 		} else {
 			const sea = computeSeaRoute(from, to);
@@ -56,6 +56,12 @@ export const GET: RequestHandler = async ({ url }) => {
 					lengthKm: sea.lengthKm,
 					greatCircleKm: sea.greatCircleKm,
 					detourRatio: sea.detourRatio
+				};
+			} else {
+				routeMeta = {
+					kind: 'straight',
+					ferryFallback: ferry.reason,
+					ferryDetail: ferry.detail
 				};
 			}
 		}

@@ -10,7 +10,7 @@ const BBOX_PAD_DEG = 0.4;
 /** Reject sea-routing when from→to span exceeds this many degrees. */
 const MAX_SPAN_DEG = 6;
 /** Reject when the snap distance from from or to to the nearest ferry vertex exceeds this. */
-const MAX_SNAP_KM = 25;
+const MAX_SNAP_KM = 50;
 /** TTL for cached Overpass responses (24 h — ferry tags change rarely). */
 const TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -92,42 +92,65 @@ export type FerryRouteResult = {
 	wayCount: number;
 };
 
+export type FerryRouteFailureReason =
+	| 'span-too-wide'
+	| 'overpass-failed'
+	| 'no-ways'
+	| 'snap-too-far'
+	| 'no-path';
+
+export type FerryRouteOutcome =
+	| { ok: true; result: FerryRouteResult }
+	| { ok: false; reason: FerryRouteFailureReason; detail?: string };
+
 /**
- * Try to route from→to along OpenStreetMap-tagged ferry ways.
- * Returns null if the bbox is too wide, the network is too sparse, the
- * snap distance is too large, or no continuous path exists.
+ * Try to route from→to along OpenStreetMap-tagged ferry ways. Returns a
+ * tagged outcome so the caller can distinguish "fall through to the next
+ * strategy" from "something concrete went wrong" and surface it.
  */
-export async function computeFerryRoute(from: LatLng, to: LatLng): Promise<FerryRouteResult | null> {
+export async function computeFerryRoute(
+	from: LatLng,
+	to: LatLng
+): Promise<FerryRouteOutcome> {
 	if (Math.abs(from.lat - to.lat) > MAX_SPAN_DEG || Math.abs(from.lon - to.lon) > MAX_SPAN_DEG) {
-		return null;
+		return { ok: false, reason: 'span-too-wide' };
 	}
 
 	let ways: OverpassWay[];
 	try {
 		ways = await fetchFerryWays(from, to);
 	} catch (e) {
-		console.warn('[osm-ferry] Overpass fetch failed:', e instanceof Error ? e.message : e);
-		return null;
+		const detail = e instanceof Error ? e.message : String(e);
+		console.warn('[osm-ferry] Overpass fetch failed:', detail);
+		return { ok: false, reason: 'overpass-failed', detail };
 	}
 	if (ways.length === 0) {
-		console.warn('[osm-ferry] no ferry ways in bbox');
-		return null;
+		return { ok: false, reason: 'no-ways' };
 	}
 
 	const fromSnap = nearestVertex(ways, from);
 	const toSnap = nearestVertex(ways, to);
-	if (!fromSnap || !toSnap) return null;
-	if (fromSnap.km > MAX_SNAP_KM || toSnap.km > MAX_SNAP_KM) return null;
+	if (!fromSnap || !toSnap) return { ok: false, reason: 'no-ways' };
+	if (fromSnap.km > MAX_SNAP_KM || toSnap.km > MAX_SNAP_KM) {
+		return {
+			ok: false,
+			reason: 'snap-too-far',
+			detail: `from=${fromSnap.km.toFixed(1)}km, to=${toSnap.km.toFixed(1)}km`
+		};
+	}
 
 	const fc = waysToFeatureCollection(ways);
 	let pf: PathFinder<unknown, Record<string, unknown>>;
 	try {
 		pf = new PathFinder(fc);
-	} catch {
-		return null;
+	} catch (e) {
+		const detail = e instanceof Error ? e.message : String(e);
+		return { ok: false, reason: 'no-path', detail };
 	}
 	const path = pf.findPath(pointFeature(fromSnap.vertex), pointFeature(toSnap.vertex));
-	if (!path || !path.path || path.path.length < 2) return null;
+	if (!path || !path.path || path.path.length < 2) {
+		return { ok: false, reason: 'no-path' };
+	}
 
 	// path.path is Position[] = [lon, lat][]
 	const interior: LatLng[] = (path.path as Position[]).map(([lon, lat]) => ({ lat, lon }));
@@ -141,10 +164,13 @@ export async function computeFerryRoute(from: LatLng, to: LatLng): Promise<Ferry
 	}
 
 	return {
-		polyline,
-		lengthKm,
-		originSnapKm: fromSnap.km,
-		destinationSnapKm: toSnap.km,
-		wayCount: ways.length
+		ok: true,
+		result: {
+			polyline,
+			lengthKm,
+			originSnapKm: fromSnap.km,
+			destinationSnapKm: toSnap.km,
+			wayCount: ways.length
+		}
 	};
 }

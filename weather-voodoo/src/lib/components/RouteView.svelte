@@ -16,7 +16,7 @@
 	type RouteMeta =
 		| { kind: 'ferry'; lengthKm: number; wayCount: number; originSnapKm: number; destinationSnapKm: number }
 		| { kind: 'sea'; lengthKm: number; greatCircleKm: number; detourRatio: number }
-		| { kind: 'straight' };
+		| { kind: 'straight'; ferryFallback?: string; ferryDetail?: string };
 	let result = $state<{
 		hours: FusedHour[];
 		timezone: string;
@@ -157,7 +157,7 @@
 		</div>
 	{:else if view.from && view.to && result}
 		<div class="muted route-meta">
-			📐 Straight-line route — no ferry data covered both endpoints. Sample points may cross land.
+			📐 Straight-line route — couldn't snap to a sea-route network.{#if result.route.kind === 'straight' && result.route.ferryFallback} (ferry: {result.route.ferryFallback}{#if result.route.ferryDetail} · {result.route.ferryDetail}{/if}){/if} Sample points may cross land.
 		</div>
 	{/if}
 </div>

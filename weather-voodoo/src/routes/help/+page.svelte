@@ -86,6 +86,17 @@
 		<li><strong>↻ Reset</strong> (or clicking the 🌦️ logo) clears the current selection but <em>keeps</em> your saved places.</li>
 	</ul>
 
+	<h2>Install on your phone</h2>
+	<p>
+		Weather Voodoo is a PWA: you can install it to your home screen and launch it like a
+		native app. It also caches its shell so a flaky cell signal won't kill the page.
+	</p>
+	<ul>
+		<li><strong>iOS Safari</strong> — tap the Share button → <em>Add to Home Screen</em>.</li>
+		<li><strong>Android Chrome</strong> — three-dot menu → <em>Install app</em> (or wait for the install banner).</li>
+		<li><strong>Desktop Chrome / Edge</strong> — click the install icon in the address bar (or three-dot menu → <em>Install Weather Voodoo</em>).</li>
+	</ul>
+
 	<h2>Tips</h2>
 	<ul>
 		<li>"Today" never proposes a window that already started — past hours still appear in the table with their scores, they're just not in the suggestions.</li>

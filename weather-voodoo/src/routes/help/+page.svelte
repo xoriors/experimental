@@ -19,6 +19,9 @@
 </svelte:head>
 
 <article class="help">
+	<p class="back-top">
+		<a href="/">← Back to the app</a>
+	</p>
 	<h1>How Weather Voodoo works</h1>
 	<p class="lede">
 		It picks the best hours of the next 3 days for a specific outdoor or marine trip — by
@@ -127,5 +130,16 @@
 		gap: 0.5rem;
 		flex-wrap: wrap;
 		margin-top: 1.6rem;
+	}
+	.back-top {
+		margin: 0 0 0.6rem;
+		font-size: 0.9em;
+	}
+	.back-top a {
+		color: var(--fg-dim);
+		text-decoration: none;
+	}
+	.back-top a:hover {
+		color: var(--fg);
 	}
 </style>

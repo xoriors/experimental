@@ -87,51 +87,6 @@ It's a PWA — works offline after first load.
 
 ---
 
-## Prompts for Gemini (image + video)
-
-If you want a higher-fidelity hero image or a short demo video to attach to
-posts, here are prompts you can hand to Gemini (or any text-to-image /
-text-to-video model).
-
-### Image prompt (single hero)
-
-> A hero image, 16:9 aspect ratio, for a web app called **Weather Voodoo**.
-> Theme: dark navy (#0b1220) background with a subtle map-grid texture in
-> faint cyan. On the left, a stylised animated weather glyph (sun emerging
-> from a cloud with a few rain drops) in soft pastel colours. To the right,
-> a tilted glassy "card" floating in space showing a small mock forecast
-> table: 5 horizontal rows colour-coded from green (good) → yellow → orange
-> → red, each row showing a time range, temperature, wind, rain, wave
-> height in a clean monospace font. One row is highlighted with a glowing
-> cyan border and a small ★ icon labelled "best window 10:00 → 12:00,
-> score 88". Overlaid title in bold white sans-serif: **"Weather Voodoo"**;
-> subtitle below in a softer grey: **"The best hours of the next 3 days
-> for any outdoor or marine trip."** Bottom-right corner watermark:
-> "weather-voodoo.vercel.app". Modern, minimal, slightly futuristic, no
-> photographic clutter, no stock photo people.
-
-### Video prompt (5–8 seconds)
-
-> A 5–8 second loop, 16:9, dark navy theme matching the hero image. Open
-> on a stylised world map made of faint cyan grid lines; a glowing pin
-> drops on a coastal location with a soft splash of light. Cut to a
-> floating glassy card showing a 3-day hourly forecast table; the rows
-> animate in from bottom one by one, each tinting from green → yellow →
-> orange → red based on conditions. A cyan rectangle slides across the
-> table and snaps onto the highest-scoring 2-hour window, with a small ★
-> burst and the label "best window: 10:00 → 12:00 · 88/100" fading in.
-> Hold the highlighted window for a beat, then a final title card:
-> **"Weather Voodoo — best hours, next 3 days"** with
-> "weather-voodoo.vercel.app" in a softer grey beneath. Smooth, calm,
-> data-app aesthetic — no people, no music suggestions, no logos other
-> than the title.
-
-Tip: if Gemini hesitates on "Weather Voodoo" as a brand name, append:
-*"This is the name of a personal hobby project; render it as plain
-typography, not as a real-world logo."*
-
----
-
 *Regenerate the OG card after any visual change with:*
 `node /tmp/pw-debug/rasterize-og.mjs` *(if the helper is around) or commit
 a fresh `static/og.png` by hand.*

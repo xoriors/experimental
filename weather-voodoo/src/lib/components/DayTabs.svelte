@@ -3,6 +3,23 @@
 
 	let { day, onChange }: { day: DayKey; onChange: (d: DayKey) => void } = $props();
 
+	let bar: HTMLDivElement | undefined = $state.raw();
+
+	$effect(() => {
+		const el = bar;
+		if (!el || typeof document === 'undefined') return;
+		const sync = () => {
+			document.documentElement.style.setProperty('--day-tabs-h', `${el.offsetHeight}px`);
+		};
+		sync();
+		const ro = new ResizeObserver(sync);
+		ro.observe(el);
+		return () => {
+			ro.disconnect();
+			document.documentElement.style.removeProperty('--day-tabs-h');
+		};
+	});
+
 	function dayOfMonth(offset: number): number {
 		const d = new Date();
 		d.setDate(d.getDate() + offset);
@@ -16,7 +33,7 @@
 	]);
 </script>
 
-<div class="day-tabs" role="tablist">
+<div class="day-tabs" role="tablist" bind:this={bar}>
 	{#each items as item}
 		<button
 			class="day-tab"

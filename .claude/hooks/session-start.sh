@@ -1,10 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# Run installs in the background so the session is interactive immediately.
-# 5-minute ceiling to cover plugin clone + pnpm install on cold containers.
-echo '{"async": true, "asyncTimeout": 300000}'
-
 # Only run in Claude Code on the web (ephemeral remote containers).
 # Locally, install once with: npx plugins add vercel/vercel-plugin
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then

@@ -57,6 +57,20 @@ describe('activities', () => {
 		expect(line).toMatch(/Avoid/i);
 	});
 
+	it('land mode skips water-only activities in the summary', () => {
+		const h = hour({ tempC: 28, windKn: 6, waveHsM: 1.5, gustKn: 25, precipMmH: 0.2 });
+		const land = summariseHour(h, 'land');
+		expect(land).not.toMatch(/swimming/i);
+		expect(land).not.toMatch(/kayaking/i);
+		expect(land).not.toMatch(/ferry/i);
+	});
+
+	it('sea mode includes water activities', () => {
+		const h = hour({ tempC: 28, windKn: 6, waveHsM: 1.5, gustKn: 25 });
+		const sea = summariseHour(h, 'sea');
+		expect(sea).toMatch(/swimming|kayaking|ferry/i);
+	});
+
 	it('marine-absent (inland) → kayaking treats waveHs=null as 0', () => {
 		const v = scoreHour(hour({ waveHsM: null, windKn: 5, precipMmH: 0 }));
 		expect(v.kayaking).toBe('good');

@@ -96,11 +96,18 @@ const LABELS: Record<Activity, string> = {
 	sightseeing: 'sightseeing'
 };
 
-export function summariseHour(h: FusedHour): string {
+const ACTIVITIES_BY_MODE: Record<'sea' | 'land', Activity[]> = {
+	sea: ['swimming', 'kayaking', 'ferryOrBoat', 'sunbathing', 'photography', 'sightseeing'],
+	land: ['hiking', 'sightseeing', 'photography', 'sunbathing']
+};
+
+export function summariseHour(h: FusedHour, mode: 'sea' | 'land' = 'sea'): string {
 	const verdicts = scoreHour(h);
+	const relevant = ACTIVITIES_BY_MODE[mode];
 	const good: string[] = [];
 	const avoid: string[] = [];
-	for (const [a, v] of Object.entries(verdicts) as [Activity, Verdict][]) {
+	for (const a of relevant) {
+		const v = verdicts[a];
 		if (v === 'good') good.push(LABELS[a]);
 		else if (v === 'unsafe' || v === 'poor') avoid.push(LABELS[a]);
 	}

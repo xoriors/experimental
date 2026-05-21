@@ -69,7 +69,7 @@
 		swellHsM: slot.hours[0]?.swellHsM ?? null
 	});
 
-	const activitySummary = $derived(summariseHour(summary));
+	const activitySummary = $derived(summariseHour(summary, mode));
 
 	const slotScore = $derived.by(() => {
 		const valid: number[] = [];

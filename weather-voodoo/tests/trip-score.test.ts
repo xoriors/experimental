@@ -132,6 +132,17 @@ describe('findBestWindows', () => {
 		expect(windows[0].startHour).toBe(8);
 	});
 
+	it('skips windows that would start before minStartTime', () => {
+		const hours = [
+			mk('2026-05-21T06:00', { waveHsM: 0.3 }),
+			mk('2026-05-21T07:00', { waveHsM: 0.3 }),
+			mk('2026-05-21T08:00', { waveHsM: 0.3 }),
+			mk('2026-05-21T09:00', { waveHsM: 0.3 })
+		];
+		const windows = findBestWindows(hours, 2, 'sea', 0, 23, '2026-05-21T08:00');
+		expect(windows.map((w) => w.startTime)).toEqual(['2026-05-21T08:00']);
+	});
+
 	it('avgScore tiebreaks equal min scores', () => {
 		const hours = [
 			mk('2026-05-21T08:00', { waveHsM: 0.3, gustKn: 8 }),

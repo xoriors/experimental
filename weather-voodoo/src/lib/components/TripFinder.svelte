@@ -2,7 +2,7 @@
 	import { tick } from 'svelte';
 	import { view, effectiveConfig } from '$lib/state.svelte';
 	import { findBestWindows, resolveMode, scoreToCss, type TripWindow } from '$lib/trip-score';
-	import { filterHoursForDay, localIsoDate } from '$lib/time';
+	import { filterHoursForDay, localIsoDate, localNowIso } from '$lib/time';
 	import { minToHHMM, hhmmToMin } from '$lib/url-state';
 	import { round1 } from '$lib/units';
 	import type { DayKey, FusedHour, TripMode } from '$lib/types';
@@ -21,8 +21,9 @@
 
 	const activeMode = $derived(resolveMode(view.tripMode, hours));
 	const topBounds = $derived(toHourBounds(view.tripMinMin, view.tripMaxMin));
+	const nowIso = $derived(localNowIso());
 	const allWindows = $derived(
-		findBestWindows(hours, view.tripDurationH, activeMode, topBounds[0], topBounds[1])
+		findBestWindows(hours, view.tripDurationH, activeMode, topBounds[0], topBounds[1], nowIso)
 	);
 	const bestOverall = $derived<TripWindow | undefined>(allWindows[0]);
 
@@ -41,7 +42,7 @@
 			const eff = effectiveConfig(key);
 			const mode = resolveMode(eff.mode, dayHours);
 			const [minHr, maxHr] = toHourBounds(eff.min, eff.max);
-			const wins = findBestWindows(dayHours, eff.durationH, mode, minHr, maxHr);
+			const wins = findBestWindows(dayHours, eff.durationH, mode, minHr, maxHr, nowIso);
 			return { key, label, window: wins[0] ?? null, eff, mode };
 		})
 	);

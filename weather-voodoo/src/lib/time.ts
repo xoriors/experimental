@@ -29,6 +29,12 @@ export function localIsoDate(d: Date = new Date()): string {
 	return `${y}-${m}-${day}`;
 }
 
+export function localNowIso(d: Date = new Date()): string {
+	const hh = String(d.getHours()).padStart(2, '0');
+	const mm = String(d.getMinutes()).padStart(2, '0');
+	return `${localIsoDate(d)}T${hh}:${mm}`;
+}
+
 export function isoOfDayOffset(reference: Date, offset: number): string {
 	const d = new Date(reference);
 	d.setDate(d.getDate() + offset);

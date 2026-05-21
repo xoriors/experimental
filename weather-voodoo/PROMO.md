@@ -55,6 +55,16 @@ Shorter:
 
 ---
 
+## Short demo video
+
+Direct link (~1.8 MB MP4, generated with Gemini using the prompt below):
+**https://weather-voodoo.vercel.app/promo.mp4**
+
+Attach it to posts, embed it, or use it as the auto-playing media in
+platforms that support it (Twitter, Discord, Telegram).
+
+---
+
 ## Screenshots
 
 Desktop (Route view, Tomorrow tab):

@@ -6,10 +6,14 @@
 	import { setView, view } from '$lib/state.svelte';
 	import { loadPlaces } from '$lib/client/recentPlaces.svelte';
 	import ShareBar from '$lib/components/ShareBar.svelte';
+	import IntroModal from '$lib/components/IntroModal.svelte';
 
 	let { children } = $props();
 	let initialized = $state(false);
 	let lastSerialized = $state<string>('');
+	let showIntro = $state(false);
+
+	const INTRO_KEY = 'wv.introSeen.v1';
 
 	function paramsFromLocation(): URLSearchParams {
 		const hash = window.location.hash.startsWith('#')
@@ -28,6 +32,22 @@
 		}
 	}
 
+	function openIntro(e?: Event) {
+		e?.preventDefault();
+		showIntro = true;
+	}
+
+	function closeIntro() {
+		showIntro = false;
+		if (browser) {
+			try {
+				localStorage.setItem(INTRO_KEY, '1');
+			} catch {
+				// quota / private mode
+			}
+		}
+	}
+
 	onMount(() => {
 		loadPlaces();
 		const decoded = decodeView(paramsFromLocation());
@@ -40,6 +60,21 @@
 				? `${window.location.pathname}#${lastSerialized}`
 				: window.location.pathname;
 			history.replaceState(history.state, '', target);
+		}
+
+		// First-visit intro: only on the main app page, never on /help, never if there's
+		// a hash with state (likely a shared link).
+		const onMainPage = window.location.pathname === '/';
+		const hasHash = !!window.location.hash.replace(/^#/, '');
+		const alreadySeen = (() => {
+			try {
+				return localStorage.getItem(INTRO_KEY) === '1';
+			} catch {
+				return true;
+			}
+		})();
+		if (onMainPage && !hasHash && !alreadySeen) {
+			showIntro = true;
 		}
 
 		const onHash = () => {
@@ -59,6 +94,7 @@
 
 	$effect(() => {
 		if (!initialized || !browser) return;
+		if (window.location.pathname !== '/') return;
 		const serialized = encodeView(view);
 		if (serialized === lastSerialized) return;
 		lastSerialized = serialized;
@@ -79,10 +115,15 @@
 				title="Reset all selections and go home"
 			>🌦️ Weather Voodoo</a>
 		</h1>
+		<a class="help-link" href="/help" title="What this app does and how to use it">? Help</a>
 		<ShareBar onReset={resetAll} />
 	</header>
 	{@render children?.()}
 </div>
+
+{#if showIntro}
+	<IntroModal onClose={closeIntro} />
+{/if}
 
 <style>
 	header {
@@ -105,5 +146,17 @@
 	}
 	.home-link:hover {
 		opacity: 0.85;
+	}
+	.help-link {
+		color: var(--fg-dim);
+		font-size: 0.9em;
+		text-decoration: none;
+		padding: 0.35rem 0.6rem;
+		border: 1px solid var(--border);
+		border-radius: 6px;
+	}
+	.help-link:hover {
+		color: var(--fg);
+		background: var(--bg-elev, rgba(255, 255, 255, 0.05));
 	}
 </style>

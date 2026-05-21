@@ -45,3 +45,37 @@ export function sampleAlongRoute(from: LatLng, to: LatLng, samples: number): Lat
 	}
 	return out;
 }
+
+function polylineKmLengths(line: LatLng[]): { cumulative: number[]; total: number } {
+	const cumulative: number[] = [0];
+	for (let i = 1; i < line.length; i++) {
+		cumulative.push(cumulative[i - 1] + haversineKm(line[i - 1], line[i]));
+	}
+	return { cumulative, total: cumulative[cumulative.length - 1] ?? 0 };
+}
+
+function interpolate(a: LatLng, b: LatLng, t: number): LatLng {
+	return { lat: a.lat + (b.lat - a.lat) * t, lon: a.lon + (b.lon - a.lon) * t };
+}
+
+export function sampleAlongPolyline(line: LatLng[], samples: number): LatLng[] {
+	if (line.length === 0) return [];
+	if (line.length === 1) return Array(samples).fill(line[0]);
+	if (samples < 2) return [line[0], line[line.length - 1]];
+
+	const { cumulative, total } = polylineKmLengths(line);
+	if (total === 0) return Array(samples).fill(line[0]);
+
+	const out: LatLng[] = [];
+	for (let s = 0; s < samples; s++) {
+		const target = (s / (samples - 1)) * total;
+		// Find the segment containing the target distance
+		let i = 1;
+		while (i < cumulative.length - 1 && cumulative[i] < target) i++;
+		const segStart = cumulative[i - 1];
+		const segLen = cumulative[i] - segStart;
+		const t = segLen === 0 ? 0 : (target - segStart) / segLen;
+		out.push(interpolate(line[i - 1], line[i], t));
+	}
+	return out;
+}

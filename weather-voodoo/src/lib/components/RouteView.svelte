@@ -13,21 +13,27 @@
 
 	let loading = $state(false);
 	let error = $state<string | null>(null);
-	let result = $state<{ hours: FusedHour[]; timezone: string; daylight: DaylightDay[] } | null>(
-		null
-	);
+	type RouteMeta = { kind: 'sea'; lengthKm: number; greatCircleKm: number; detourRatio: number } | { kind: 'straight' };
+	let result = $state<{
+		hours: FusedHour[];
+		timezone: string;
+		daylight: DaylightDay[];
+		polyline: { lat: number; lon: number }[];
+		route: RouteMeta;
+	} | null>(null);
 
 	const markers = $derived(
 		[view.from, view.to].filter((m): m is LabeledPoint => m !== null)
 	);
 
 	const polyline = $derived(
-		view.from && view.to
-			? [
-					{ lat: view.from.lat, lon: view.from.lon },
-					{ lat: view.to.lat, lon: view.to.lon }
-				]
-			: undefined
+		result?.polyline ??
+			(view.from && view.to
+				? [
+						{ lat: view.from.lat, lon: view.from.lon },
+						{ lat: view.to.lat, lon: view.to.lon }
+					]
+				: undefined)
 	);
 
 	$effect(() => {
@@ -50,8 +56,19 @@
 					hours: FusedHour[];
 					timezone: string;
 					daylight?: DaylightDay[];
+					polyline?: { lat: number; lon: number }[];
+					route?: RouteMeta;
 				};
-				result = { hours: data.hours, timezone: data.timezone, daylight: data.daylight ?? [] };
+				result = {
+					hours: data.hours,
+					timezone: data.timezone,
+					daylight: data.daylight ?? [],
+					polyline: data.polyline ?? [
+						{ lat: from.lat, lon: from.lon },
+						{ lat: to.lat, lon: to.lon }
+					],
+					route: data.route ?? { kind: 'straight' }
+				};
 			})
 			.catch((e: unknown) => {
 				if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -125,6 +142,16 @@
 		{#if view.to}<span>To: {view.to.label ?? `${view.to.lat.toFixed(3)}, ${view.to.lon.toFixed(3)}`}</span>{/if}
 		{#if !view.from && !view.to}<span>Tap the map to drop a pin — first tap is From, second is To.</span>{/if}
 	</div>
+	{#if result?.route.kind === 'sea'}
+		<div class="muted route-meta">
+			⚓ Sea route: <strong>{result.route.lengthKm.toFixed(0)} km</strong>
+			<span title="route length / great-circle length">(×{result.route.detourRatio.toFixed(2)} the great-circle line)</span>
+		</div>
+	{:else if view.from && view.to && result}
+		<div class="muted route-meta">
+			📐 Straight-line route — couldn't snap both endpoints to a marine network. Sample points may cross land.
+		</div>
+	{/if}
 </div>
 
 <div class="card" style="padding: 0;">
@@ -165,3 +192,14 @@
 		{/if}
 	</div>
 {/if}
+
+<style>
+	.route-meta {
+		margin-top: 0.4rem;
+		font-size: 0.85em;
+	}
+	.route-meta strong {
+		color: var(--fg);
+		font-variant-numeric: tabular-nums;
+	}
+</style>

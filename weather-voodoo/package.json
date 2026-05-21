@@ -26,6 +26,7 @@
     "vitest": "^2.1.0"
   },
   "dependencies": {
-    "maplibre-gl": "^4.7.0"
+    "maplibre-gl": "^4.7.0",
+    "searoute-ts": "^2.0.0"
   }
 }

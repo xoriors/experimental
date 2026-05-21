@@ -7,6 +7,15 @@ A playground for ideas: imagine freely, experiment boldly, learn from every miss
 stable release.  
 > It's mostly ideal for experimental and learning projects.**
 
+# Projects
+
+- [`weather-voodoo/`](./weather-voodoo/) — SvelteKit webapp for fused hour-by-hour weather forecasts along a route or at a fixed location, with trip-window scoring, activity recommendations, and shareable URLs. [Live](https://weather-voodoo.vercel.app) · [Docs](./weather-voodoo/README.md)
+- [`llm-git-conflict-resolve/`](./llm-git-conflict-resolve/) — Use an LLM to resolve git merge conflicts
+- [`llm-linter/`](./llm-linter/) — LLM-driven code linting
+- [`llm-password-reset/`](./llm-password-reset/) — LLM password-reset experiment
+- [`AI-agents-delegate-actions/`](./AI-agents-delegate-actions/) — Delegating actions across multiple agents
+- [`ansible/`](./ansible/) · [`n8n/`](./n8n/) — infra + automation playgrounds
+
 # Ideas
 
 Feel free to add any of these [experimental projects](https://docs.google.com/spreadsheets/d/17baWfQ2YvJUX5tyLfYUYGlfdY7VBcjDA6Eef8oUAUbo/edit?usp=sharing) or propose new ideas.

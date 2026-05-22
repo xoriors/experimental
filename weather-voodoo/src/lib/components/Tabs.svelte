@@ -5,10 +5,13 @@
 </script>
 
 <div class="tab-bar" role="tablist">
+	<button class="tab" role="tab" aria-selected={tab === 'fixed'} onclick={() => onChange('fixed')}>
+		Fixed location
+	</button>
 	<button class="tab" role="tab" aria-selected={tab === 'route'} onclick={() => onChange('route')}>
 		Route
 	</button>
-	<button class="tab" role="tab" aria-selected={tab === 'fixed'} onclick={() => onChange('fixed')}>
-		Fixed location
+	<button class="tab" role="tab" aria-selected={tab === 'waypoints'} onclick={() => onChange('waypoints')}>
+		Waypoints
 	</button>
 </div>

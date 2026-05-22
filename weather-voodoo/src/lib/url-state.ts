@@ -3,7 +3,7 @@ import type { DayKey, DayOverride, LabeledPoint, Tab, TripMode, ViewState } from
 const DEFAULTS = {
 	tab: 'route' as Tab,
 	day: 'today' as DayKey,
-	tripMode: 'sea' as TripMode,
+	tripMode: 'land' as TripMode,
 	tripDurationH: 2,
 	tripMinMin: 0,
 	tripMaxMin: 1380
@@ -15,6 +15,7 @@ export function defaultState(): ViewState {
 		from: null,
 		to: null,
 		at: null,
+		waypoints: [],
 		day: DEFAULTS.day,
 		expanded: new Set<string>(),
 		tripMode: DEFAULTS.tripMode,
@@ -42,7 +43,7 @@ function urlSafeB64Decode(s: string): string {
 }
 
 function isTab(x: unknown): x is Tab {
-	return x === 'route' || x === 'fixed';
+	return x === 'route' || x === 'fixed' || x === 'waypoints';
 }
 function isDay(x: unknown): x is DayKey {
 	return x === 'today' || x === 'tomorrow' || x === 'd2';
@@ -118,6 +119,11 @@ export function encodeView(v: ViewState): string {
 		p.set('a', pointCoord(v.at));
 		if (v.at.label) p.set('al', v.at.label);
 	}
+	if (v.waypoints.length > 0) {
+		p.set('wp', v.waypoints.map(pointCoord).join('|'));
+		const labels = v.waypoints.map((w) => w.label ?? '').join('|');
+		if (labels.split('|').some((s) => s.length > 0)) p.set('wpl', labels);
+	}
 	if (v.day !== DEFAULTS.day) p.set('d', v.day);
 	if (v.expanded.size > 0) p.set('e', [...v.expanded].sort().join(','));
 	if (v.tripMode !== DEFAULTS.tripMode) p.set('md', v.tripMode);
@@ -141,6 +147,14 @@ function decodeShortKeys(p: URLSearchParams): ViewState {
 	base.from = parsePoint(p.get('f'), p.get('fl'));
 	base.to = parsePoint(p.get('o'), p.get('ol'));
 	base.at = parsePoint(p.get('a'), p.get('al'));
+	const wp = p.get('wp');
+	if (wp) {
+		const labels = (p.get('wpl') ?? '').split('|');
+		base.waypoints = wp
+			.split('|')
+			.map((coord, i) => parsePoint(coord, labels[i] ?? null))
+			.filter((x): x is LabeledPoint => x !== null);
+	}
 	const e = p.get('e');
 	if (e) {
 		base.expanded = new Set(e.split(',').filter((s) => /^\d{2}$/.test(s)));

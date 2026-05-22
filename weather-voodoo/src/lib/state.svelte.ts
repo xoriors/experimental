@@ -5,9 +5,10 @@ const initial: ViewState = {
 	from: null,
 	to: null,
 	at: null,
+	waypoints: [],
 	day: 'today',
 	expanded: new Set<string>(),
-	tripMode: 'sea',
+	tripMode: 'land',
 	tripDurationH: 2,
 	tripMinMin: 0,
 	tripMaxMin: 1380,
@@ -34,6 +35,7 @@ export function setView(next: ViewState): void {
 	view.from = next.from;
 	view.to = next.to;
 	view.at = next.at;
+	view.waypoints = next.waypoints.map((w) => ({ ...w }));
 	view.day = next.day;
 	view.expanded = new Set(next.expanded);
 	view.tripMode = next.tripMode;

@@ -2,7 +2,7 @@ export type LatLng = { lat: number; lon: number };
 
 export type LabeledPoint = LatLng & { label?: string };
 
-export type Tab = 'route' | 'fixed';
+export type Tab = 'route' | 'fixed' | 'waypoints';
 export type DayKey = 'today' | 'tomorrow' | 'd2';
 export type TripMode = 'sea' | 'land';
 
@@ -18,6 +18,7 @@ export type ViewState = {
 	from: LabeledPoint | null;
 	to: LabeledPoint | null;
 	at: LabeledPoint | null;
+	waypoints: LabeledPoint[];
 	day: DayKey;
 	expanded: Set<string>;
 	tripMode: TripMode;

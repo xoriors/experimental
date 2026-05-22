@@ -15,6 +15,7 @@
 		markerColor?: string;
 		polylineColor?: string;
 		draggableMarkers?: boolean;
+		highlightIdx?: number | null;
 		height?: string;
 	};
 
@@ -29,6 +30,7 @@
 		markerColor = '#38bdf8',
 		polylineColor = '#38bdf8',
 		draggableMarkers = false,
+		highlightIdx = null,
 		height = '360px'
 	}: Props = $props();
 
@@ -101,6 +103,7 @@
 		void markerColor;
 		void polylineColor;
 		void draggableMarkers;
+		void highlightIdx;
 		renderMarkersAndLine();
 	});
 
@@ -111,9 +114,18 @@
 
 		for (let i = 0; i < markers.length; i++) {
 			const m = markers[i];
-			const marker = new maplibregl.Marker({ color: markerColor, draggable: draggableMarkers })
+			const isHighlighted = highlightIdx === i;
+			const marker = new maplibregl.Marker({
+				color: isHighlighted ? '#facc15' : markerColor,
+				draggable: draggableMarkers
+			})
 				.setLngLat([m.lon, m.lat])
 				.addTo(map);
+			if (isHighlighted) {
+				const el = marker.getElement();
+				el.classList.add('marker-highlighted');
+				el.style.zIndex = '20';
+			}
 			if (draggableMarkers && onMarkerDrag) {
 				const idx = i;
 				marker.on('dragend', () => {
@@ -158,3 +170,14 @@
 </script>
 
 <div bind:this={el} class="map" style="height: {height}"></div>
+
+<style>
+	:global(.marker-highlighted) {
+		filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.9));
+		transform-origin: center bottom;
+	}
+	:global(.marker-highlighted svg) {
+		transform: scale(1.3);
+		transform-origin: center bottom;
+	}
+</style>

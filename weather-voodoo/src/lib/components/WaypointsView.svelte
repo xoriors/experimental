@@ -120,6 +120,9 @@
 	const activeMode = $derived(eff.mode);
 
 	let selectedIdx: number | null = $state(null);
+	let hoveredIdx: number | null = $state(null);
+	// Marker to visually highlight on the map: selection wins over hover.
+	const mapHighlightIdx = $derived(selectedIdx ?? hoveredIdx);
 
 	function onMapPick(p: { lat: number; lon: number }) {
 		if (!editing) return; // Map only adds points while editing.
@@ -224,10 +227,15 @@
 						type="button"
 						class="wp-chip wp-chip--clickable"
 						class:wp-chip--selected={selectedIdx === i}
+						class:wp-chip--hovered={hoveredIdx === i && selectedIdx !== i}
 						role="listitem"
 						title="Edit point {i + 1}"
 						aria-pressed={selectedIdx === i}
 						onclick={() => onMarkerTap(i)}
+						onmouseenter={() => (hoveredIdx = i)}
+						onmouseleave={() => { if (hoveredIdx === i) hoveredIdx = null; }}
+						onfocus={() => (hoveredIdx = i)}
+						onblur={() => { if (hoveredIdx === i) hoveredIdx = null; }}
 					>
 						<span class="wp-num">{i + 1}</span>
 						<span class="wp-chip-label">Point {i + 1}</span>
@@ -286,6 +294,7 @@
 		draggableMarkers={editing}
 		markerColor={editing ? '#ef4444' : '#38bdf8'}
 		polylineColor={editing ? '#ef4444' : '#38bdf8'}
+		highlightIdx={editing ? mapHighlightIdx : null}
 	/>
 	{#if !editing && loading && view.waypoints.length >= 2}
 		<div class="map-loading" aria-live="polite">
@@ -425,6 +434,10 @@
 		background: rgba(239, 68, 68, 0.18);
 		border-color: #ef4444;
 		box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4) inset;
+	}
+	.wp-chip--hovered {
+		background: rgba(250, 204, 21, 0.15);
+		border-color: #facc15;
 	}
 	.wp-chip-label {
 		font-weight: 600;

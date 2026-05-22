@@ -11,6 +11,8 @@
 		onPick?: (p: LatLng) => void;
 		onMarkerTap?: (index: number) => void;
 		markerTapThresholdPx?: number;
+		markerColor?: string;
+		polylineColor?: string;
 		height?: string;
 	};
 
@@ -21,6 +23,8 @@
 		onPick,
 		onMarkerTap,
 		markerTapThresholdPx = 24,
+		markerColor = '#38bdf8',
+		polylineColor = '#38bdf8',
 		height = '360px'
 	}: Props = $props();
 
@@ -90,6 +94,8 @@
 	$effect(() => {
 		void markers;
 		void polyline;
+		void markerColor;
+		void polylineColor;
 		renderMarkersAndLine();
 	});
 
@@ -99,7 +105,7 @@
 		drawn = [];
 
 		for (const m of markers) {
-			const marker = new maplibregl.Marker({ color: '#38bdf8' })
+			const marker = new maplibregl.Marker({ color: markerColor })
 				.setLngLat([m.lon, m.lat])
 				.addTo(map);
 			drawn.push(marker);
@@ -124,7 +130,7 @@
 				id: 'route-line',
 				type: 'line',
 				source: 'route-src',
-				paint: { 'line-color': '#38bdf8', 'line-width': 3, 'line-opacity': 0.85 }
+				paint: { 'line-color': polylineColor, 'line-width': 3, 'line-opacity': 0.85 }
 			});
 		}
 

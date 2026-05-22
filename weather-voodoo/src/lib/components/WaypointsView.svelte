@@ -175,8 +175,8 @@
 	<div class="wp-header">
 		<div class="muted wp-help">
 			{#if editing}
-				<strong>Tap the map</strong> to drop waypoints in order. While editing we draw a straight preview.
-				Press <strong>✓ Done</strong> to compute the real route and forecast.
+				<strong>Tap the map</strong> to add a waypoint, or <strong>tap an existing red marker</strong> to move it back/forward or delete it.
+				A straight-line preview is drawn through the draft — press <strong>✓ Done</strong> to compute the real route and forecast.
 			{:else}
 				<strong>Track committed.</strong> Press <strong>✎ Change waypoints</strong> to edit.
 			{/if}
@@ -280,6 +280,8 @@
 		{polyline}
 		onPick={onMapPick}
 		onMarkerTap={editing ? onMarkerTap : undefined}
+		markerColor={editing ? '#ef4444' : '#38bdf8'}
+		polylineColor={editing ? '#ef4444' : '#38bdf8'}
 	/>
 	{#if !editing && loading && view.waypoints.length >= 2}
 		<div class="map-loading" aria-live="polite">

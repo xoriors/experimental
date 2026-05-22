@@ -127,12 +127,14 @@
 	<td>{round1(slot.agg.precipMmH)} mm <span class="muted">({slot.agg.pop}%)</span></td>
 	<td>{round1(slot.agg.cloudPct)}%</td>
 	<td>{round1(slot.agg.visKm)} km</td>
-	<td>
-		{#if coastal && slot.agg.waveHsM != null}{round1(slot.agg.waveHsM)} m{:else}—{/if}
-	</td>
+	{#if mode === 'sea'}
+		<td>
+			{#if coastal && slot.agg.waveHsM != null}{round1(slot.agg.waveHsM)} m{:else}—{/if}
+		</td>
+	{/if}
 </tr>
 <tr class="detail">
-	<td colspan="7">
+	<td colspan={mode === 'sea' ? 7 : 6}>
 		<div class="activity-line">{activitySummary}</div>
 		{#if coastal}
 			<MarineBlock hour={summary} />
@@ -148,6 +150,7 @@
 			coveredOnly={!outsideInterval.has(h.time) && outsideStartRange.has(h.time)}
 			highlighted={isHourHighlighted(h.time)}
 			{dayInfo}
+			{mode}
 		/>
 	{/each}
 {/if}

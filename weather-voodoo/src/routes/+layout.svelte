@@ -105,7 +105,7 @@
 	});
 </script>
 
-<div class="container">
+<div class="container" class:mode-sea={view.tripMode === 'sea'} class:mode-land={view.tripMode === 'land'}>
 	<header>
 		<h1>
 			<a

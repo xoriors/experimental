@@ -10,7 +10,7 @@ function freshState(): ViewState {
 		at: null,
 		day: 'today',
 		expanded: new Set<string>(),
-		tripMode: 'auto',
+		tripMode: 'sea',
 		tripDurationH: 2,
 		tripMinMin: 0,
 		tripMaxMin: 1380,
@@ -36,7 +36,7 @@ describe('url-state key=value round-trip', () => {
 		const r = roundTrip(v);
 		expect(r.tab).toBe('route');
 		expect(r.day).toBe('today');
-		expect(r.tripMode).toBe('auto');
+		expect(r.tripMode).toBe('sea');
 		expect(r.tripDurationH).toBe(2);
 		expect(r.tripMinMin).toBe(0);
 		expect(r.tripMaxMin).toBe(1380);

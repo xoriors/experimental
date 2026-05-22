@@ -174,28 +174,9 @@ describe('detectMode and resolveMode', () => {
 		expect(detectMode(hours)).toBe('land');
 	});
 
-	it('resolveMode passes explicit sea through when marine data exists', () => {
-		const hours = [mk('t', { waveHsM: 0.5 }), mk('t', { waveHsM: 0.4 })];
-		expect(resolveMode('sea', hours)).toBe('sea');
-	});
-
-	it('resolveMode falls back to land when sea is selected but no marine data', () => {
-		const hours = [
-			mk('t', { waveHsM: null }),
-			mk('t', { waveHsM: null }),
-			mk('t', { waveHsM: null })
-		];
-		expect(resolveMode('sea', hours)).toBe('land');
-	});
-
-	it('resolveMode passes land through always', () => {
-		const seaHours = [mk('t', { waveHsM: 0.5 }), mk('t', { waveHsM: 0.5 })];
-		expect(resolveMode('land', seaHours)).toBe('land');
-	});
-
-	it('resolveMode auto-detects when mode=auto', () => {
-		const hours = [mk('t', { waveHsM: 0.5 }), mk('t', { waveHsM: 0.5 })];
-		expect(resolveMode('auto', hours)).toBe('sea');
+	it('resolveMode is a pass-through for explicit sea/land', () => {
+		expect(resolveMode('sea')).toBe('sea');
+		expect(resolveMode('land')).toBe('land');
 	});
 });
 

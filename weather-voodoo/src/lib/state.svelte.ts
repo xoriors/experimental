@@ -7,7 +7,7 @@ const initial: ViewState = {
 	at: null,
 	day: 'today',
 	expanded: new Set<string>(),
-	tripMode: 'auto',
+	tripMode: 'sea',
 	tripDurationH: 2,
 	tripMinMin: 0,
 	tripMaxMin: 1380,

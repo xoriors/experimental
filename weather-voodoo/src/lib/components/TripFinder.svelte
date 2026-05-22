@@ -4,7 +4,6 @@
 	import {
 		findBestWindows,
 		pickTopNonOverlapping,
-		resolveMode,
 		scoreToCss,
 		type TripWindow
 	} from '$lib/trip-score';
@@ -25,7 +24,7 @@
 		return [Math.ceil(minMin / 60), Math.floor(maxMin / 60)];
 	}
 
-	const activeMode = $derived(resolveMode(view.tripMode, hours));
+	const activeMode = $derived(view.tripMode);
 	const topBounds = $derived(toHourBounds(view.tripMinMin, view.tripMaxMin));
 	const nowIso = $derived(localNowIso());
 	const allWindows = $derived(
@@ -48,7 +47,7 @@
 		DAYS.map(({ key, label }) => {
 			const dayHours = filterHoursForDay(hours, key, todayIso);
 			const eff = effectiveConfig(key);
-			const mode = resolveMode(eff.mode, dayHours);
+			const mode = eff.mode;
 			const [minHr, maxHr] = toHourBounds(eff.min, eff.max);
 			const wins = findBestWindows(dayHours, eff.durationH, mode, minHr, maxHr, nowIso);
 			const top = pickTopNonOverlapping(wins, 2);
@@ -58,9 +57,6 @@
 
 	const DURATIONS = [1, 2, 3, 4, 6, 8, 12];
 
-	function onModeChange(e: Event) {
-		view.tripMode = (e.target as HTMLSelectElement).value as TripMode;
-	}
 	function onDurationChange(e: Event) {
 		view.tripDurationH = Number((e.target as HTMLSelectElement).value);
 	}
@@ -197,14 +193,6 @@
 				{#each DURATIONS as d}
 					<option value={d}>{d} h</option>
 				{/each}
-			</select>
-		</label>
-		<label>
-			<span class="muted">Mode</span>
-			<select onchange={onModeChange} value={view.tripMode}>
-				<option value="auto">Auto ({activeMode})</option>
-				<option value="sea">Sea</option>
-				<option value="land">Land</option>
 			</select>
 		</label>
 		<div class="legend" title="Score 0 (worst) → 100 (best)">

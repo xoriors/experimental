@@ -12,6 +12,7 @@
 		coveredOnly?: boolean;
 		highlighted?: boolean;
 		dayInfo?: DaylightDay;
+		mode?: 'sea' | 'land';
 	};
 
 	let {
@@ -20,7 +21,8 @@
 		outside = false,
 		coveredOnly = false,
 		highlighted = false,
-		dayInfo
+		dayInfo,
+		mode = 'sea'
 	}: Props = $props();
 	const timeLabel = $derived(hour.time.slice(11, 16));
 	const phase = $derived(sunPhase(hour.time, dayInfo));
@@ -62,9 +64,11 @@
 	<td>{round1(hour.precipMmH)} mm <span class="muted">({hour.pop}%)</span></td>
 	<td>{round1(hour.cloudPct)}%</td>
 	<td>{round1(hour.visKm)} km</td>
-	<td>
-		{#if hour.waveHsM != null}{round1(hour.waveHsM)} m{:else}—{/if}
-	</td>
+	{#if mode === 'sea'}
+		<td>
+			{#if hour.waveHsM != null}{round1(hour.waveHsM)} m{:else}—{/if}
+		</td>
+	{/if}
 </tr>
 
 <style>

@@ -267,7 +267,6 @@
 	<label>
 		<span class="muted">mode</span>
 		<select value={override.mode ?? topMode} onchange={onModeChange}>
-			<option value="auto">Auto ({mode})</option>
 			<option value="sea">Sea</option>
 			<option value="land">Land</option>
 		</select>
@@ -307,13 +306,15 @@
 				<span class="badge-poor">2–5 moderate</span>
 				<span class="badge-unsafe">&gt; 5 heavy</span>
 			</div>
-			<div class="ref-row">
-				<span class="ref-label">Wave Hₛ</span>
-				<span class="badge-good">&lt; 0.5 m calm</span>
-				<span class="badge-ok">0.5–1 slight</span>
-				<span class="badge-poor">1–2 moderate</span>
-				<span class="badge-unsafe">&gt; 2 rough</span>
-			</div>
+			{#if mode === 'sea'}
+				<div class="ref-row">
+					<span class="ref-label">Wave Hₛ</span>
+					<span class="badge-good">&lt; 0.5 m calm</span>
+					<span class="badge-ok">0.5–1 slight</span>
+					<span class="badge-poor">1–2 moderate</span>
+					<span class="badge-unsafe">&gt; 2 rough</span>
+				</div>
+			{/if}
 		</div>
 	</details>
 	{#snippet theadRow()}
@@ -324,7 +325,9 @@
 			<th><button type="button" class="th-info" title={colTips.rain.text} onclick={() => showTip('rain')}>Rain / Pₚ</button></th>
 			<th><button type="button" class="th-info" title={colTips.cloud.text} onclick={() => showTip('cloud')}>Cloud</button></th>
 			<th><button type="button" class="th-info" title={colTips.vis.text} onclick={() => showTip('vis')}>Vis</button></th>
-			<th><button type="button" class="th-info" title={colTips.wave.text} onclick={() => showTip('wave')}>Wave</button></th>
+			{#if mode === 'sea'}
+				<th><button type="button" class="th-info" title={colTips.wave.text} onclick={() => showTip('wave')}>Wave</button></th>
+			{/if}
 		</tr>
 	{/snippet}
 	<div class="thead-mirror" bind:this={mirrorEl} aria-hidden="true">

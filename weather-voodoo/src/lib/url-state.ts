@@ -3,7 +3,7 @@ import type { DayKey, DayOverride, LabeledPoint, Tab, TripMode, ViewState } from
 const DEFAULTS = {
 	tab: 'route' as Tab,
 	day: 'today' as DayKey,
-	tripMode: 'auto' as TripMode,
+	tripMode: 'sea' as TripMode,
 	tripDurationH: 2,
 	tripMinMin: 0,
 	tripMaxMin: 1380
@@ -48,7 +48,14 @@ function isDay(x: unknown): x is DayKey {
 	return x === 'today' || x === 'tomorrow' || x === 'd2';
 }
 function isMode(x: unknown): x is TripMode {
-	return x === 'auto' || x === 'sea' || x === 'land';
+	return x === 'sea' || x === 'land';
+}
+function coerceMode(x: unknown, fallback: TripMode): TripMode {
+	// Treat the legacy 'auto' value from shared URLs as 'sea' (its previous
+	// most common resolved value in this app).
+	if (x === 'sea' || x === 'land') return x;
+	if (x === 'auto') return 'sea';
+	return fallback;
 }
 
 function clampMin(n: unknown, lo: number, hi: number, fallback: number): number {
@@ -139,7 +146,7 @@ function decodeShortKeys(p: URLSearchParams): ViewState {
 		base.expanded = new Set(e.split(',').filter((s) => /^\d{2}$/.test(s)));
 	}
 	const md = p.get('md');
-	if (isMode(md)) base.tripMode = md;
+	if (md !== null) base.tripMode = coerceMode(md, base.tripMode);
 	if (p.has('dh')) base.tripDurationH = clampMin(p.get('dh'), 1, 12, base.tripDurationH);
 	if (p.has('mn')) base.tripMinMin = clampHalfHour(p.get('mn'), base.tripMinMin);
 	if (p.has('mx')) base.tripMaxMin = clampHalfHour(p.get('mx'), base.tripMaxMin);
@@ -188,7 +195,7 @@ function decodeLegacyBlob(b64: string): ViewState | null {
 			at: tupleToPoint(obj.a),
 			day: isDay(obj.d) ? obj.d : base.day,
 			expanded,
-			tripMode: isMode(obj.md) ? obj.md : base.tripMode,
+			tripMode: coerceMode(obj.md, base.tripMode),
 			tripDurationH: clampMin(obj.dh, 1, 12, base.tripDurationH),
 			tripMinMin: clampHalfHour(obj.mn, base.tripMinMin),
 			tripMaxMin: clampHalfHour(obj.mx, base.tripMaxMin),

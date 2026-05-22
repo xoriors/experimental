@@ -4,7 +4,7 @@ export type LabeledPoint = LatLng & { label?: string };
 
 export type Tab = 'route' | 'fixed';
 export type DayKey = 'today' | 'tomorrow' | 'd2';
-export type TripMode = 'auto' | 'sea' | 'land';
+export type TripMode = 'sea' | 'land';
 
 export type DayOverride = {
 	min: number | null;

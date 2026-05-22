@@ -143,13 +143,15 @@ export function hasMarineData(hours: FusedHour[]): boolean {
 	return marineHours.length / hours.length >= 0.1;
 }
 
-export function resolveMode(mode: TripMode, hours: FusedHour[]): ResolvedMode {
-	if (mode === 'sea') {
-		if (!hasMarineData(hours)) return 'land';
-		return 'sea';
-	}
-	if (mode === 'land') return 'land';
-	return detectMode(hours);
+/**
+ * Pass-through now that auto mode is gone — the user explicitly picks
+ * sea or land. Kept as a function so call sites don't have to import the
+ * ResolvedMode alias separately, and so we can re-introduce per-day
+ * fallbacks (e.g. land when no marine data exists) later without
+ * touching all the call sites.
+ */
+export function resolveMode(mode: TripMode): ResolvedMode {
+	return mode;
 }
 
 export function scoreToCss(score: number): { bg: string; border: string } {

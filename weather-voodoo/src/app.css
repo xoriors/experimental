@@ -5,12 +5,26 @@
 	--fg: #e5edff;
 	--fg-dim: #9bb0d3;
 	--accent: #38bdf8;
+	--mode-accent: #38bdf8;
 	--good: #4ade80;
 	--ok: #facc15;
 	--poor: #fb923c;
 	--unsafe: #ef4444;
 	--border: #1e2a44;
 	font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.container.mode-sea {
+	--mode-accent: #38bdf8;
+	border-top: 4px solid #38bdf8;
+}
+.container.mode-land {
+	--mode-accent: #4ade80;
+	border-top: 4px solid #4ade80;
+}
+.container.mode-sea header,
+.container.mode-land header {
+	padding-top: 0.4rem;
 }
 
 * {

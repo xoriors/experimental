@@ -6,7 +6,7 @@
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
-	import { resolveMode } from '$lib/trip-score';
+	import ModeToggle from './ModeToggle.svelte';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
 	import { addRecent } from '$lib/client/recentPlaces.svelte';
 	import type { DaylightDay, FusedHour, LabeledPoint, DayKey } from '$lib/types';
@@ -45,8 +45,9 @@
 		const ac = new AbortController();
 		loading = true;
 		error = null;
+		const landParam = view.tripMode === 'land' ? '&land=1' : '';
 		fetch(
-			`/api/route?from=${from.lat.toFixed(4)},${from.lon.toFixed(4)}&to=${to.lat.toFixed(4)},${to.lon.toFixed(4)}&samples=3&days=3`,
+			`/api/route?from=${from.lat.toFixed(4)},${from.lon.toFixed(4)}&to=${to.lat.toFixed(4)},${to.lon.toFixed(4)}&samples=3&days=3${landParam}`,
 			{ signal: ac.signal }
 		)
 			.then(async (r) => {
@@ -84,7 +85,7 @@
 	const dayHours = $derived(
 		result ? filterHoursForDay(result.hours, view.day, todayIso) : []
 	);
-	const activeMode = $derived(result ? resolveMode(eff.mode, dayHours) : 'sea');
+	const activeMode = $derived(eff.mode);
 
 	let lastFocused: 'from' | 'to' | null = $state(null);
 
@@ -118,6 +119,8 @@
 		view.day = d;
 	}
 </script>
+
+<ModeToggle />
 
 <div class="card">
 	<div class="row">

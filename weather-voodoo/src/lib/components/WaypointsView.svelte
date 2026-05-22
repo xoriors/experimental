@@ -123,13 +123,29 @@
 
 	function onMapPick(p: { lat: number; lon: number }) {
 		if (!editing) return; // Map only adds points while editing.
+		if (selectedIdx !== null && draft[selectedIdx]) {
+			// A point is selected — move it to the tapped location instead of
+			// dropping a new one.
+			const next = [...draft];
+			next[selectedIdx] = { ...next[selectedIdx], lat: p.lat, lon: p.lon };
+			draft = next;
+			return;
+		}
 		draft = [...draft, { lat: p.lat, lon: p.lon, label: `Point ${draft.length + 1}` }];
-		selectedIdx = null;
 	}
 	function onMarkerTap(idx: number) {
 		if (!editing) return;
 		// Re-tapping the same marker closes the popup.
 		selectedIdx = selectedIdx === idx ? null : idx;
+	}
+	function onMarkerDrag(idx: number, p: { lat: number; lon: number }) {
+		if (!editing) return;
+		const next = [...draft];
+		if (!next[idx]) return;
+		next[idx] = { ...next[idx], lat: p.lat, lon: p.lon };
+		draft = next;
+		// Hide the action popup once the user starts repositioning.
+		if (selectedIdx === idx) selectedIdx = null;
 	}
 	function closeSelection() {
 		selectedIdx = null;
@@ -175,7 +191,7 @@
 	<div class="wp-header">
 		<div class="muted wp-help">
 			{#if editing}
-				<strong>Tap the map</strong> to add a waypoint, or <strong>tap an existing red marker</strong> to move it back/forward or delete it.
+				<strong>Tap the map</strong> to add a waypoint, <strong>drag a red marker</strong> to move it (long-press on mobile), or <strong>tap a red marker</strong> for reorder / delete actions.
 				A straight-line preview is drawn through the draft — press <strong>✓ Done</strong> to compute the real route and forecast.
 			{:else}
 				<strong>Track committed.</strong> Press <strong>✎ Change waypoints</strong> to edit.
@@ -280,6 +296,8 @@
 		{polyline}
 		onPick={onMapPick}
 		onMarkerTap={editing ? onMarkerTap : undefined}
+		onMarkerDrag={editing ? onMarkerDrag : undefined}
+		draggableMarkers={editing}
 		markerColor={editing ? '#ef4444' : '#38bdf8'}
 		polylineColor={editing ? '#ef4444' : '#38bdf8'}
 	/>
@@ -293,6 +311,9 @@
 		<div class="wp-popup" role="dialog" aria-label="Edit waypoint">
 			<div class="wp-popup-title">
 				Point <span class="wp-num">{selectedIdx + 1}</span>
+			</div>
+			<div class="wp-popup-hint">
+				👉 Tap anywhere on the map to <strong>move this point</strong> there, or drag the red marker. Use the actions below to reorder or delete.
 			</div>
 			<div class="wp-popup-actions">
 				<button
@@ -531,6 +552,19 @@
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
+	}
+	.wp-popup-hint {
+		font-size: 0.85em;
+		color: var(--fg-dim);
+		line-height: 1.35;
+		margin: -0.2rem 0 0.6rem;
+		padding: 0.45rem 0.55rem;
+		background: rgba(56, 189, 248, 0.12);
+		border: 1px solid rgba(56, 189, 248, 0.35);
+		border-radius: 8px;
+	}
+	.wp-popup-hint strong {
+		color: var(--fg);
 	}
 	.wp-popup-title .wp-num {
 		min-width: 1.6rem;

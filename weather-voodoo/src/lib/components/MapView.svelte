@@ -10,9 +10,11 @@
 		interactive?: boolean;
 		onPick?: (p: LatLng) => void;
 		onMarkerTap?: (index: number) => void;
+		onMarkerDrag?: (index: number, p: LatLng) => void;
 		markerTapThresholdPx?: number;
 		markerColor?: string;
 		polylineColor?: string;
+		draggableMarkers?: boolean;
 		height?: string;
 	};
 
@@ -22,9 +24,11 @@
 		interactive = true,
 		onPick,
 		onMarkerTap,
+		onMarkerDrag,
 		markerTapThresholdPx = 24,
 		markerColor = '#38bdf8',
 		polylineColor = '#38bdf8',
+		draggableMarkers = false,
 		height = '360px'
 	}: Props = $props();
 
@@ -96,6 +100,7 @@
 		void polyline;
 		void markerColor;
 		void polylineColor;
+		void draggableMarkers;
 		renderMarkersAndLine();
 	});
 
@@ -104,10 +109,18 @@
 		drawn.forEach((m) => m.remove());
 		drawn = [];
 
-		for (const m of markers) {
-			const marker = new maplibregl.Marker({ color: markerColor })
+		for (let i = 0; i < markers.length; i++) {
+			const m = markers[i];
+			const marker = new maplibregl.Marker({ color: markerColor, draggable: draggableMarkers })
 				.setLngLat([m.lon, m.lat])
 				.addTo(map);
+			if (draggableMarkers && onMarkerDrag) {
+				const idx = i;
+				marker.on('dragend', () => {
+					const ll = marker.getLngLat();
+					onMarkerDrag(idx, { lat: ll.lat, lon: ll.lng });
+				});
+			}
 			drawn.push(marker);
 		}
 

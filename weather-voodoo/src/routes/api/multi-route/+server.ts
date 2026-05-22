@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { fetchForecast, fetchMarine } from '$lib/server/openmeteo';
 import { computeSeaRoute } from '$lib/server/sea-routing';
 import { computeFerryRoute } from '$lib/server/osm-ferry';
+import { computeLandTrailRoute } from '$lib/server/osm-land';
 import { fuseRoute } from '$lib/fusion';
 import { sampleAlongPolyline, sampleAlongRoute } from '$lib/geo';
 import type { LatLng } from '$lib/types';
@@ -21,11 +22,16 @@ function parsePoints(raw: string | null): LatLng[] | null {
 	return out;
 }
 
-type LegKind = 'ferry' | 'sea' | 'straight';
+type LegKind = 'ferry' | 'sea' | 'trail' | 'straight';
 type Leg = { kind: LegKind; polyline: LatLng[]; lengthKm: number };
 
 async function resolveLeg(from: LatLng, to: LatLng, land: boolean): Promise<Leg> {
-	if (!land) {
+	if (land) {
+		const trail = await computeLandTrailRoute(from, to);
+		if (trail.ok) {
+			return { kind: 'trail', polyline: trail.result.polyline, lengthKm: trail.result.lengthKm };
+		}
+	} else {
 		const ferry = await computeFerryRoute(from, to);
 		if (ferry.ok) {
 			return { kind: 'ferry', polyline: ferry.result.polyline, lengthKm: ferry.result.lengthKm };
@@ -35,7 +41,6 @@ async function resolveLeg(from: LatLng, to: LatLng, land: boolean): Promise<Leg>
 			return { kind: 'sea', polyline: sea.polyline, lengthKm: sea.lengthKm };
 		}
 	}
-	// Straight-line fallback (or always for land mode).
 	const segment = [from, to];
 	let lengthKm = 0;
 	for (let i = 1; i < segment.length; i++) {
@@ -75,6 +80,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const totalKm = legs.reduce((acc, l) => acc + l.lengthKm, 0);
 	const ferryLegs = legs.filter((l) => l.kind === 'ferry').length;
 	const seaLegs = legs.filter((l) => l.kind === 'sea').length;
+	const trailLegs = legs.filter((l) => l.kind === 'trail').length;
 	const straightLegs = legs.filter((l) => l.kind === 'straight').length;
 
 	const allStraight = legs.every((l) => l.kind === 'straight');
@@ -105,6 +111,7 @@ export const GET: RequestHandler = async ({ url }) => {
 					legCount: legs.length,
 					ferryLegs,
 					seaLegs,
+					trailLegs,
 					straightLegs,
 					totalKm
 				}

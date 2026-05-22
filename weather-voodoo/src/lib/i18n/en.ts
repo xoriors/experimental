@@ -96,6 +96,7 @@ export type Dict = {
 		legsMany: string;
 		ferryLegs: string;
 		seaLegs: string;
+		trailLegs: string;
 		straightLegs: string;
 		straightPreview: string;
 		editAriaLabel: string;
@@ -114,6 +115,10 @@ export type Dict = {
 		seaPrefix: string;
 		detourTitle: string;
 		greatCircleSuffix: string;
+		trailPrefix: string;
+		trailWaysSuffix: string;
+		trailWaysTitle: string;
+		trailLabel: string;
 		straight: string;
 		straightHint: string;
 		ferryLabel: string;
@@ -344,7 +349,7 @@ export const en: Dict = {
 		title: 'How Weather Voodoo works',
 		lede: 'It picks the best hours of the next 3 days for a specific outdoor or marine trip — by blending wind, gust, rain, wave height and visibility into a single 0–100 score, then surfacing the best contiguous windows that fit your time and duration.',
 		twoTabs: 'The tabs',
-		routeDesc: '<strong>Route</strong> — pick a <em>From</em> and <em>To</em>. The forecast is fused across 3 sample points along the line, taking the <em>worst-case</em> conditions hour-by-hour. Good for ferry/boat trips, drives, kayak crossings.',
+		routeDesc: '<strong>Route</strong> — pick a <em>From</em> and <em>To</em>. The forecast is fused across 3 sample points along the line, taking the <em>worst-case</em> conditions hour-by-hour. In <strong>Sea</strong> mode the route follows OSM ferry ways or the open-ocean network; in <strong>Land</strong> mode it follows OSM hiking and cycling trails.',
 		fixedDesc: '<strong>Fixed location</strong> — one place. Good for a beach day, hike, sunset session.',
 		score: 'The score',
 		scoreDesc: "Each hour is scored 0–100 based on the activity type. The window score is the <em>worst hour</em> in the range (chain-as-strong-as-weakest-link); average score is the tiebreaker.",
@@ -401,6 +406,7 @@ export const en: Dict = {
 		legsMany: '{n} legs',
 		ferryLegs: '{n} ferry',
 		seaLegs: '{n} open-ocean',
+		trailLegs: '{n} trail',
 		straightLegs: '{n} straight',
 		straightPreview: '📐 Straight-line preview while editing — press Done to compute the real route.',
 		editAriaLabel: 'Edit waypoint',
@@ -412,15 +418,19 @@ export const en: Dict = {
 	},
 	route: {
 		computing: 'Computing route…',
-		computingLong: 'Computing best sea route & fetching forecasts… first request in a region can take up to 15 s.',
+		computingLong: 'Computing best route & fetching forecasts… first request in a region can take up to 15 s.',
 		ferryPrefix: '⛴️ Ferry route via OpenStreetMap:',
 		waysSuffix: '({n} ways in the area)',
 		waysTitle: 'number of distinct ferry ways considered',
 		seaPrefix: '⚓ Open-ocean route:',
 		detourTitle: 'route length / great-circle length',
 		greatCircleSuffix: 'the great-circle line',
-		straight: "📐 Straight-line route — couldn't snap to a sea-route network.",
-		straightHint: 'Sample points may cross land.',
+		trailPrefix: '🥾 Trail route via OpenStreetMap:',
+		trailWaysSuffix: '({hike} hiking · {bike} cycling ways nearby)',
+		trailWaysTitle: 'paths, footways, tracks, bridleways and cycleways within the search area',
+		trailLabel: 'trail',
+		straight: "📐 Straight-line route — couldn't snap to a routing network.",
+		straightHint: 'Sample points may cross land or sea.',
 		ferryLabel: 'ferry'
 	},
 	days: {

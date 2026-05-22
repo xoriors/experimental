@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { fetchForecast, fetchMarine } from '$lib/server/openmeteo';
 import { computeSeaRoute } from '$lib/server/sea-routing';
 import { computeFerryRoute } from '$lib/server/osm-ferry';
+import { computeLandTrailRoute } from '$lib/server/osm-land';
 import { fuseRoute } from '$lib/fusion';
 import { sampleAlongPolyline, sampleAlongRoute } from '$lib/geo';
 import type { LatLng } from '$lib/types';
@@ -28,15 +29,45 @@ export const GET: RequestHandler = async ({ url }) => {
 	type RouteMeta =
 		| { kind: 'ferry'; lengthKm: number; wayCount: number; originSnapKm: number; destinationSnapKm: number }
 		| { kind: 'sea'; lengthKm: number; greatCircleKm: number; detourRatio: number }
-		| { kind: 'straight'; ferryFallback?: string; ferryDetail?: string };
+		| {
+				kind: 'trail';
+				lengthKm: number;
+				wayCount: number;
+				hikeWayCount: number;
+				bikeWayCount: number;
+				originSnapKm: number;
+				destinationSnapKm: number;
+		  }
+		| { kind: 'straight'; ferryFallback?: string; ferryDetail?: string; trailFallback?: string; trailDetail?: string };
 
 	let routePolyline: LatLng[] = [from, to];
 	let routeMeta: RouteMeta = { kind: 'straight' };
 
-	if (!land) {
-		// Prefer OSM ferry routing — uses real `route=ferry` tagging from
-		// OpenStreetMap, which is dense enough for short coastal hops where
-		// the Eurostat marnet is too coarse.
+	if (land) {
+		// Land mode → look for hiking + cycling trails via OSM. Falls back to
+		// straight-line if no connected network exists between the endpoints.
+		const trail = await computeLandTrailRoute(from, to);
+		if (trail.ok) {
+			routePolyline = trail.result.polyline;
+			routeMeta = {
+				kind: 'trail',
+				lengthKm: trail.result.lengthKm,
+				wayCount: trail.result.wayCount,
+				hikeWayCount: trail.result.hikeWayCount,
+				bikeWayCount: trail.result.bikeWayCount,
+				originSnapKm: trail.result.originSnapKm,
+				destinationSnapKm: trail.result.destinationSnapKm
+			};
+		} else {
+			routeMeta = {
+				kind: 'straight',
+				trailFallback: trail.reason,
+				trailDetail: trail.detail
+			};
+		}
+	} else {
+		// Sea mode → prefer OSM ferry routing for short coastal hops, then fall
+		// back to the open-ocean searoute network.
 		const ferry = await computeFerryRoute(from, to);
 		if (ferry.ok) {
 			routePolyline = ferry.result.polyline;

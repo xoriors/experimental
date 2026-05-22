@@ -9,10 +9,20 @@
 		polyline?: LatLng[];
 		interactive?: boolean;
 		onPick?: (p: LatLng) => void;
+		onMarkerTap?: (index: number) => void;
+		markerTapThresholdPx?: number;
 		height?: string;
 	};
 
-	let { markers = [], polyline, interactive = true, onPick, height = '360px' }: Props = $props();
+	let {
+		markers = [],
+		polyline,
+		interactive = true,
+		onPick,
+		onMarkerTap,
+		markerTapThresholdPx = 24,
+		height = '360px'
+	}: Props = $props();
 
 	let el: HTMLDivElement | null = null;
 	let map: MlMap | null = null;
@@ -40,9 +50,31 @@
 			zoom: markers.length ? 9 : 4
 		});
 
-		if (interactive && onPick) {
+		if (interactive) {
 			map.on('click', (e) => {
-				onPick({ lat: e.lngLat.lat, lon: e.lngLat.lng });
+				if (!map) return;
+				// If a marker tap handler is registered and the click is close to
+				// an existing marker (in screen-pixel distance), prefer that.
+				if (onMarkerTap && markers.length > 0) {
+					const tapPt = map.project([e.lngLat.lng, e.lngLat.lat]);
+					let bestIdx = -1;
+					let bestDist = Infinity;
+					for (let i = 0; i < markers.length; i++) {
+						const mPt = map.project([markers[i].lon, markers[i].lat]);
+						const dx = mPt.x - tapPt.x;
+						const dy = mPt.y - tapPt.y;
+						const d = Math.hypot(dx, dy);
+						if (d < bestDist) {
+							bestDist = d;
+							bestIdx = i;
+						}
+					}
+					if (bestIdx >= 0 && bestDist <= markerTapThresholdPx) {
+						onMarkerTap(bestIdx);
+						return;
+					}
+				}
+				onPick?.({ lat: e.lngLat.lat, lon: e.lngLat.lng });
 			});
 		}
 

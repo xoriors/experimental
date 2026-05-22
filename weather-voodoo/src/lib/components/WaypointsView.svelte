@@ -36,17 +36,21 @@
 	function startEdit() {
 		draft = view.waypoints.map((w) => ({ ...w }));
 		editing = true;
+		selectedIdx = null;
 	}
 	function cancelEdit() {
 		draft = view.waypoints.map((w) => ({ ...w }));
 		editing = false;
+		selectedIdx = null;
 	}
 	function commitEdit() {
 		view.waypoints = draft.map((w) => ({ ...w }));
 		editing = false;
+		selectedIdx = null;
 	}
 	function clearDraft() {
 		draft = [];
+		selectedIdx = null;
 	}
 
 	const committedMarkers = $derived(view.waypoints);
@@ -115,21 +119,49 @@
 	const dayHours = $derived(result ? filterHoursForDay(result.hours, view.day, todayIso) : []);
 	const activeMode = $derived(eff.mode);
 
+	let selectedIdx: number | null = $state(null);
+
 	function onMapPick(p: { lat: number; lon: number }) {
 		if (!editing) return; // Map only adds points while editing.
 		draft = [...draft, { lat: p.lat, lon: p.lon, label: `Point ${draft.length + 1}` }];
+		selectedIdx = null;
+	}
+	function onMarkerTap(idx: number) {
+		if (!editing) return;
+		// Re-tapping the same marker closes the popup.
+		selectedIdx = selectedIdx === idx ? null : idx;
+	}
+	function closeSelection() {
+		selectedIdx = null;
 	}
 
 	function removeDraft(i: number) {
 		draft = draft.filter((_, idx) => idx !== i);
+		selectedIdx = null;
 	}
 
-	function moveDraft(i: number, dir: -1 | 1) {
+	function moveDraft(i: number, dir: -1 | 1): number | null {
 		const next = [...draft];
 		const j = i + dir;
-		if (j < 0 || j >= next.length) return;
+		if (j < 0 || j >= next.length) return null;
 		[next[i], next[j]] = [next[j], next[i]];
 		draft = next;
+		return j;
+	}
+
+	function actionMoveBack() {
+		if (selectedIdx === null) return;
+		const newIdx = moveDraft(selectedIdx, -1);
+		if (newIdx !== null) selectedIdx = newIdx;
+	}
+	function actionMoveForward() {
+		if (selectedIdx === null) return;
+		const newIdx = moveDraft(selectedIdx, 1);
+		if (newIdx !== null) selectedIdx = newIdx;
+	}
+	function actionDelete() {
+		if (selectedIdx === null) return;
+		removeDraft(selectedIdx);
 	}
 
 	function onDay(d: DayKey) {
@@ -181,7 +213,7 @@
 							aria-label="Move earlier"
 							onclick={() => moveDraft(i, -1)}
 							disabled={i === 0}
-						>↑</button>
+						>←</button>
 						<button
 							type="button"
 							class="wp-btn"
@@ -189,7 +221,7 @@
 							aria-label="Move later"
 							onclick={() => moveDraft(i, 1)}
 							disabled={i === list.length - 1}
-						>↓</button>
+						>→</button>
 						<button
 							type="button"
 							class="wp-btn wp-del"
@@ -243,11 +275,43 @@
 </div>
 
 <div class="card map-card" style="padding: 0;">
-	<MapView {markers} {polyline} onPick={onMapPick} />
+	<MapView
+		{markers}
+		{polyline}
+		onPick={onMapPick}
+		onMarkerTap={editing ? onMarkerTap : undefined}
+	/>
 	{#if !editing && loading && view.waypoints.length >= 2}
 		<div class="map-loading" aria-live="polite">
 			<span class="spinner" aria-hidden="true"></span>
 			Computing route…
+		</div>
+	{/if}
+	{#if editing && selectedIdx !== null && draft[selectedIdx]}
+		<div class="wp-popup" role="dialog" aria-label="Edit waypoint">
+			<div class="wp-popup-title">
+				Point <span class="wp-num">{selectedIdx + 1}</span>
+			</div>
+			<div class="wp-popup-actions">
+				<button
+					type="button"
+					class="wp-popup-btn"
+					onclick={actionMoveBack}
+					disabled={selectedIdx === 0}
+				>← Move back</button>
+				<button
+					type="button"
+					class="wp-popup-btn"
+					onclick={actionMoveForward}
+					disabled={selectedIdx === draft.length - 1}
+				>Move forward →</button>
+				<button
+					type="button"
+					class="wp-popup-btn wp-popup-del"
+					onclick={actionDelete}
+				>× Delete</button>
+				<button type="button" class="wp-popup-btn wp-popup-cancel" onclick={closeSelection}>Cancel</button>
+			</div>
 		</div>
 	{/if}
 </div>
@@ -442,5 +506,82 @@
 		z-index: 1;
 		pointer-events: none;
 		backdrop-filter: blur(4px);
+	}
+	.wp-popup {
+		position: absolute;
+		bottom: 1rem;
+		left: 50%;
+		transform: translateX(-50%);
+		background: rgba(15, 23, 42, 0.95);
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		padding: 0.7rem 0.85rem;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+		z-index: 2;
+		min-width: min(20rem, 92vw);
+		max-width: 92vw;
+		backdrop-filter: blur(6px);
+	}
+	.wp-popup-title {
+		font-size: 0.85em;
+		color: var(--fg-dim);
+		margin-bottom: 0.5rem;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.wp-popup-title .wp-num {
+		min-width: 1.6rem;
+		height: 1.6rem;
+	}
+	.wp-popup-actions {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.45rem;
+	}
+	.wp-popup-btn {
+		min-height: 40px;
+		padding: 0.45rem 0.7rem;
+		background: var(--bg);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		color: var(--fg);
+		font: inherit;
+		cursor: pointer;
+	}
+	.wp-popup-btn:hover:not(:disabled) {
+		background: var(--bg-elev, rgba(255, 255, 255, 0.06));
+	}
+	.wp-popup-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.wp-popup-del {
+		color: var(--unsafe);
+		border-color: rgba(239, 68, 68, 0.4);
+	}
+	.wp-popup-del:hover:not(:disabled) {
+		background: rgba(239, 68, 68, 0.15);
+	}
+	.wp-popup-cancel {
+		color: var(--fg-dim);
+	}
+	@media (max-width: 720px) {
+		.wp-btn {
+			min-width: 36px;
+			min-height: 36px;
+			font-size: 1em;
+		}
+		.wp-num {
+			min-width: 1.7rem;
+			height: 1.7rem;
+		}
+		.wp-chip {
+			padding: 0.3rem 0.45rem;
+			gap: 0.35rem;
+		}
+		.wp-popup-btn {
+			min-height: 44px;
+		}
 	}
 </style>

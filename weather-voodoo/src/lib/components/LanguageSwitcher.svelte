@@ -25,7 +25,7 @@
 		gap: 0.25rem;
 	}
 	.lang select {
-		background: transparent;
+		background: var(--bg);
 		color: var(--fg);
 		border: 1px solid var(--border);
 		border-radius: 6px;
@@ -33,6 +33,10 @@
 		font: inherit;
 		font-size: 0.9em;
 		cursor: pointer;
+	}
+	.lang select option {
+		background: var(--bg-elev);
+		color: var(--fg);
 	}
 	.globe {
 		font-size: 1em;

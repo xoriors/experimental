@@ -131,8 +131,19 @@
 	}
 
 	const aqiLabel: Record<number, string> = { 1: 'Good', 2: 'Fair', 3: 'Moderate', 4: 'Poor', 5: 'Very poor' };
+
+	let fullscreen = $state(false);
+	function toggleFullscreen() {
+		fullscreen = !fullscreen;
+	}
+	function onKey(e: KeyboardEvent) {
+		if (fullscreen && e.key === 'Escape') fullscreen = false;
+	}
 </script>
 
+<svelte:window onkeydown={onKey} />
+
+<div class="map-stage" class:fullscreen>
 <div class="card">
 	<div class="row">
 		<PlaceSearch placeholder="Search a place…" initial={view.at?.label} onSelect={pick} />
@@ -150,8 +161,16 @@
 	</div>
 </div>
 
-<div class="card" style="padding: 0;">
-	<MapView {markers} onPick={onMapPick} />
+<div class="card map-card" style="padding: 0; position: relative;">
+	<MapView {markers} onPick={onMapPick} height={fullscreen ? '100%' : undefined} />
+	<button
+		type="button"
+		class="map-fs-btn"
+		onclick={toggleFullscreen}
+		title={fullscreen ? 'Exit full screen (Esc)' : 'Full screen map'}
+		aria-label={fullscreen ? 'Exit full screen' : 'Full screen map'}
+	>{fullscreen ? '⤡' : '⤢'}</button>
+</div>
 </div>
 
 {#if view.at}

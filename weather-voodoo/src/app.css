@@ -161,6 +161,59 @@ input[type='search'] {
 	border: 1px solid var(--border);
 }
 
+/* Map fullscreen mode used by all views. Wrap the controls card + map card
+   in a .map-stage element and toggle .fullscreen to fill the viewport. */
+.map-stage {
+	display: contents;
+}
+.map-stage.fullscreen {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	background: var(--bg);
+	padding: 0.6rem;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+}
+.map-stage.fullscreen .card.map-card {
+	flex: 1 1 auto;
+	min-height: 0;
+	position: relative;
+}
+.map-stage.fullscreen .card.map-card .map {
+	height: 100% !important;
+	min-height: 280px;
+}
+.map-fs-btn {
+	position: absolute;
+	top: 0.5rem;
+	right: 0.5rem;
+	min-width: 36px;
+	min-height: 36px;
+	padding: 0.25rem 0.5rem;
+	border-radius: 8px;
+	border: 1px solid var(--border);
+	background: rgba(15, 23, 42, 0.85);
+	color: var(--fg);
+	font: inherit;
+	font-size: 1.1em;
+	cursor: pointer;
+	z-index: 3;
+	backdrop-filter: blur(4px);
+}
+.map-fs-btn:hover {
+	background: rgba(15, 23, 42, 0.95);
+	border-color: var(--accent);
+}
+@media (max-width: 720px) {
+	.map-fs-btn {
+		min-width: 44px;
+		min-height: 44px;
+	}
+}
+
 .dim {
 	color: var(--fg-dim);
 }

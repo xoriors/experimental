@@ -200,7 +200,7 @@
 
 <svelte:window onkeydown={onKey} />
 
-<div class="wp-stage" class:fullscreen>
+<div class="map-stage" class:fullscreen>
 <div class="card">
 	<div class="wp-header">
 		<div class="muted wp-help">
@@ -306,6 +306,7 @@
 		markerColor={editing ? '#ef4444' : '#38bdf8'}
 		polylineColor={editing ? '#ef4444' : '#38bdf8'}
 		highlightIdx={editing ? mapHighlightIdx : null}
+		height={fullscreen ? '100%' : undefined}
 	/>
 	{#if !editing && loading && view.waypoints.length >= 2}
 		<div class="map-loading" aria-live="polite">
@@ -388,56 +389,7 @@
 {/if}
 
 <style>
-	.wp-stage {
-		display: contents;
-	}
-	.wp-stage.fullscreen {
-		display: block;
-		position: fixed;
-		inset: 0;
-		z-index: 1000;
-		background: var(--bg);
-		padding: 0.6rem;
-		overflow-y: auto;
-		display: flex;
-		flex-direction: column;
-		gap: 0.6rem;
-	}
-	.wp-stage.fullscreen :global(.card.map-card) {
-		flex: 1 1 auto;
-		min-height: 0;
-	}
-	.wp-stage.fullscreen :global(.map) {
-		height: 100%;
-		min-height: 320px;
-	}
-	.map-fs-btn {
-		position: absolute;
-		top: 0.5rem;
-		right: 0.5rem;
-		min-width: 36px;
-		min-height: 36px;
-		padding: 0.25rem 0.5rem;
-		border-radius: 8px;
-		border: 1px solid var(--border);
-		background: rgba(15, 23, 42, 0.85);
-		color: var(--fg);
-		font: inherit;
-		font-size: 1.1em;
-		cursor: pointer;
-		z-index: 3;
-		backdrop-filter: blur(4px);
-	}
-	.map-fs-btn:hover {
-		background: rgba(15, 23, 42, 0.95);
-		border-color: var(--accent);
-	}
-	@media (max-width: 720px) {
-		.map-fs-btn {
-			min-width: 44px;
-			min-height: 44px;
-		}
-	}
+	/* .map-stage + .map-fs-btn live in app.css */
 	.wp-header {
 		display: flex;
 		gap: 0.6rem;

@@ -89,10 +89,24 @@
 		}
 
 		renderMarkersAndLine();
+
+		// Re-measure when the container itself resizes (e.g. fullscreen toggle,
+		// orientation change). maplibre listens to window resize but not
+		// container size changes.
+		if (el && typeof ResizeObserver !== 'undefined') {
+			resizeObs = new ResizeObserver(() => {
+				if (map) map.resize();
+			});
+			resizeObs.observe(el);
+		}
 	});
+
+	let resizeObs: ResizeObserver | null = null;
 
 	onDestroy(() => {
 		drawn.forEach((m) => m.remove());
+		resizeObs?.disconnect();
+		resizeObs = null;
 		map?.remove();
 		map = null;
 	});

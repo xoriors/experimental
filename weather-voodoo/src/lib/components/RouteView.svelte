@@ -117,8 +117,19 @@
 	function onDay(d: DayKey) {
 		view.day = d;
 	}
+
+	let fullscreen = $state(false);
+	function toggleFullscreen() {
+		fullscreen = !fullscreen;
+	}
+	function onKey(e: KeyboardEvent) {
+		if (fullscreen && e.key === 'Escape') fullscreen = false;
+	}
 </script>
 
+<svelte:window onkeydown={onKey} />
+
+<div class="map-stage" class:fullscreen>
 <div class="card">
 	<div class="row">
 		<PlaceSearch
@@ -164,13 +175,21 @@
 </div>
 
 <div class="card map-card" class:loading-overlay={loading} style="padding: 0;">
-	<MapView {markers} {polyline} onPick={onMapPick} />
+	<MapView {markers} {polyline} onPick={onMapPick} height={fullscreen ? '100%' : undefined} />
 	{#if loading && view.from && view.to}
 		<div class="map-loading" aria-live="polite">
 			<span class="spinner" aria-hidden="true"></span>
 			Computing route…
 		</div>
 	{/if}
+	<button
+		type="button"
+		class="map-fs-btn"
+		onclick={toggleFullscreen}
+		title={fullscreen ? 'Exit full screen (Esc)' : 'Full screen map'}
+		aria-label={fullscreen ? 'Exit full screen' : 'Full screen map'}
+	>{fullscreen ? '⤡' : '⤢'}</button>
+</div>
 </div>
 
 {#if view.from && view.to}

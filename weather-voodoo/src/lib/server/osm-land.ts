@@ -105,7 +105,7 @@ function buildQuery(b: { south: number; west: number; north: number; east: numbe
 async function fetchTrailWays(from: LatLng, to: LatLng): Promise<OverpassWay[]> {
 	const b = bbox(from, to);
 	const key = `osm-land:${roundCoord(b.south, 1)}:${roundCoord(b.west, 1)}:${roundCoord(b.north, 1)}:${roundCoord(b.east, 1)}`;
-	return cached(
+	const ways = await cached(
 		key,
 		async () => {
 			const query = buildQuery(b);
@@ -119,19 +119,28 @@ async function fetchTrailWays(from: LatLng, to: LatLng): Promise<OverpassWay[]> 
 						continue;
 					}
 					const data = (await res.json()) as OverpassResponse;
-					return data.elements.filter(
+					const filtered = data.elements.filter(
 						(e) => e.type === 'way' && Array.isArray(e.geometry) && e.geometry.length >= 2
 					);
+					// An empty list is usually a transient mirror hiccup — try the next
+					// mirror before settling on it (otherwise we'd cache an empty result
+					// for the full TTL).
+					if (filtered.length === 0) {
+						failures.push(`${new URL(mirror).host}: empty result`);
+						continue;
+					}
+					return filtered;
 				} catch (e) {
 					failures.push(
 						`${new URL(mirror).host}: ${e instanceof Error ? e.name + ': ' + e.message : String(e)}`
 					);
 				}
 			}
-			throw new Error('All Overpass mirrors failed — ' + failures.join(' | '));
+			throw new Error('All Overpass mirrors returned empty or failed — ' + failures.join(' | '));
 		},
 		TTL_MS
 	);
+	return ways;
 }
 
 function classifyWay(w: OverpassWay): TrailKind {

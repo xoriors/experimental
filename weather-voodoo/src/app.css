@@ -155,7 +155,7 @@ input[type='search'] {
 
 .map {
 	width: 100%;
-	height: 360px;
+	height: 440px;
 	border-radius: 10px;
 	overflow: hidden;
 	border: 1px solid var(--border);
@@ -412,7 +412,7 @@ tr.detail td {
 	}
 
 	.map {
-		height: 240px;
+		height: 320px;
 	}
 
 	header h1 {

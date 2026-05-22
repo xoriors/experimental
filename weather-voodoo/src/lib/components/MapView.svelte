@@ -31,7 +31,7 @@
 		polylineColor = '#38bdf8',
 		draggableMarkers = false,
 		highlightIdx = null,
-		height = '360px'
+		height = '440px'
 	}: Props = $props();
 
 	let el: HTMLDivElement | null = null;

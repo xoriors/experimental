@@ -291,32 +291,43 @@
 <style>
 	.trip-finder select,
 	.trip-finder input[type='time'] {
-		background: var(--bg);
+		background: var(--bg-elev, rgba(255, 255, 255, 0.05));
 		color: var(--fg);
-		border: 1px solid var(--border);
+		border: 1px solid var(--accent, #38bdf8);
 		border-radius: 6px;
-		padding: 0.4rem 0.5rem;
+		padding: 0.45rem 0.6rem;
 		margin-left: 0.4rem;
 		font: inherit;
+		font-weight: 600;
 		font-variant-numeric: tabular-nums;
+		box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.15) inset;
+	}
+	.trip-finder select:focus,
+	.trip-finder input[type='time']:focus {
+		outline: 2px solid var(--accent, #38bdf8);
+		outline-offset: 1px;
 	}
 	.trip-finder input[type='time']::-webkit-calendar-picker-indicator {
-		filter: invert(0.7);
+		filter: invert(0.8);
 		cursor: pointer;
+		opacity: 0.85;
 	}
 	.now-btn {
-		background: var(--bg);
+		background: var(--bg-elev, rgba(255, 255, 255, 0.05));
 		color: var(--fg);
 		border: 1px solid var(--border);
 		border-radius: 6px;
-		padding: 0.4rem 0.55rem;
+		padding: 0.4rem 0.65rem;
 		margin-left: 0.3rem;
 		font: inherit;
 		font-size: 0.85em;
+		font-weight: 600;
 		cursor: pointer;
 	}
 	.now-btn:hover {
-		background: var(--bg-elevated, rgba(255, 255, 255, 0.05));
+		background: rgba(56, 189, 248, 0.12);
+		border-color: var(--accent, #38bdf8);
+		color: var(--accent, #38bdf8);
 	}
 	.best-pick {
 		display: block;

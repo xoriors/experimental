@@ -25,7 +25,7 @@
 		onPick,
 		onMarkerTap,
 		onMarkerDrag,
-		markerTapThresholdPx = 24,
+		markerTapThresholdPx = 44,
 		markerColor = '#38bdf8',
 		polylineColor = '#38bdf8',
 		draggableMarkers = false,

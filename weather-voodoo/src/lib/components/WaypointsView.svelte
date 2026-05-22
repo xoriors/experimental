@@ -191,8 +191,8 @@
 	<div class="wp-header">
 		<div class="muted wp-help">
 			{#if editing}
-				<strong>Tap the map</strong> to add a waypoint, <strong>drag a red marker</strong> to move it (long-press on mobile), or <strong>tap a red marker</strong> for reorder / delete actions.
-				A straight-line preview is drawn through the draft — press <strong>✓ Done</strong> to compute the real route and forecast.
+				<strong>Tap the map</strong> to add a waypoint. To edit one, <strong>tap its red marker</strong> on the map or <strong>tap its chip in the list below</strong> — reorder, delete and move-to options open in a dialog. You can also drag a red marker directly (long-press on mobile).
+				Straight-line preview shown while editing — press <strong>✓ Done</strong> to compute the real route and forecast.
 			{:else}
 				<strong>Track committed.</strong> Press <strong>✎ Change waypoints</strong> to edit.
 			{/if}
@@ -220,38 +220,24 @@
 		{#if list.length > 0}
 			<div class="wp-chips" role="list">
 				{#each list as wp, i (i + '-' + wp.lat + ',' + wp.lon)}
-					<div class="wp-chip" role="listitem">
+					<button
+						type="button"
+						class="wp-chip wp-chip--clickable"
+						class:wp-chip--selected={selectedIdx === i}
+						role="listitem"
+						title="Edit point {i + 1}"
+						aria-pressed={selectedIdx === i}
+						onclick={() => onMarkerTap(i)}
+					>
 						<span class="wp-num">{i + 1}</span>
-						<button
-							type="button"
-							class="wp-btn"
-							title="Move earlier"
-							aria-label="Move earlier"
-							onclick={() => moveDraft(i, -1)}
-							disabled={i === 0}
-						>←</button>
-						<button
-							type="button"
-							class="wp-btn"
-							title="Move later"
-							aria-label="Move later"
-							onclick={() => moveDraft(i, 1)}
-							disabled={i === list.length - 1}
-						>→</button>
-						<button
-							type="button"
-							class="wp-btn wp-del"
-							title="Remove waypoint"
-							aria-label="Remove waypoint"
-							onclick={() => removeDraft(i)}
-						>×</button>
-					</div>
+						<span class="wp-chip-label">Point {i + 1}</span>
+					</button>
 				{/each}
 			</div>
 			<div class="wp-actions">
 				<button type="button" class="btn-ghost" onclick={clearDraft}>↻ Clear all</button>
 				<span class="muted wp-count">{list.length} point{list.length === 1 ? '' : 's'}</span>
-			</div>
+		</div>
 		{:else}
 			<div class="muted wp-hint">No waypoints yet — tap the map below to start.</div>
 		{/if}
@@ -419,12 +405,29 @@
 	.wp-chip {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.25rem;
-		padding: 0.2rem 0.35rem;
+		gap: 0.4rem;
+		padding: 0.3rem 0.65rem 0.3rem 0.35rem;
 		border: 1px solid var(--border);
 		border-radius: 999px;
 		background: var(--bg);
+		color: var(--fg);
+		font: inherit;
 		font-size: 0.85em;
+	}
+	.wp-chip--clickable {
+		cursor: pointer;
+	}
+	.wp-chip--clickable:hover {
+		background: var(--bg-elev, rgba(255, 255, 255, 0.05));
+		border-color: #ef4444;
+	}
+	.wp-chip--selected {
+		background: rgba(239, 68, 68, 0.18);
+		border-color: #ef4444;
+		box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4) inset;
+	}
+	.wp-chip-label {
+		font-weight: 600;
 	}
 	.wp-chip--compact {
 		padding: 0.2rem 0.55rem 0.2rem 0.35rem;

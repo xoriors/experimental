@@ -207,6 +207,9 @@ function decodeLegacyBlob(b64: string): ViewState | null {
 			from: tupleToPoint(obj.f),
 			to: tupleToPoint(obj.o),
 			at: tupleToPoint(obj.a),
+			waypoints: Array.isArray(obj.wp)
+				? (obj.wp.map(tupleToPoint).filter((x) => x !== null) as LabeledPoint[])
+				: base.waypoints,
 			day: isDay(obj.d) ? obj.d : base.day,
 			expanded,
 			tripMode: coerceMode(obj.md, base.tripMode),

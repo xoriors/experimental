@@ -5,7 +5,6 @@
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
-	import { addRecent } from '$lib/client/recentPlaces.svelte';
 	import type { DaylightDay, FusedHour, LabeledPoint, DayKey } from '$lib/types';
 
 	type RouteMeta = {
@@ -27,15 +26,49 @@
 		route: RouteMeta;
 	} | null>(null);
 
-	const markers = $derived(view.waypoints);
+	// Edit-mode buffer. While `editing === true`, taps on the map mutate
+	// `draft` only — we don't fetch routes or forecasts until the user
+	// presses Done. On Done we commit `draft` into `view.waypoints`, which
+	// triggers the route/forecast fetch.
+	let editing = $state(view.waypoints.length === 0);
+	let draft = $state<LabeledPoint[]>(view.waypoints.map((w) => ({ ...w })));
 
-	const polyline = $derived(loading ? undefined : (result?.polyline ?? undefined));
+	function startEdit() {
+		draft = view.waypoints.map((w) => ({ ...w }));
+		editing = true;
+	}
+	function cancelEdit() {
+		draft = view.waypoints.map((w) => ({ ...w }));
+		editing = false;
+	}
+	function commitEdit() {
+		view.waypoints = draft.map((w) => ({ ...w }));
+		editing = false;
+	}
+	function clearDraft() {
+		draft = [];
+	}
+
+	const committedMarkers = $derived(view.waypoints);
+	const draftMarkers = $derived(draft);
+	const markers = $derived(editing ? draftMarkers : committedMarkers);
+
+	// While editing we draw a straight-line through the draft as a quick
+	// preview; we don't hit the route API.
+	const editPreview = $derived(
+		editing && draft.length >= 2 ? draft.map((p) => ({ lat: p.lat, lon: p.lon })) : undefined
+	);
+	const polyline = $derived(
+		editing ? editPreview : loading ? undefined : (result?.polyline ?? undefined)
+	);
 
 	function ptsParam(pts: LabeledPoint[]): string {
 		return pts.map((p) => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`).join('|');
 	}
 
 	$effect(() => {
+		// Only fetch when the user has committed waypoints (i.e. not editing).
+		if (editing) return;
 		const pts = view.waypoints;
 		if (pts.length < 2) {
 			result = null;
@@ -83,103 +116,124 @@
 	const activeMode = $derived(eff.mode);
 
 	function onMapPick(p: { lat: number; lon: number }) {
-		const label = `Point ${view.waypoints.length + 1}`;
-		const next = [...view.waypoints, { lat: p.lat, lon: p.lon, label }];
-		view.waypoints = next;
-		// Don't pollute Recent Places with map-tap waypoints; only labelled ones.
+		if (!editing) return; // Map only adds points while editing.
+		draft = [...draft, { lat: p.lat, lon: p.lon, label: `Point ${draft.length + 1}` }];
 	}
 
-	function removeWaypoint(i: number) {
-		view.waypoints = view.waypoints.filter((_, idx) => idx !== i);
+	function removeDraft(i: number) {
+		draft = draft.filter((_, idx) => idx !== i);
 	}
 
-	function moveWaypoint(i: number, dir: -1 | 1) {
-		const next = [...view.waypoints];
+	function moveDraft(i: number, dir: -1 | 1) {
+		const next = [...draft];
 		const j = i + dir;
 		if (j < 0 || j >= next.length) return;
 		[next[i], next[j]] = [next[j], next[i]];
-		view.waypoints = next;
-	}
-
-	function clearAll() {
-		view.waypoints = [];
+		draft = next;
 	}
 
 	function onDay(d: DayKey) {
 		view.day = d;
 	}
 
-	// activeMode and dayHours are intentionally read inside the template;
-	// these void-references silence the bundler's unused-import check.
-	void addRecent;
+	void dayHours;
 </script>
 
 <div class="card">
-	<div class="muted" style="font-size: 0.9em;">
-		<strong>Tap the map</strong> to drop waypoints in order — Weather Voodoo will route between them and forecast the trip.
-		{#if view.tripMode === 'sea'}
-			Sea mode tries to follow real ferry routes (OpenStreetMap) where possible.
-		{:else}
-			Land mode connects each pair with a straight line.
-		{/if}
+	<div class="wp-header">
+		<div class="muted wp-help">
+			{#if editing}
+				<strong>Tap the map</strong> to drop waypoints in order. While editing we draw a straight preview.
+				Press <strong>✓ Done</strong> to compute the real route and forecast.
+			{:else}
+				<strong>Track committed.</strong> Press <strong>✎ Change waypoints</strong> to edit.
+			{/if}
+		</div>
+		<div class="wp-cta">
+			{#if editing}
+				{#if view.waypoints.length > 0}
+					<button type="button" class="btn-ghost wp-cancel" onclick={cancelEdit}>Cancel</button>
+				{/if}
+				<button
+					type="button"
+					class="btn wp-done"
+					onclick={commitEdit}
+					disabled={draft.length < 2}
+					title={draft.length < 2 ? 'Add at least 2 waypoints' : 'Compute route & forecasts'}
+				>✓ Done</button>
+			{:else}
+				<button type="button" class="btn-ghost" onclick={startEdit}>✎ Change waypoints</button>
+			{/if}
+		</div>
 	</div>
 
-	{#if view.waypoints.length > 0}
-		<ol class="wp-list">
+	{#if editing}
+		{@const list = draft}
+		{#if list.length > 0}
+			<div class="wp-chips" role="list">
+				{#each list as wp, i (i + '-' + wp.lat + ',' + wp.lon)}
+					<div class="wp-chip" role="listitem">
+						<span class="wp-num">{i + 1}</span>
+						<button
+							type="button"
+							class="wp-btn"
+							title="Move earlier"
+							aria-label="Move earlier"
+							onclick={() => moveDraft(i, -1)}
+							disabled={i === 0}
+						>↑</button>
+						<button
+							type="button"
+							class="wp-btn"
+							title="Move later"
+							aria-label="Move later"
+							onclick={() => moveDraft(i, 1)}
+							disabled={i === list.length - 1}
+						>↓</button>
+						<button
+							type="button"
+							class="wp-btn wp-del"
+							title="Remove waypoint"
+							aria-label="Remove waypoint"
+							onclick={() => removeDraft(i)}
+						>×</button>
+					</div>
+				{/each}
+			</div>
+			<div class="wp-actions">
+				<button type="button" class="btn-ghost" onclick={clearDraft}>↻ Clear all</button>
+				<span class="muted wp-count">{list.length} point{list.length === 1 ? '' : 's'}</span>
+			</div>
+		{:else}
+			<div class="muted wp-hint">No waypoints yet — tap the map below to start.</div>
+		{/if}
+	{:else if view.waypoints.length > 0}
+		<div class="wp-chips" role="list">
 			{#each view.waypoints as wp, i (i + '-' + wp.lat + ',' + wp.lon)}
-				<li class="wp-row">
+				<div class="wp-chip wp-chip--compact" role="listitem">
 					<span class="wp-num">{i + 1}</span>
-					<span class="wp-label">
-						{wp.label ?? `${wp.lat.toFixed(3)}, ${wp.lon.toFixed(3)}`}
-					</span>
-					<button
-						type="button"
-						class="wp-btn"
-						title="Move up"
-						aria-label="Move up"
-						onclick={() => moveWaypoint(i, -1)}
-						disabled={i === 0}
-					>↑</button>
-					<button
-						type="button"
-						class="wp-btn"
-						title="Move down"
-						aria-label="Move down"
-						onclick={() => moveWaypoint(i, 1)}
-						disabled={i === view.waypoints.length - 1}
-					>↓</button>
-					<button
-						type="button"
-						class="wp-btn wp-del"
-						title="Remove waypoint"
-						aria-label="Remove waypoint"
-						onclick={() => removeWaypoint(i)}
-					>×</button>
-				</li>
+					<span class="wp-coord">{wp.lat.toFixed(2)}, {wp.lon.toFixed(2)}</span>
+				</div>
 			{/each}
-		</ol>
-		<div class="wp-actions">
-			<button type="button" class="btn-ghost" onclick={clearAll}>↻ Clear all</button>
-			<span class="muted" style="font-size: 0.85em;">{view.waypoints.length} point{view.waypoints.length === 1 ? '' : 's'}</span>
-		</div>
-	{:else}
-		<div class="muted" style="font-size: 0.85em; margin-top: 0.6rem;">
-			No waypoints yet — tap a spot on the map below to start.
 		</div>
 	{/if}
 
-	{#if loading && view.waypoints.length >= 2}
+	{#if !editing && loading && view.waypoints.length >= 2}
 		<div class="muted route-meta route-loading">
 			<span class="spinner" aria-hidden="true"></span>
 			Computing route &amp; fetching forecasts… first request in a region can take up to 15 s.
 		</div>
-	{:else if result?.route.kind === 'waypoints'}
+	{:else if !editing && result?.route.kind === 'waypoints'}
 		<div class="muted route-meta">
 			🧭 Track: <strong>{result.route.totalKm.toFixed(0)} km</strong>
 			· {result.route.legCount} leg{result.route.legCount === 1 ? '' : 's'}
 			{#if result.route.ferryLegs > 0} · ⛴️ {result.route.ferryLegs} ferry{/if}
 			{#if result.route.seaLegs > 0} · ⚓ {result.route.seaLegs} open-ocean{/if}
 			{#if result.route.straightLegs > 0} · 📐 {result.route.straightLegs} straight{/if}
+		</div>
+	{:else if editing && draft.length >= 2}
+		<div class="muted route-meta">
+			📐 Straight-line preview while editing — press Done to compute the real route.
 		</div>
 	{/if}
 
@@ -190,7 +244,7 @@
 
 <div class="card map-card" style="padding: 0;">
 	<MapView {markers} {polyline} onPick={onMapPick} />
-	{#if loading && view.waypoints.length >= 2}
+	{#if !editing && loading && view.waypoints.length >= 2}
 		<div class="map-loading" aria-live="polite">
 			<span class="spinner" aria-hidden="true"></span>
 			Computing route…
@@ -198,7 +252,7 @@
 	{/if}
 </div>
 
-{#if view.waypoints.length >= 2}
+{#if !editing && view.waypoints.length >= 2}
 	{#if result}
 		<TripFinder hours={result.hours} timezone={result.timezone} />
 	{/if}
@@ -233,52 +287,89 @@
 {/if}
 
 <style>
-	.wp-list {
-		list-style: none;
-		padding: 0;
-		margin: 0.6rem 0 0.3rem;
+	.wp-header {
 		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
+		gap: 0.6rem;
+		align-items: flex-start;
+		justify-content: space-between;
+		flex-wrap: wrap;
 	}
-	.wp-row {
+	.wp-help {
+		flex: 1 1 240px;
+		font-size: 0.88em;
+		line-height: 1.4;
+	}
+	.wp-cta {
 		display: flex;
-		align-items: center;
 		gap: 0.4rem;
-		padding: 0.35rem 0.5rem;
-		border: 1px solid var(--border);
+		flex-wrap: wrap;
+	}
+	.wp-done {
+		background: #4ade80;
+		color: #052e16;
+		border: 1px solid #4ade80;
+		font-weight: 600;
+		padding: 0.45rem 0.85rem;
 		border-radius: 8px;
+		cursor: pointer;
+	}
+	.wp-done:hover:not(:disabled) {
+		filter: brightness(1.1);
+	}
+	.wp-done:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	.wp-cancel {
+		padding: 0.45rem 0.7rem;
+	}
+	.wp-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+		margin: 0.55rem 0 0.3rem;
+	}
+	.wp-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.2rem 0.35rem;
+		border: 1px solid var(--border);
+		border-radius: 999px;
 		background: var(--bg);
+		font-size: 0.85em;
+	}
+	.wp-chip--compact {
+		padding: 0.2rem 0.55rem 0.2rem 0.35rem;
+	}
+	.wp-coord {
+		font-variant-numeric: tabular-nums;
+		color: var(--fg-dim);
+		font-size: 0.92em;
 	}
 	.wp-num {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 1.6rem;
-		height: 1.6rem;
+		min-width: 1.5rem;
+		height: 1.5rem;
 		border-radius: 999px;
 		background: var(--mode-accent, var(--accent));
 		color: #0b1220;
 		font-weight: 700;
 		font-size: 0.85em;
 	}
-	.wp-label {
-		flex: 1 1 auto;
-		font-size: 0.9em;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
 	.wp-btn {
-		min-width: 32px;
-		min-height: 32px;
-		padding: 0.2rem 0.4rem;
+		min-width: 28px;
+		min-height: 28px;
+		padding: 0;
 		background: transparent;
 		border: 1px solid var(--border);
 		border-radius: 6px;
 		color: var(--fg-dim);
 		font: inherit;
 		cursor: pointer;
+		line-height: 1;
 	}
 	.wp-btn:hover:not(:disabled) {
 		color: var(--fg);
@@ -297,6 +388,13 @@
 		gap: 0.6rem;
 		align-items: center;
 		margin-top: 0.4rem;
+	}
+	.wp-count {
+		font-size: 0.85em;
+	}
+	.wp-hint {
+		font-size: 0.85em;
+		margin-top: 0.5rem;
 	}
 	.route-meta {
 		margin-top: 0.6rem;
@@ -344,10 +442,5 @@
 		z-index: 1;
 		pointer-events: none;
 		backdrop-filter: blur(4px);
-	}
-	@media (max-width: 720px) {
-		.wp-label {
-			font-size: 0.85em;
-		}
 	}
 </style>

@@ -3,6 +3,7 @@
 	import { degToCompass, round1 } from '$lib/units';
 	import { scoreToCss } from '$lib/trip-score';
 	import { isDaylight, sunPhase } from '$lib/daylight';
+	import { t } from '$lib/i18n/index.svelte';
 	import WxIcon from './icons/WxIcon.svelte';
 
 	type Props = {
@@ -34,10 +35,10 @@
 	);
 	const chipTitle = $derived(
 		outside
-			? `${score ?? '-'} — outside your trip window; adjust Earliest/Latest to include this hour`
+			? t('hour.outside', { score: score ?? '-' })
 			: coveredOnly
-				? `${score ?? '-'} — during your trip but not a valid start time (score is for this hour's conditions)`
-				: 'Score 0–100 for a trip starting at this hour'
+				? t('hour.covered', { score: score ?? '-' })
+				: t('hour.valid')
 	);
 </script>
 
@@ -51,7 +52,7 @@
 >
 	<td>
 		{timeLabel}
-		{#if phase === 'sunrise-hour'}<span class="sun-marker" title="Sunrise">🌅</span>{:else if phase === 'sunset-hour'}<span class="sun-marker" title="Sunset">🌇</span>{:else if isNight}<span class="sun-marker" title="Night">🌙</span>{/if}
+		{#if phase === 'sunrise-hour'}<span class="sun-marker" title={t('forecast.sunriseShort')}>🌅</span>{:else if phase === 'sunset-hour'}<span class="sun-marker" title={t('forecast.sunsetShort')}>🌇</span>{:else if isNight}<span class="sun-marker" title={t('forecast.night')}>🌙</span>{/if}
 		<span class="hour-score" class:outside-chip={outside} title={chipTitle}>
 			{score == null ? '—' : score}
 		</span>

@@ -1,3 +1,5 @@
+import type { Locale } from './i18n/index.svelte';
+
 export type LatLng = { lat: number; lon: number };
 
 export type LabeledPoint = LatLng & { label?: string };
@@ -27,6 +29,7 @@ export type ViewState = {
 	tripMaxMin: number;
 	intervals: Record<DayKey, DayOverride>;
 	highlight: string | null;
+	locale: Locale;
 };
 
 export type ForecastHour = {

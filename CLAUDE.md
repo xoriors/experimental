@@ -48,6 +48,36 @@ Exploration of using LLMs as static code analyzers. Currently contains planning/
 ### ansible
 Infrastructure automation experiments with Ansible and Docker.
 
+### weather-voodoo
+SvelteKit app showing hour-by-hour fused weather forecasts for routes and fixed locations, with trip-window scoring.
+
+**Tech stack:** SvelteKit (Svelte 5 runes), TypeScript, MapLibre GL, Vitest, Vercel adapter
+
+**Run locally:**
+```bash
+cd weather-voodoo
+pnpm install
+pnpm dev
+```
+
+**Localization (i18n)** — required for any text-facing change:
+
+- Source of truth dictionary: `weather-voodoo/src/lib/i18n/en.ts`. The exported `Dict` type defines the shape every locale must implement.
+- Supported locales: English (`en`), Thai (`th`), Romanian (`ro`). Files: `src/lib/i18n/{en,th,ro}.ts`.
+- Reactive locale state + `t(key, vars?)` helper: `src/lib/i18n/index.svelte.ts`.
+- Locale is part of the URL state (`lng=` param) and is also persisted in localStorage (`wx-voodoo-locale`).
+- Language switcher lives in the layout header: `src/lib/components/LanguageSwitcher.svelte`.
+
+**When adding or changing any user-facing text:**
+
+1. Add (or update) the key in `src/lib/i18n/en.ts` — extend the `Dict` type if it's a new key.
+2. Add the equivalent translation in **every** other locale file (`th.ts`, `ro.ts`) — never leave keys English-only. TypeScript will fail the build if a locale is missing a key.
+3. Use `t('your.key', { vars })` in the component instead of hardcoding strings. Interpolation uses `{name}` placeholders.
+4. Strings inside `.ts` library helpers should be returned as **keys** or **structured data**, not pre-localized strings — let the component call `t()`.
+5. Tooltips (`title=`), `aria-label`, placeholders, toast messages, document title, and error messages are user-facing too — translate them.
+
+If you add a new locale, add it to `LOCALES` and `LOCALE_NAMES` in `src/lib/i18n/index.svelte.ts`, and to the `isLocale` predicate.
+
 ## Development Notes
 
 - The GUARD frontend is a Custom GPT (ChatGPT Agent) - not a traditional website

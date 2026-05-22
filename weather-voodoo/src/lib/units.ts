@@ -33,15 +33,17 @@ export function beaufort(windKn: number): number {
 	return 12;
 }
 
-export function seaStateFromHs(hs: number): string {
-	if (hs < 0.1) return 'Calm';
-	if (hs < 0.5) return 'Smooth';
-	if (hs < 1.25) return 'Slight';
-	if (hs < 2.5) return 'Moderate';
-	if (hs < 4) return 'Rough';
-	if (hs < 6) return 'Very rough';
-	if (hs < 9) return 'High';
-	return 'Very high';
+export type SeaStateKey = 'calm' | 'smooth' | 'slight' | 'moderate' | 'rough' | 'veryRough' | 'high' | 'veryHigh';
+
+export function seaStateKey(hs: number): SeaStateKey {
+	if (hs < 0.1) return 'calm';
+	if (hs < 0.5) return 'smooth';
+	if (hs < 1.25) return 'slight';
+	if (hs < 2.5) return 'moderate';
+	if (hs < 4) return 'rough';
+	if (hs < 6) return 'veryRough';
+	if (hs < 9) return 'high';
+	return 'veryHigh';
 }
 
 export function round1(n: number): number {

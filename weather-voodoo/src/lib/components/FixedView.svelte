@@ -10,6 +10,7 @@
 	import { addRecent } from '$lib/client/recentPlaces.svelte';
 	import { mergeSinglePoint } from '$lib/fusion';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
+	import { t } from '$lib/i18n/index.svelte';
 	import type { DaylightDay, FusedHour, ForecastHour, LabeledPoint, MarineHour, DayKey } from '$lib/types';
 
 	let loading = $state(false);
@@ -58,7 +59,7 @@
 			})
 			.catch((e: unknown) => {
 				if (e instanceof DOMException && e.name === 'AbortError') return;
-				error = e instanceof Error ? e.message : 'Fetch failed';
+				error = e instanceof Error ? e.message : t('forecast.fetchFailed');
 			})
 			.finally(() => {
 				loading = false;
@@ -124,13 +125,15 @@
 			view.at = { lat, lon, label };
 			addRecent({ lat, lon, label });
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Geolocation failed';
+			error = e instanceof Error ? e.message : t('place.geolocationFailed');
 		} finally {
 			geolocating = false;
 		}
 	}
 
-	const aqiLabel: Record<number, string> = { 1: 'Good', 2: 'Fair', 3: 'Moderate', 4: 'Poor', 5: 'Very poor' };
+	function aqiLabel(n: number): string {
+		return t(`forecast.aqi.${n}`);
+	}
 
 	let fullscreen = $state(false);
 	function toggleFullscreen() {
@@ -146,9 +149,9 @@
 <div class="map-stage" class:fullscreen>
 <div class="card">
 	<div class="row">
-		<PlaceSearch placeholder="Search a place…" initial={view.at?.label} onSelect={pick} />
+		<PlaceSearch placeholder={t('place.searchPlaceholder')} initial={view.at?.label} onSelect={pick} />
 		<button class="btn-ghost" onclick={useMyLocation} disabled={geolocating}>
-			{geolocating ? 'Locating…' : '📍 Use my location'}
+			{geolocating ? t('place.locating') : t('place.useMyLocation')}
 		</button>
 	</div>
 	<PlacesChips onPick={pick} />
@@ -156,7 +159,7 @@
 		{#if view.at}
 			<span>{view.at.label ?? `${view.at.lat.toFixed(3)}, ${view.at.lon.toFixed(3)}`}</span>
 		{:else}
-			<span>Pick a place or click on the map.</span>
+			<span>{t('place.pickAPlace')}</span>
 		{/if}
 	</div>
 </div>
@@ -167,24 +170,24 @@
 		type="button"
 		class="map-fs-btn"
 		onclick={toggleFullscreen}
-		title={fullscreen ? 'Exit full screen (Esc)' : 'Full screen map'}
-		aria-label={fullscreen ? 'Exit full screen' : 'Full screen map'}
+		title={fullscreen ? t('map.exitFullscreenEsc') : t('map.fullscreen')}
+		aria-label={fullscreen ? t('map.exitFullscreen') : t('map.fullscreen')}
 	>{fullscreen ? '⤡' : '⤢'}</button>
 </div>
 </div>
 
 {#if view.at}
 	{#if result}
-		<TripFinder hours={result.hours} timezone={result.timezone} defaultMode="land" />
+		<TripFinder hours={result.hours} timezone={result.timezone} />
 	{/if}
 	<DayTabs day={view.day} onChange={onDay} />
 	<div class="card">
-		{#if loading}<p class="muted">Loading forecast…</p>{/if}
-		{#if error}<p style="color: var(--unsafe);">Error: {error}</p>{/if}
+		{#if loading}<p class="muted">{t('forecast.loading')}</p>{/if}
+		{#if error}<p style="color: var(--unsafe);">{t('forecast.errorPrefix')}: {error}</p>{/if}
 
 		{#if owmAlerts.length}
 			<div style="border: 1px solid var(--unsafe); background: rgba(239,68,68,0.08); padding: 0.5rem 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
-				<strong>Alerts:</strong>
+				<strong>{t('forecast.alerts')}</strong>
 				<ul style="margin: 0.3rem 0 0 1rem;">
 					{#each owmAlerts as a}<li>{a.event}</li>{/each}
 				</ul>
@@ -192,12 +195,12 @@
 		{/if}
 
 		{#if aqi != null}
-			<p class="muted" style="margin-top: 0;">Air quality (OpenWeather): {aqi} ({aqiLabel[aqi] ?? 'unknown'})</p>
+			<p class="muted" style="margin-top: 0;">{t('forecast.airQuality')}: {aqi} ({aqiLabel(aqi) || t('forecast.aqi.unknown')})</p>
 		{/if}
 
 		{#if result}
 			<p class="muted" style="margin-top: 0;">
-				Forecast in {result.timezone}. 3h blocks aggregate worst conditions in the period. Click a row to expand hourly.
+				{t('forecast.fixedCaption', { timezone: result.timezone })}
 			</p>
 			<ForecastTable
 				allHours={result.hours}

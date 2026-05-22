@@ -86,34 +86,25 @@ export function scoreHour(h: FusedHour): Record<Activity, Verdict> {
 	return out;
 }
 
-const LABELS: Record<Activity, string> = {
-	swimming: 'swimming',
-	sunbathing: 'sunbathing',
-	hiking: 'hiking',
-	kayaking: 'kayaking',
-	ferryOrBoat: 'ferry/boat trips',
-	photography: 'photography',
-	sightseeing: 'sightseeing'
-};
-
 const ACTIVITIES_BY_MODE: Record<'sea' | 'land', Activity[]> = {
 	sea: ['swimming', 'kayaking', 'ferryOrBoat', 'sunbathing', 'photography', 'sightseeing'],
 	land: ['hiking', 'sightseeing', 'photography', 'sunbathing']
 };
 
-export function summariseHour(h: FusedHour, mode: 'sea' | 'land' = 'sea'): string {
+export type HourSummary = {
+	good: Activity[];
+	avoid: Activity[];
+};
+
+export function summariseHour(h: FusedHour, mode: 'sea' | 'land' = 'sea'): HourSummary {
 	const verdicts = scoreHour(h);
 	const relevant = ACTIVITIES_BY_MODE[mode];
-	const good: string[] = [];
-	const avoid: string[] = [];
+	const good: Activity[] = [];
+	const avoid: Activity[] = [];
 	for (const a of relevant) {
 		const v = verdicts[a];
-		if (v === 'good') good.push(LABELS[a]);
-		else if (v === 'unsafe' || v === 'poor') avoid.push(LABELS[a]);
+		if (v === 'good') good.push(a);
+		else if (v === 'unsafe' || v === 'poor') avoid.push(a);
 	}
-	const parts: string[] = [];
-	if (good.length) parts.push(`Good for ${good.join(', ')}.`);
-	if (avoid.length) parts.push(`Avoid ${avoid.slice(0, 3).join(', ')}.`);
-	if (!parts.length) parts.push('Mixed conditions.');
-	return parts.join(' ');
+	return { good, avoid: avoid.slice(0, 3) };
 }

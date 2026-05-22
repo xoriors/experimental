@@ -1,4 +1,5 @@
 import type { DayKey, DayOverride, LabeledPoint, Tab, TripMode, ViewState } from './types';
+import { isLocale, type Locale } from './i18n/index.svelte';
 
 const DEFAULTS = {
 	tab: 'route' as Tab,
@@ -6,7 +7,8 @@ const DEFAULTS = {
 	tripMode: 'land' as TripMode,
 	tripDurationH: 2,
 	tripMinMin: 0,
-	tripMaxMin: 1380
+	tripMaxMin: 1380,
+	locale: 'en' as Locale
 };
 
 export function defaultState(): ViewState {
@@ -27,7 +29,8 @@ export function defaultState(): ViewState {
 			tomorrow: { min: null, max: null, durationH: null, mode: null },
 			d2: { min: null, max: null, durationH: null, mode: null }
 		},
-		highlight: null
+		highlight: null,
+		locale: DEFAULTS.locale
 	};
 }
 
@@ -135,6 +138,7 @@ export function encodeView(v: ViewState): string {
 		if (enc !== null) p.set('iv_' + key, enc);
 	}
 	if (v.highlight) p.set('hl', v.highlight);
+	if (v.locale !== DEFAULTS.locale) p.set('lng', v.locale);
 	return p.toString();
 }
 
@@ -170,6 +174,8 @@ function decodeShortKeys(p: URLSearchParams): ViewState {
 	}
 	const hl = p.get('hl');
 	if (hl && /^\d{4}-\d{2}-\d{2}T\d{2}:00$/.test(hl)) base.highlight = hl;
+	const lng = p.get('lng');
+	if (isLocale(lng)) base.locale = lng;
 	return base;
 }
 
@@ -221,7 +227,8 @@ function decodeLegacyBlob(b64: string): ViewState | null {
 				tomorrow: decodeIv(intervalsRaw?.tomorrow),
 				d2: decodeIv(intervalsRaw?.d2)
 			},
-			highlight: typeof hl === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:00$/.test(hl) ? hl : null
+			highlight: typeof hl === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:00$/.test(hl) ? hl : null,
+			locale: isLocale(obj.lng) ? obj.lng : base.locale
 		};
 	} catch {
 		return null;

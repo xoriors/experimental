@@ -1,4 +1,5 @@
 import type { DayKey, TripMode, ViewState } from './types';
+import { i18n, setLocale } from './i18n/index.svelte';
 
 const initial: ViewState = {
 	tab: 'route',
@@ -17,7 +18,8 @@ const initial: ViewState = {
 		tomorrow: { min: null, max: null, durationH: null, mode: null },
 		d2: { min: null, max: null, durationH: null, mode: null }
 	},
-	highlight: null
+	highlight: null,
+	locale: 'en'
 };
 
 export const view = $state<ViewState>({
@@ -48,6 +50,8 @@ export function setView(next: ViewState): void {
 		d2: { ...next.intervals.d2 }
 	};
 	view.highlight = next.highlight;
+	view.locale = next.locale;
+	if (i18n.locale !== next.locale) setLocale(next.locale);
 }
 
 export function toggleExpanded(slot: string): void {

@@ -8,6 +8,7 @@
 	import TripFinder from './TripFinder.svelte';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
 	import { addRecent } from '$lib/client/recentPlaces.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import type { DaylightDay, FusedHour, LabeledPoint, DayKey } from '$lib/types';
 
 	let loading = $state(false);
@@ -71,7 +72,7 @@
 			})
 			.catch((e: unknown) => {
 				if (e instanceof DOMException && e.name === 'AbortError') return;
-				error = e instanceof Error ? e.message : 'Fetch failed';
+				error = e instanceof Error ? e.message : t('forecast.fetchFailed');
 			})
 			.finally(() => {
 				loading = false;
@@ -133,13 +134,13 @@
 <div class="card">
 	<div class="row">
 		<PlaceSearch
-			placeholder="From — search or click on map"
+			placeholder={t('place.fromPlaceholder')}
 			initial={view.from?.label}
 			onSelect={pickFrom}
 			onFocus={() => (lastFocused = 'from')}
 		/>
 		<PlaceSearch
-			placeholder="To — search or click on map"
+			placeholder={t('place.toPlaceholder')}
 			initial={view.to?.label}
 			onSelect={pickTo}
 			onFocus={() => (lastFocused = 'to')}
@@ -147,29 +148,29 @@
 	</div>
 	<PlacesChips onPick={pickFromChip} />
 	<div class="muted" style="margin-top: 0.5rem;">
-		{#if view.from}<span>From: {view.from.label ?? `${view.from.lat.toFixed(3)}, ${view.from.lon.toFixed(3)}`}</span>{/if}
+		{#if view.from}<span>{t('place.fromPrefix')}: {view.from.label ?? `${view.from.lat.toFixed(3)}, ${view.from.lon.toFixed(3)}`}</span>{/if}
 		{#if view.from && view.to}<span> · </span>{/if}
-		{#if view.to}<span>To: {view.to.label ?? `${view.to.lat.toFixed(3)}, ${view.to.lon.toFixed(3)}`}</span>{/if}
-		{#if !view.from && !view.to}<span>Tap the map to drop a pin — first tap is From, second is To.</span>{/if}
+		{#if view.to}<span>{t('place.toPrefix')}: {view.to.label ?? `${view.to.lat.toFixed(3)}, ${view.to.lon.toFixed(3)}`}</span>{/if}
+		{#if !view.from && !view.to}<span>{t('place.tapToDropPin')}</span>{/if}
 	</div>
 	{#if loading && view.from && view.to}
 		<div class="muted route-meta route-loading">
 			<span class="spinner" aria-hidden="true"></span>
-			Computing best sea route &amp; fetching forecasts… first request in a region can take up to 15 s.
+			{t('route.computingLong')}
 		</div>
 	{:else if result?.route.kind === 'ferry'}
 		<div class="muted route-meta">
-			⛴️ Ferry route via OpenStreetMap: <strong>{result.route.lengthKm.toFixed(0)} km</strong>
-			<span title="number of distinct ferry ways considered">({result.route.wayCount} ways in the area)</span>
+			{t('route.ferryPrefix')} <strong>{result.route.lengthKm.toFixed(0)} km</strong>
+			<span title={t('route.waysTitle')}>{t('route.waysSuffix', { n: result.route.wayCount })}</span>
 		</div>
 	{:else if result?.route.kind === 'sea'}
 		<div class="muted route-meta">
-			⚓ Open-ocean route: <strong>{result.route.lengthKm.toFixed(0)} km</strong>
-			<span title="route length / great-circle length">(×{result.route.detourRatio.toFixed(2)} the great-circle line)</span>
+			{t('route.seaPrefix')} <strong>{result.route.lengthKm.toFixed(0)} km</strong>
+			<span title={t('route.detourTitle')}>(×{result.route.detourRatio.toFixed(2)} {t('route.greatCircleSuffix')})</span>
 		</div>
 	{:else if view.from && view.to && result}
 		<div class="muted route-meta">
-			📐 Straight-line route — couldn't snap to a sea-route network.{#if result.route.kind === 'straight' && result.route.ferryFallback} (ferry: {result.route.ferryFallback}{#if result.route.ferryDetail} · {result.route.ferryDetail}{/if}){/if} Sample points may cross land.
+			{t('route.straight')}{#if result.route.kind === 'straight' && result.route.ferryFallback} ({t('route.ferryLabel')}: {result.route.ferryFallback}{#if result.route.ferryDetail} · {result.route.ferryDetail}{/if}){/if} {t('route.straightHint')}
 		</div>
 	{/if}
 </div>
@@ -179,15 +180,15 @@
 	{#if loading && view.from && view.to}
 		<div class="map-loading" aria-live="polite">
 			<span class="spinner" aria-hidden="true"></span>
-			Computing route…
+			{t('route.computing')}
 		</div>
 	{/if}
 	<button
 		type="button"
 		class="map-fs-btn"
 		onclick={toggleFullscreen}
-		title={fullscreen ? 'Exit full screen (Esc)' : 'Full screen map'}
-		aria-label={fullscreen ? 'Exit full screen' : 'Full screen map'}
+		title={fullscreen ? t('map.exitFullscreenEsc') : t('map.fullscreen')}
+		aria-label={fullscreen ? t('map.exitFullscreen') : t('map.fullscreen')}
 	>{fullscreen ? '⤡' : '⤢'}</button>
 </div>
 </div>
@@ -198,11 +199,11 @@
 	{/if}
 	<DayTabs day={view.day} onChange={onDay} />
 	<div class="card">
-		{#if loading}<p class="muted">Loading forecast…</p>{/if}
-		{#if error}<p style="color: var(--unsafe);">Error: {error}</p>{/if}
+		{#if loading}<p class="muted">{t('forecast.loading')}</p>{/if}
+		{#if error}<p style="color: var(--unsafe);">{t('forecast.errorPrefix')}: {error}</p>{/if}
 		{#if result}
 			<p class="muted" style="margin-top: 0;">
-				Fused route forecast across 3 sample points. Worst-case wind/wave/rain shown per hour. Times in {result.timezone}.
+				{t('forecast.routeCaption', { timezone: result.timezone })}
 			</p>
 			<ForecastTable
 				allHours={result.hours}

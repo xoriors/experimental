@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { view } from '$lib/state.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import type { TripMode } from '$lib/types';
 
 	function pick(m: TripMode) {
@@ -7,7 +8,7 @@
 	}
 </script>
 
-<div class="mode-toggle" class:mode-sea={view.tripMode === 'sea'} class:mode-land={view.tripMode === 'land'} role="radiogroup" aria-label="Trip mode">
+<div class="mode-toggle" class:mode-sea={view.tripMode === 'sea'} class:mode-land={view.tripMode === 'land'} role="radiogroup" aria-label={t('modeToggle.ariaLabel')}>
 	<button
 		type="button"
 		class="mode-btn mode-btn--land"
@@ -16,8 +17,8 @@
 		onclick={() => pick('land')}
 	>
 		<span class="mode-emoji" aria-hidden="true">🏞️</span>
-		<span class="mode-label">Land</span>
-		<span class="mode-hint">hike · sightsee · drive · photo</span>
+		<span class="mode-label">{t('trip.modeLand')}</span>
+		<span class="mode-hint">{t('modeToggle.landHint')}</span>
 	</button>
 	<button
 		type="button"
@@ -27,8 +28,8 @@
 		onclick={() => pick('sea')}
 	>
 		<span class="mode-emoji" aria-hidden="true">🌊</span>
-		<span class="mode-label">Sea</span>
-		<span class="mode-hint">ferry · kayak · boat · swim</span>
+		<span class="mode-label">{t('trip.modeSea')}</span>
+		<span class="mode-hint">{t('modeToggle.seaHint')}</span>
 	</button>
 </div>
 

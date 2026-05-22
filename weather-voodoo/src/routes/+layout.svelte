@@ -5,8 +5,12 @@
 	import { decodeView, defaultState, encodeView, viewsEqual } from '$lib/url-state';
 	import { setView, view } from '$lib/state.svelte';
 	import { loadPlaces } from '$lib/client/recentPlaces.svelte';
+	import { i18n, isLocale, setLocale, t } from '$lib/i18n/index.svelte';
 	import ShareBar from '$lib/components/ShareBar.svelte';
 	import IntroModal from '$lib/components/IntroModal.svelte';
+	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
+
+	const LOCALE_STORAGE_KEY = 'wx-voodoo-locale';
 
 	let { children } = $props();
 	let initialized = $state(false);
@@ -25,16 +29,13 @@
 
 	function resetAll(e?: Event) {
 		e?.preventDefault();
-		setView(defaultState());
+		const fresh = defaultState();
+		fresh.locale = view.locale;
+		setView(fresh);
 		if (browser) {
 			history.replaceState(history.state, '', window.location.pathname);
 			lastSerialized = '';
 		}
-	}
-
-	function openIntro(e?: Event) {
-		e?.preventDefault();
-		showIntro = true;
 	}
 
 	function closeIntro() {
@@ -50,8 +51,18 @@
 
 	onMount(() => {
 		loadPlaces();
-		const decoded = decodeView(paramsFromLocation());
+		const params = paramsFromLocation();
+		const decoded = decodeView(params);
+		if (!params.has('lng')) {
+			try {
+				const saved = localStorage.getItem(LOCALE_STORAGE_KEY);
+				if (isLocale(saved)) decoded.locale = saved;
+			} catch {
+				// localStorage may be unavailable
+			}
+		}
 		setView(decoded);
+		setLocale(decoded.locale);
 		lastSerialized = encodeView(decoded);
 		initialized = true;
 
@@ -103,6 +114,19 @@
 			: window.location.pathname;
 		history.replaceState(history.state, '', target);
 	});
+
+	$effect(() => {
+		if (!browser) return;
+		const l = view.locale;
+		if (i18n.locale !== l) setLocale(l);
+		try {
+			localStorage.setItem(LOCALE_STORAGE_KEY, l);
+		} catch {
+			// localStorage may be unavailable
+		}
+		document.documentElement.lang = l;
+		document.title = t('appTitle');
+	});
 </script>
 
 <div class="container" class:mode-sea={view.tripMode === 'sea'} class:mode-land={view.tripMode === 'land'}>
@@ -112,10 +136,11 @@
 				href="/"
 				class="home-link"
 				onclick={resetAll}
-				title="Reset all selections and go home"
-			>🌦️ Weather Voodoo</a>
+				title={t('resetTitle')}
+			>{t('appTitle')}</a>
 		</h1>
-		<a class="help-link" href="/help" title="What this app does and how to use it">? Help</a>
+		<a class="help-link" href="/help" title={t('help.linkTitle')}>{t('help.link')}</a>
+		<LanguageSwitcher />
 		<ShareBar onReset={resetAll} />
 	</header>
 	{@render children?.()}

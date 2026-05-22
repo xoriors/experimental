@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { t } from '$lib/i18n/index.svelte';
+
 	type Props = {
 		onClose: () => void;
 	};
@@ -26,23 +28,17 @@
 		onclick={(e) => e.stopPropagation()}
 		onkeydown={(e) => e.stopPropagation()}
 	>
-		<h2 id="intro-title">🌦️ Welcome to Weather Voodoo</h2>
-		<p>
-			Find the best hours of the next 3 days for an outdoor or marine trip. Wind, gust, rain,
-			wave and visibility are blended into a 0–100 score and the best contiguous windows are
-			surfaced for you.
-		</p>
+		<h2 id="intro-title">{t('intro.title')}</h2>
+		<p>{t('intro.body')}</p>
 		<ul>
-			<li><strong>Route</strong>: forecast fused along a path (ferry / kayak / drive).</li>
-			<li><strong>Fixed location</strong>: one spot (beach, hike, sunset).</li>
-			<li>Pick a duration, a time window, and Sea / Land mode — the table colours each hour by score.</li>
+			<li>{@html t('intro.route')}</li>
+			<li>{@html t('intro.fixed')}</li>
+			<li>{t('intro.pickDuration')}</li>
 		</ul>
-		<p class="install-hint">
-			📲 Install to your home screen (iOS Share → <em>Add to Home Screen</em>; Android menu → <em>Install app</em>) — it works offline once the shell is cached.
-		</p>
+		<p class="install-hint">{@html t('intro.installHint')}</p>
 		<div class="intro-actions">
-			<a class="btn-ghost" href="/help" onclick={onClose}>Read the full help</a>
-			<button type="button" class="btn" onclick={onClose}>Got it</button>
+			<a class="btn-ghost" href="/help" onclick={onClose}>{t('intro.readHelp')}</a>
+			<button type="button" class="btn" onclick={onClose}>{t('intro.gotIt')}</button>
 		</div>
 	</div>
 </div>

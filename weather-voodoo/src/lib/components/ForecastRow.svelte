@@ -4,6 +4,7 @@
 	import { summariseHour } from '$lib/activities';
 	import { scoreToCss } from '$lib/trip-score';
 	import { view } from '$lib/state.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import WxIcon from './icons/WxIcon.svelte';
 	import HourCell from './HourCell.svelte';
 	import MarineBlock from './MarineBlock.svelte';
@@ -83,6 +84,19 @@
 	});
 
 	const activitySummary = $derived(summariseHour(summary, mode));
+	const summaryText = $derived.by(() => {
+		const parts: string[] = [];
+		if (activitySummary.good.length) {
+			const items = activitySummary.good.map((a) => t(`activities.${a}`)).join(', ');
+			parts.push(t('summary.goodFor', { items }));
+		}
+		if (activitySummary.avoid.length) {
+			const items = activitySummary.avoid.map((a) => t(`activities.${a}`)).join(', ');
+			parts.push(t('summary.avoid', { items }));
+		}
+		if (!parts.length) parts.push(t('summary.mixed'));
+		return parts.join(' ');
+	});
 
 	const slotScore = $derived.by(() => {
 		const valid: number[] = [];
@@ -114,8 +128,8 @@
 	<td>
 		<span class="expand-caret" class:open={expanded}>▶</span>
 		{start}–{end}
-		{#if slotHasSunrise}<span class="sun-marker" title="Sunrise in this block">🌅</span>{:else if slotHasSunset}<span class="sun-marker" title="Sunset in this block">🌇</span>{:else if slotNight}<span class="sun-marker" title="Night">🌙</span>{/if}
-		<span class="row-score" title="Best start within this block (window score 0–100)">
+		{#if slotHasSunrise}<span class="sun-marker" title={t('forecast.sunriseInBlock')}>🌅</span>{:else if slotHasSunset}<span class="sun-marker" title={t('forecast.sunsetInBlock')}>🌇</span>{:else if slotNight}<span class="sun-marker" title={t('forecast.night')}>🌙</span>{/if}
+		<span class="row-score" title={t('table.rowScoreTitle')}>
 			{slotScore == null ? '—' : slotScore}
 		</span>
 	</td>
@@ -135,7 +149,7 @@
 </tr>
 <tr class="detail">
 	<td colspan={mode === 'sea' ? 7 : 6}>
-		<div class="activity-line">{activitySummary}</div>
+		<div class="activity-line">{summaryText}</div>
 		{#if coastal}
 			<MarineBlock hour={summary} />
 		{/if}

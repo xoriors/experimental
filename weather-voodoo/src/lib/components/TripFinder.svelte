@@ -10,15 +10,15 @@
 	import { filterHoursForDay, localIsoDate, localNowIso } from '$lib/time';
 	import { minToHHMM, hhmmToMin } from '$lib/url-state';
 	import { round1 } from '$lib/units';
-	import type { DayKey, FusedHour, TripMode } from '$lib/types';
+	import { t } from '$lib/i18n/index.svelte';
+	import type { DayKey, FusedHour } from '$lib/types';
 
 	type Props = {
 		hours: FusedHour[];
 		timezone: string;
-		defaultMode?: TripMode;
 	};
 
-	let { hours, timezone, defaultMode }: Props = $props();
+	let { hours, timezone }: Props = $props();
 
 	function toHourBounds(minMin: number, maxMin: number): [number, number] {
 		return [Math.ceil(minMin / 60), Math.floor(maxMin / 60)];
@@ -37,11 +37,11 @@
 	const todayIso = $derived(localIsoDate());
 
 	type DayLabel = { key: DayKey; label: string };
-	const DAYS: DayLabel[] = [
-		{ key: 'today', label: 'Today' },
-		{ key: 'tomorrow', label: 'Tomorrow' },
-		{ key: 'd2', label: 'Day after' }
-	];
+	const DAYS = $derived<DayLabel[]>([
+		{ key: 'today', label: t('days.today') },
+		{ key: 'tomorrow', label: t('days.tomorrow') },
+		{ key: 'd2', label: t('days.d2') }
+	]);
 
 	const bestPerDay = $derived(
 		DAYS.map(({ key, label }) => {
@@ -129,9 +129,9 @@
 		const today = new Date().toISOString().slice(0, 10);
 		const tomorrow = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
 		const d2 = new Date(Date.now() + 2 * 86400_000).toISOString().slice(0, 10);
-		if (date === today) return 'Today';
-		if (date === tomorrow) return 'Tomorrow';
-		if (date === d2) return 'Day after';
+		if (date === today) return t('days.today');
+		if (date === tomorrow) return t('days.tomorrow');
+		if (date === d2) return t('days.d2');
 		return date;
 	}
 
@@ -151,11 +151,11 @@
 		const maxRain = Math.max(...slice.map((h) => h.precipMmH));
 		const minVis = Math.min(...slice.map((h) => h.visKm));
 		const parts: string[] = [];
-		parts.push(`wind ${round1(maxWind)}/${round1(maxGust)} kn`);
-		if (maxWave != null) parts.push(`waves ${round1(maxWave)} m`);
-		parts.push(`rain ${round1(maxRain)} mm/h`);
-		parts.push(`vis ${round1(minVis)} km`);
-		return parts.join(' · ');
+		parts.push(t('trip.cond.wind', { x: round1(maxWind), y: round1(maxGust) }));
+		if (maxWave != null) parts.push(t('trip.cond.waves', { x: round1(maxWave) }));
+		parts.push(t('trip.cond.rain', { x: round1(maxRain) }));
+		parts.push(t('trip.cond.vis', { x: round1(minVis) }));
+		return parts.join(t('trip.separator'));
 	}
 
 	const bestCss = $derived(bestOverall ? scoreToCss(bestOverall.score) : { bg: '', border: 'transparent' });
@@ -164,7 +164,7 @@
 <div class="card trip-finder">
 	<div class="row" style="gap: 1rem; align-items: center;">
 		<label>
-			<span class="muted">Earliest start</span>
+			<span class="muted">{t('trip.earliestStart')}</span>
 			<input
 				type="time"
 				step="1800"
@@ -173,10 +173,10 @@
 				value={minToHHMM(view.tripMinMin)}
 				onchange={onMinChange}
 			/>
-			<button type="button" class="now-btn" onclick={setMinNow} title="Set to nearest half-hour to now">Now</button>
+			<button type="button" class="now-btn" onclick={setMinNow} title={t('trip.nowTitle')}>{t('trip.now')}</button>
 		</label>
 		<label>
-			<span class="muted">Latest start</span>
+			<span class="muted">{t('trip.latestStart')}</span>
 			<input
 				type="time"
 				step="1800"
@@ -185,19 +185,19 @@
 				value={minToHHMM(view.tripMaxMin)}
 				onchange={onMaxChange}
 			/>
-			<button type="button" class="now-btn" onclick={setMaxNow} title="Set to nearest half-hour to now">Now</button>
+			<button type="button" class="now-btn" onclick={setMaxNow} title={t('trip.nowTitle')}>{t('trip.now')}</button>
 		</label>
 		<label>
-			<span class="muted">Duration</span>
+			<span class="muted">{t('trip.duration')}</span>
 			<select onchange={onDurationChange} value={view.tripDurationH}>
 				{#each DURATIONS as d}
-					<option value={d}>{d} h</option>
+					<option value={d}>{t('trip.hoursSuffix', { n: d })}</option>
 				{/each}
 			</select>
 		</label>
-		<div class="legend" title="Score 0 (worst) → 100 (best)">
+		<div class="legend" title={t('trip.legendTitle')}>
 			<span class="legend-bar"></span>
-			<span class="muted" style="font-size: 0.75em;">0 → 100</span>
+			<span class="muted" style="font-size: 0.75em;">{t('trip.legendRange')}</span>
 		</div>
 	</div>
 
@@ -207,15 +207,15 @@
 			class="best-pick"
 			style="border-left: 4px solid {bestCss.border}; background: {bestCss.bg};"
 			onclick={() => selectWindow(bestOverall, view.tripDurationH)}
-			title="Click to highlight in the table below"
+			title={t('trip.clickToHighlight')}
 		>
 			<div style="font-size: 1.1em;">
-				<strong>★ Best across 3 days:</strong> {formatDay(bestOverall.startTime)} {bestOverall.startTime.slice(11, 16)} —
+				<strong>{t('trip.bestAcross3Days')}</strong> {formatDay(bestOverall.startTime)} {bestOverall.startTime.slice(11, 16)} —
 				<strong>{bestOverall.score}/100</strong>
-				<span class="muted">(avg {bestOverall.avgScore})</span>
+				<span class="muted">{t('trip.avgInline', { n: bestOverall.avgScore })}</span>
 			</div>
 			<div class="muted" style="margin-top: 0.25rem;">
-				{view.tripDurationH}h window: {formatRange(bestOverall)} · {summariseConditions(bestOverall.hours)}
+				{t('trip.windowSuffix', { n: view.tripDurationH })} {formatRange(bestOverall)}{t('trip.separator')}{summariseConditions(bestOverall.hours)}
 			</div>
 		</button>
 
@@ -226,28 +226,28 @@
 				class="best-pick best-pick--alt"
 				style="border-left: 4px solid {secondCss.border}; background: {secondCss.bg};"
 				onclick={() => selectWindow(secondOverall, view.tripDurationH)}
-				title="Click to highlight in the table below"
+				title={t('trip.clickToHighlight')}
 			>
 				<div>
-					<strong>2nd best:</strong> {formatDay(secondOverall.startTime)} {secondOverall.startTime.slice(11, 16)} —
+					<strong>{t('trip.secondBest')}</strong> {formatDay(secondOverall.startTime)} {secondOverall.startTime.slice(11, 16)} —
 					<strong>{secondOverall.score}/100</strong>
-					<span class="muted">(avg {secondOverall.avgScore})</span>
+					<span class="muted">{t('trip.avgInline', { n: secondOverall.avgScore })}</span>
 				</div>
 				<div class="muted" style="margin-top: 0.2rem;">
-					{view.tripDurationH}h window: {formatRange(secondOverall)} · {summariseConditions(secondOverall.hours)}
+					{t('trip.windowSuffix', { n: view.tripDurationH })} {formatRange(secondOverall)}{t('trip.separator')}{summariseConditions(secondOverall.hours)}
 				</div>
 			</button>
 		{/if}
 
 		<div style="margin-top: 0.6rem;">
-			<div class="muted" style="font-size: 0.85em; margin-bottom: 0.3rem;">Best windows each day:</div>
+			<div class="muted" style="font-size: 0.85em; margin-bottom: 0.3rem;">{t('trip.bestPerDay')}</div>
 			<ul class="window-list">
 				{#each bestPerDay as entry}
 					<li>
 						{#if entry.windows.length === 0}
 							<div class="window-row" style="opacity: 0.6;">
 								<span class="day-label">{entry.label}</span>
-								<span class="muted">no window fits</span>
+								<span class="muted">{t('trip.noWindow')}</span>
 							</div>
 						{:else}
 							{#each entry.windows as w, idx}
@@ -258,17 +258,17 @@
 									class:window-row--alt={idx > 0}
 									style="border-left: 3px solid {css.border}; background: {css.bg};"
 									onclick={() => selectWindow(w, entry.eff.durationH)}
-									title="Click to highlight in the table below"
+									title={t('trip.clickToHighlight')}
 								>
 									<span class="day-label">{idx === 0 ? entry.label : ''}</span>
-									{#if idx > 0}<span class="muted alt-prefix">2nd</span>{/if}
+									{#if idx > 0}<span class="muted alt-prefix">{t('trip.secondPrefix')}</span>{/if}
 									<span class="time-cell">{w.startTime.slice(11, 16)}</span>
 									<span class="range-cell">{formatRange(w)}</span>
 									<strong class="score-cell">{w.score}</strong>
-									<span class="muted avg-cell">avg {w.avgScore}</span>
+									<span class="muted avg-cell">{t('trip.avg', { n: w.avgScore })}</span>
 									<span class="muted conditions">{summariseConditions(w.hours)}</span>
 									{#if idx === 0 && (entry.eff.durationH !== view.tripDurationH || entry.eff.mode !== view.tripMode)}
-										<span class="muted override-badge">{entry.eff.durationH}h · {entry.mode}</span>
+										<span class="muted override-badge">{t('trip.overrideBadge', { n: entry.eff.durationH, mode: entry.mode === 'sea' ? t('trip.modeSea') : t('trip.modeLand') })}</span>
 									{/if}
 								</button>
 							{/each}
@@ -278,13 +278,11 @@
 			</ul>
 		</div>
 	{:else}
-		<p class="muted">Not enough forecast data to find a window.</p>
+		<p class="muted">{t('trip.notEnoughData')}</p>
 	{/if}
 
 	<p class="muted" style="font-size: 0.75em; margin-top: 0.5rem;">
-		Score combines {activeMode === 'sea' ? 'ferry/boat + kayaking' : 'sightseeing + hiking + photography'}
-		activity verdicts across each hour of the trip. Window score = worst-hour score (chain-as-strong-as-weakest-link).
-		Times in {timezone}.
+		{activeMode === 'sea' ? t('trip.scoreCombinesSea', { timezone }) : t('trip.scoreCombinesLand', { timezone })}
 	</p>
 </div>
 

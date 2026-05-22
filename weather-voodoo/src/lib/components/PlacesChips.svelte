@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { places, sortForDisplay, togglePin, removePlace, type SavedPlace } from '$lib/client/recentPlaces.svelte';
+	import { t } from '$lib/i18n/index.svelte';
 	import type { LabeledPoint } from '$lib/types';
 
 	type Props = {
@@ -32,16 +33,16 @@
 				<button
 					type="button"
 					class="chip-pin"
-					title={p.pinned ? 'Unpin' : 'Pin so it stays in the list'}
-					aria-label={p.pinned ? 'Unpin' : 'Pin'}
+					title={p.pinned ? t('chips.unpinTitle') : t('chips.pinTitle')}
+					aria-label={p.pinned ? t('chips.unpin') : t('chips.pin')}
 					onclick={() => togglePin(p)}
 				>{p.pinned ? '★' : '☆'}</button>
 				{#if !p.pinned}
 					<button
 						type="button"
 						class="chip-del"
-						title="Remove from recents"
-						aria-label="Remove"
+						title={t('chips.removeTitle')}
+						aria-label={t('chips.remove')}
 						onclick={() => removePlace(p)}
 					>×</button>
 				{/if}

@@ -2,6 +2,7 @@
 	import { env as pubEnv } from '$env/dynamic/public';
 	import { onMount } from 'svelte';
 	import { loadGoogleMaps } from '$lib/client/googleMaps';
+	import { t } from '$lib/i18n/index.svelte';
 	import type { LabeledPoint } from '$lib/types';
 
 	type Props = {
@@ -11,7 +12,8 @@
 		onFocus?: () => void;
 	};
 
-	let { placeholder = 'Search a place…', initial = '', onSelect, onFocus }: Props = $props();
+	let { placeholder, initial = '', onSelect, onFocus }: Props = $props();
+	const ph = $derived(placeholder ?? t('place.searchPlaceholder'));
 
 	let q = $state(initial ?? '');
 	let lastInitial = $state(initial ?? '');
@@ -97,7 +99,7 @@
 		bind:value={q}
 		oninput={onInput}
 		onfocus={() => onFocus?.()}
-		{placeholder}
+		placeholder={ph}
 		class="input"
 		type="search"
 		autocomplete="off"

@@ -5,6 +5,7 @@
 	import { dayLookup } from '$lib/daylight';
 	import { hourTripScore, windowScoreAt } from '$lib/trip-score';
 	import { minToHHMM, hhmmToMin } from '$lib/url-state';
+	import { t } from '$lib/i18n/index.svelte';
 	import ForecastRow from './ForecastRow.svelte';
 
 	type Props = {
@@ -149,33 +150,15 @@
 	}
 
 	type ColTip = { label: string; text: string };
-	const colTips: Record<string, ColTip> = {
-		time: {
-			label: 'Time',
-			text: "Hour (HH:00) or aggregated range (HH–HH) in the destination's local timezone. Click a single-hour row to expand 3-hour summaries."
-		},
-		temp: {
-			label: 'Temp',
-			text: 'Air temperature at 2 m height, in degrees Celsius. The icon to the left summarises conditions: ☀ clear, 🌤 partly cloudy, ☁ overcast, 🌦 light rain, 🌧 rain, ⛈ thunderstorm.'
-		},
-		wind: {
-			label: 'Wind / gust',
-			text: 'Sustained wind speed / peak gust, in knots (kn), followed by the cardinal direction the wind is coming FROM (e.g. W = westerly). Good < 12 kn, breezy 12–22, small-craft warning > 22.'
-		},
-		rain: {
-			label: 'Rain / Pₚ',
-			text: 'Total precipitation in millimetres per hour. Pₚ = probability of precipitation (0–100%). Dry < 0.5 mm/h, light 0.5–2, moderate 2–5, heavy > 5.'
-		},
-		cloud: { label: 'Cloud', text: 'Cloud cover, 0% = clear sky, 100% = fully overcast.' },
-		vis: {
-			label: 'Visibility',
-			text: 'Horizontal visibility, in kilometres. Lower values (< 2 km) indicate fog, haze, or heavy rain.'
-		},
-		wave: {
-			label: 'Wave Hₛ',
-			text: 'Significant wave height (Hₛ) in metres — the average of the highest one-third of waves. Calm < 0.5 m, slight 0.5–1, moderate 1–2, rough > 2. Marine forecast only; missing for inland points.'
-		}
-	};
+	const colTips = $derived<Record<string, ColTip>>({
+		time: { label: t('table.tipLabels.time'), text: t('table.tips.time') },
+		temp: { label: t('table.tipLabels.temp'), text: t('table.tips.temp') },
+		wind: { label: t('table.tipLabels.wind'), text: t('table.tips.wind') },
+		rain: { label: t('table.tipLabels.rain'), text: t('table.tips.rain') },
+		cloud: { label: t('table.tipLabels.cloud'), text: t('table.tips.cloud') },
+		vis: { label: t('table.tipLabels.vis'), text: t('table.tips.vis') },
+		wave: { label: t('table.tipLabels.wave'), text: t('table.tips.wave') }
+	});
 	let openTip: string | null = $state(null);
 	function showTip(key: string) {
 		openTip = key;
@@ -225,17 +208,17 @@
 	{@const dl = todayDaylight()}
 	{#if dl}
 		<div class="sun-times muted">
-			<span>☀️ Sunrise <strong>{dl.sunrise.slice(11, 16)}</strong></span>
+			<span>{t('forecast.sunrise')} <strong>{dl.sunrise.slice(11, 16)}</strong></span>
 			<span>·</span>
-			<span>🌙 Sunset <strong>{dl.sunset.slice(11, 16)}</strong></span>
+			<span>{t('forecast.sunset')} <strong>{dl.sunset.slice(11, 16)}</strong></span>
 		</div>
 	{/if}
 {/if}
 
 <div class="interval-bar">
-	<span class="muted" style="font-size: 0.85em; margin-right: 0.4rem;">For this day:</span>
+	<span class="muted" style="font-size: 0.85em; margin-right: 0.4rem;">{t('intervalBar.forThisDay')}</span>
 	<label>
-		<span class="muted">earliest</span>
+		<span class="muted">{t('intervalBar.earliest')}</span>
 		<input
 			type="time"
 			step="1800"
@@ -246,7 +229,7 @@
 		/>
 	</label>
 	<label>
-		<span class="muted">latest</span>
+		<span class="muted">{t('intervalBar.latest')}</span>
 		<input
 			type="time"
 			step="1800"
@@ -257,76 +240,76 @@
 		/>
 	</label>
 	<label>
-		<span class="muted">duration</span>
+		<span class="muted">{t('intervalBar.duration')}</span>
 		<select value={durationH} onchange={onDurationChange}>
 			{#each DURATIONS as d}
-				<option value={d}>{d} h</option>
+				<option value={d}>{t('trip.hoursSuffix', { n: d })}</option>
 			{/each}
 		</select>
 	</label>
 	<label>
-		<span class="muted">mode</span>
+		<span class="muted">{t('intervalBar.mode')}</span>
 		<select value={override.mode ?? topMode} onchange={onModeChange}>
-			<option value="sea">Sea</option>
-			<option value="land">Land</option>
+			<option value="sea">{t('trip.modeSea')}</option>
+			<option value="land">{t('trip.modeLand')}</option>
 		</select>
 	</label>
 	{#if overridden}
-		<button type="button" class="btn-ghost" style="padding: 0.3rem 0.6rem;" onclick={onResetOverride} title="Reset to top defaults">
-			↻ reset
+		<button type="button" class="btn-ghost" style="padding: 0.3rem 0.6rem;" onclick={onResetOverride} title={t('intervalBar.resetTitle')}>
+			{t('intervalBar.reset')}
 		</button>
-		<span class="muted" style="font-size: 0.72em;">(custom — top default: {minToHHMM(topMinMin)}–{minToHHMM(topMaxMin)}, {topDurationH}h, {topMode})</span>
+		<span class="muted" style="font-size: 0.72em;">{t('intervalBar.customSuffix', { min: minToHHMM(topMinMin), max: minToHHMM(topMaxMin), dur: topDurationH, mode: topMode === 'sea' ? t('trip.modeSea') : t('trip.modeLand') })}</span>
 	{:else}
-		<span class="muted" style="font-size: 0.72em;">(inherits top defaults)</span>
+		<span class="muted" style="font-size: 0.72em;">{t('intervalBar.inherits')}</span>
 	{/if}
 </div>
 
 {#if dayHours.length === 0}
-	<p class="muted">No forecast data for this day.</p>
+	<p class="muted">{t('forecast.noData')}</p>
 {:else}
 	<details class="ref-scale">
-		<summary>Reference scale — what counts as good vs bad</summary>
+		<summary>{t('refScale.summary')}</summary>
 		<div class="ref-grid">
 			<div class="ref-row">
-				<span class="ref-label">Wind</span>
-				<span class="badge-good">&lt; 12 kn calm/light</span>
-				<span class="badge-ok">12–22 kn breezy</span>
-				<span class="badge-unsafe">&gt; 22 kn small-craft</span>
+				<span class="ref-label">{t('refScale.wind')}</span>
+				<span class="badge-good">{t('refScale.windGood')}</span>
+				<span class="badge-ok">{t('refScale.windOk')}</span>
+				<span class="badge-unsafe">{t('refScale.windUnsafe')}</span>
 			</div>
 			<div class="ref-row">
-				<span class="ref-label">Gust</span>
-				<span class="badge-good">&lt; 18 kn</span>
-				<span class="badge-ok">18–28 kn</span>
-				<span class="badge-unsafe">&gt; 28 kn unsafe boats</span>
+				<span class="ref-label">{t('refScale.gust')}</span>
+				<span class="badge-good">{t('refScale.gustGood')}</span>
+				<span class="badge-ok">{t('refScale.gustOk')}</span>
+				<span class="badge-unsafe">{t('refScale.gustUnsafe')}</span>
 			</div>
 			<div class="ref-row">
-				<span class="ref-label">Rain</span>
-				<span class="badge-good">&lt; 0.5 mm/h dry</span>
-				<span class="badge-ok">0.5–2 light</span>
-				<span class="badge-poor">2–5 moderate</span>
-				<span class="badge-unsafe">&gt; 5 heavy</span>
+				<span class="ref-label">{t('refScale.rain')}</span>
+				<span class="badge-good">{t('refScale.rainGood')}</span>
+				<span class="badge-ok">{t('refScale.rainOk')}</span>
+				<span class="badge-poor">{t('refScale.rainPoor')}</span>
+				<span class="badge-unsafe">{t('refScale.rainUnsafe')}</span>
 			</div>
 			{#if mode === 'sea'}
 				<div class="ref-row">
-					<span class="ref-label">Wave Hₛ</span>
-					<span class="badge-good">&lt; 0.5 m calm</span>
-					<span class="badge-ok">0.5–1 slight</span>
-					<span class="badge-poor">1–2 moderate</span>
-					<span class="badge-unsafe">&gt; 2 rough</span>
+					<span class="ref-label">{t('refScale.waveHs')}</span>
+					<span class="badge-good">{t('refScale.waveGood')}</span>
+					<span class="badge-ok">{t('refScale.waveOk')}</span>
+					<span class="badge-poor">{t('refScale.wavePoor')}</span>
+					<span class="badge-unsafe">{t('refScale.waveUnsafe')}</span>
 				</div>
 			{/if}
 		</div>
 	</details>
 	{#snippet theadRow()}
 		<tr>
-			<th><button type="button" class="th-info" title={colTips.time.text} onclick={() => showTip('time')}>Time</button></th>
-			<th><button type="button" class="th-info" title={colTips.temp.text} onclick={() => showTip('temp')}>Temp</button></th>
-			<th><button type="button" class="th-info" title={colTips.wind.text} onclick={() => showTip('wind')}>Wind / gust</button></th>
-			<th><button type="button" class="th-info" title={colTips.rain.text} onclick={() => showTip('rain')}>Rain / Pₚ</button></th>
-			<th><button type="button" class="th-info" title={colTips.cloud.text} onclick={() => showTip('cloud')}>Cloud</button></th>
-			<th><button type="button" class="th-info" title={colTips.vis.text} onclick={() => showTip('vis')}>Vis</button></th>
+			<th><button type="button" class="th-info" title={colTips.time.text} onclick={() => showTip('time')}>{t('table.time')}</button></th>
+			<th><button type="button" class="th-info" title={colTips.temp.text} onclick={() => showTip('temp')}>{t('table.temp')}</button></th>
+			<th><button type="button" class="th-info" title={colTips.wind.text} onclick={() => showTip('wind')}>{t('table.windGust')}</button></th>
+			<th><button type="button" class="th-info" title={colTips.rain.text} onclick={() => showTip('rain')}>{t('table.rainPp')}</button></th>
+			<th><button type="button" class="th-info" title={colTips.cloud.text} onclick={() => showTip('cloud')}>{t('table.cloud')}</button></th>
+			<th><button type="button" class="th-info" title={colTips.vis.text} onclick={() => showTip('vis')}>{t('table.vis')}</button></th>
 			{#if mode === 'sea'}
-				<th><button type="button" class="th-info" title={colTips.wave.text} onclick={() => showTip('wave')}>Wave</button></th>
+				<th><button type="button" class="th-info" title={colTips.wave.text} onclick={() => showTip('wave')}>{t('table.wave')}</button></th>
 			{/if}
 		</tr>
 	{/snippet}
@@ -381,7 +364,7 @@
 		>
 			<h3 id="tip-title">{colTips[openTip].label}</h3>
 			<p>{colTips[openTip].text}</p>
-			<button type="button" class="btn-ghost" onclick={closeTip}>Close</button>
+			<button type="button" class="btn-ghost" onclick={closeTip}>{t('table.close')}</button>
 		</div>
 	</div>
 {/if}

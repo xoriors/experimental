@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { t } from '$lib/i18n/index.svelte';
+
 	let { onReset }: { onReset?: () => void } = $props();
 	let toast = $state<string | null>(null);
 	let timer: ReturnType<typeof setTimeout> | null = null;
@@ -14,7 +16,7 @@
 		const url = window.location.href;
 		try {
 			await navigator.clipboard.writeText(url);
-			show('Link copied');
+			show(t('share.linkCopied'));
 		} catch {
 			const input = document.createElement('input');
 			input.value = url;
@@ -22,9 +24,9 @@
 			input.select();
 			try {
 				document.execCommand('copy');
-				show('Link copied');
+				show(t('share.linkCopied'));
 			} catch {
-				show('Copy failed — long-press the URL bar');
+				show(t('share.copyFailed'));
 			}
 			document.body.removeChild(input);
 		}
@@ -37,8 +39,8 @@
 		}
 		try {
 			await navigator.share({
-				title: 'Weather forecast',
-				text: 'Forecast view',
+				title: t('share.weatherForecast'),
+				text: t('share.forecastView'),
 				url: window.location.href
 			});
 		} catch {
@@ -53,13 +55,13 @@
 			class="btn-ghost"
 			onclick={() => {
 				onReset?.();
-				show('Reset');
+				show(t('share.resetDone'));
 			}}
-			title="Clear all selections"
-		>↻ Reset</button>
+			title={t('share.clearAll')}
+		>{t('share.reset')}</button>
 	{/if}
-	<button class="btn-ghost" onclick={copy} title="Copy link to clipboard">📋 Copy link</button>
-	<button class="btn" onclick={share} title="Share via OS">🔗 Share</button>
+	<button class="btn-ghost" onclick={copy} title={t('share.copyTitle')}>{t('share.copy')}</button>
+	<button class="btn" onclick={share} title={t('share.shareTitle')}>{t('share.share')}</button>
 </div>
 
 {#if toast}

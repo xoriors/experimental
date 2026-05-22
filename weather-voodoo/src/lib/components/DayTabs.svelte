@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { DayKey } from '$lib/types';
+	import { t } from '$lib/i18n/index.svelte';
 
 	let { day, onChange }: { day: DayKey; onChange: (d: DayKey) => void } = $props();
 
@@ -27,9 +28,9 @@
 	}
 
 	const items = $derived<{ key: DayKey; label: string; date: number }[]>([
-		{ key: 'today', label: 'Today', date: dayOfMonth(0) },
-		{ key: 'tomorrow', label: 'Tomorrow', date: dayOfMonth(1) },
-		{ key: 'd2', label: 'Day after', date: dayOfMonth(2) }
+		{ key: 'today', label: t('days.today'), date: dayOfMonth(0) },
+		{ key: 'tomorrow', label: t('days.tomorrow'), date: dayOfMonth(1) },
+		{ key: 'd2', label: t('days.d2'), date: dayOfMonth(2) }
 	]);
 </script>
 

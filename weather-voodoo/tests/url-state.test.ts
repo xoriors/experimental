@@ -20,7 +20,8 @@ function freshState(): ViewState {
 			tomorrow: { min: null, max: null, durationH: null, mode: null },
 			d2: { min: null, max: null, durationH: null, mode: null }
 		},
-		highlight: null
+		highlight: null,
+		locale: 'en'
 	};
 }
 
@@ -124,6 +125,26 @@ describe('url-state key=value round-trip', () => {
 		v.highlight = 'garbage' as unknown as string;
 		const r = roundTrip(v);
 		expect(r.highlight).toBeNull();
+	});
+
+	it('round-trips non-default locale', () => {
+		const v = freshState();
+		v.locale = 'th';
+		const encoded = encodeView(v);
+		expect(new URLSearchParams(encoded).get('lng')).toBe('th');
+		const r = roundTrip(v);
+		expect(r.locale).toBe('th');
+	});
+
+	it('omits locale when default', () => {
+		const v = freshState();
+		const encoded = encodeView(v);
+		expect(new URLSearchParams(encoded).has('lng')).toBe(false);
+	});
+
+	it('ignores unknown locale values', () => {
+		const r = decodeView(new URLSearchParams('lng=xx'));
+		expect(r.locale).toBe('en');
 	});
 });
 

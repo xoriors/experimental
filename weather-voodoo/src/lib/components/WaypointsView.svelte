@@ -5,6 +5,7 @@
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
+	import { t } from '$lib/i18n/index.svelte';
 	import type { DaylightDay, FusedHour, LabeledPoint, DayKey } from '$lib/types';
 
 	type RouteMeta = {
@@ -205,26 +206,25 @@
 	<div class="wp-header">
 		<div class="muted wp-help">
 			{#if editing}
-				<strong>Tap the map</strong> to add a waypoint. To edit one, <strong>tap its red marker</strong> on the map or <strong>tap its chip in the list below</strong> — reorder, delete and move-to options open in a dialog. You can also drag a red marker directly (long-press on mobile).
-				Straight-line preview shown while editing — press <strong>✓ Done</strong> to compute the real route and forecast.
+				{@html t('waypoints.editHelp')}
 			{:else}
-				<strong>Track committed.</strong> Press <strong>✎ Change waypoints</strong> to edit.
+				{@html t('waypoints.committedHelp')}
 			{/if}
 		</div>
 		<div class="wp-cta">
 			{#if editing}
 				{#if view.waypoints.length > 0}
-					<button type="button" class="btn-ghost wp-cancel" onclick={cancelEdit}>Cancel</button>
+					<button type="button" class="btn-ghost wp-cancel" onclick={cancelEdit}>{t('waypoints.cancel')}</button>
 				{/if}
 				<button
 					type="button"
 					class="btn wp-done"
 					onclick={commitEdit}
 					disabled={draft.length < 2}
-					title={draft.length < 2 ? 'Add at least 2 waypoints' : 'Compute route & forecasts'}
-				>✓ Done</button>
+					title={draft.length < 2 ? t('waypoints.doneDisabledTitle') : t('waypoints.doneTitle')}
+				>{t('waypoints.done')}</button>
 			{:else}
-				<button type="button" class="btn-ghost" onclick={startEdit}>✎ Change waypoints</button>
+				<button type="button" class="btn-ghost" onclick={startEdit}>{t('waypoints.change')}</button>
 			{/if}
 		</div>
 	</div>
@@ -240,7 +240,7 @@
 						class:wp-chip--selected={selectedIdx === i}
 						class:wp-chip--hovered={hoveredIdx === i && selectedIdx !== i}
 						role="listitem"
-						title="Edit point {i + 1}"
+						title={t('waypoints.editPoint', { n: i + 1 })}
 						aria-pressed={selectedIdx === i}
 						onclick={() => onMarkerTap(i)}
 						onmouseenter={() => (hoveredIdx = i)}
@@ -249,16 +249,16 @@
 						onblur={() => { if (hoveredIdx === i) hoveredIdx = null; }}
 					>
 						<span class="wp-num">{i + 1}</span>
-						<span class="wp-chip-label">Point {i + 1}</span>
+						<span class="wp-chip-label">{t('waypoints.pointN', { n: i + 1 })}</span>
 					</button>
 				{/each}
 			</div>
 			<div class="wp-actions">
-				<button type="button" class="btn-ghost" onclick={clearDraft}>↻ Clear all</button>
-				<span class="muted wp-count">{list.length} point{list.length === 1 ? '' : 's'}</span>
+				<button type="button" class="btn-ghost" onclick={clearDraft}>{t('waypoints.clearAll')}</button>
+				<span class="muted wp-count">{t(list.length === 1 ? 'waypoints.countOne' : 'waypoints.countMany', { n: list.length })}</span>
 		</div>
 		{:else}
-			<div class="muted wp-hint">No waypoints yet — tap the map below to start.</div>
+			<div class="muted wp-hint">{t('waypoints.noneYet')}</div>
 		{/if}
 	{:else if view.waypoints.length > 0}
 		<div class="wp-chips" role="list">
@@ -274,24 +274,24 @@
 	{#if !editing && loading && view.waypoints.length >= 2}
 		<div class="muted route-meta route-loading">
 			<span class="spinner" aria-hidden="true"></span>
-			Computing route &amp; fetching forecasts… first request in a region can take up to 15 s.
+			{t('waypoints.computingLong')}
 		</div>
 	{:else if !editing && result?.route.kind === 'waypoints'}
 		<div class="muted route-meta">
-			🧭 Track: <strong>{result.route.totalKm.toFixed(0)} km</strong>
-			· {result.route.legCount} leg{result.route.legCount === 1 ? '' : 's'}
-			{#if result.route.ferryLegs > 0} · ⛴️ {result.route.ferryLegs} ferry{/if}
-			{#if result.route.seaLegs > 0} · ⚓ {result.route.seaLegs} open-ocean{/if}
-			{#if result.route.straightLegs > 0} · 📐 {result.route.straightLegs} straight{/if}
+			🧭 {t('waypoints.trackLabel')}: <strong>{result.route.totalKm.toFixed(0)} km</strong>
+			· {t(result.route.legCount === 1 ? 'waypoints.legsOne' : 'waypoints.legsMany', { n: result.route.legCount })}
+			{#if result.route.ferryLegs > 0} · ⛴️ {t('waypoints.ferryLegs', { n: result.route.ferryLegs })}{/if}
+			{#if result.route.seaLegs > 0} · ⚓ {t('waypoints.seaLegs', { n: result.route.seaLegs })}{/if}
+			{#if result.route.straightLegs > 0} · 📐 {t('waypoints.straightLegs', { n: result.route.straightLegs })}{/if}
 		</div>
 	{:else if editing && draft.length >= 2}
 		<div class="muted route-meta">
-			📐 Straight-line preview while editing — press Done to compute the real route.
+			{t('waypoints.straightPreview')}
 		</div>
 	{/if}
 
 	{#if error}
-		<p style="color: var(--unsafe);">Error: {error}</p>
+		<p style="color: var(--unsafe);">{t('forecast.errorPrefix')}: {error}</p>
 	{/if}
 </div>
 
@@ -311,16 +311,16 @@
 	{#if !editing && loading && view.waypoints.length >= 2}
 		<div class="map-loading" aria-live="polite">
 			<span class="spinner" aria-hidden="true"></span>
-			Computing route…
+			{t('route.computing')}
 		</div>
 	{/if}
 	{#if editing && selectedIdx !== null && draft[selectedIdx]}
-		<div class="wp-popup" role="dialog" aria-label="Edit waypoint">
+		<div class="wp-popup" role="dialog" aria-label={t('waypoints.editAriaLabel')}>
 			<div class="wp-popup-title">
-				Point <span class="wp-num">{selectedIdx + 1}</span>
+				{t('waypoints.point')} <span class="wp-num">{selectedIdx + 1}</span>
 			</div>
 			<div class="wp-popup-hint">
-				👉 Tap anywhere on the map to <strong>move this point</strong> there, or drag the red marker. Use the actions below to reorder or delete.
+				{@html t('waypoints.editHint')}
 			</div>
 			<div class="wp-popup-actions">
 				<button
@@ -328,19 +328,19 @@
 					class="wp-popup-btn"
 					onclick={actionMoveBack}
 					disabled={selectedIdx === 0}
-				>← Move back</button>
+				>{t('waypoints.moveBack')}</button>
 				<button
 					type="button"
 					class="wp-popup-btn"
 					onclick={actionMoveForward}
 					disabled={selectedIdx === draft.length - 1}
-				>Move forward →</button>
+				>{t('waypoints.moveForward')}</button>
 				<button
 					type="button"
 					class="wp-popup-btn wp-popup-del"
 					onclick={actionDelete}
-				>× Delete</button>
-				<button type="button" class="wp-popup-btn wp-popup-cancel" onclick={closeSelection}>Cancel</button>
+				>{t('waypoints.delete')}</button>
+				<button type="button" class="wp-popup-btn wp-popup-cancel" onclick={closeSelection}>{t('waypoints.cancel')}</button>
 			</div>
 		</div>
 	{/if}
@@ -348,8 +348,8 @@
 		type="button"
 		class="map-fs-btn"
 		onclick={toggleFullscreen}
-		title={fullscreen ? 'Exit full screen (Esc)' : 'Full screen map'}
-		aria-label={fullscreen ? 'Exit full screen' : 'Full screen map'}
+		title={fullscreen ? t('map.exitFullscreenEsc') : t('map.fullscreen')}
+		aria-label={fullscreen ? t('map.exitFullscreen') : t('map.fullscreen')}
 	>{fullscreen ? '⤡' : '⤢'}</button>
 </div>
 </div>
@@ -360,10 +360,10 @@
 	{/if}
 	<DayTabs day={view.day} onChange={onDay} />
 	<div class="card">
-		{#if loading}<p class="muted">Loading forecast…</p>{/if}
+		{#if loading}<p class="muted">{t('forecast.loading')}</p>{/if}
 		{#if result}
 			<p class="muted" style="margin-top: 0;">
-				Forecast fused across 3 sample points along the track. Worst-case wind/wave/rain shown per hour. Times in {result.timezone}.
+				{t('waypoints.forecastCaption', { timezone: result.timezone })}
 			</p>
 			<ForecastTable
 				allHours={result.hours}

@@ -51,24 +51,26 @@ describe('activities', () => {
 		expect(['poor', 'unsafe']).toContain(v.hiking);
 	});
 
-	it('summarise mentions good and avoid lists', () => {
-		const line = summariseHour(hour({ tempC: 28, windKn: 6, waveHsM: 1.5, gustKn: 25 }));
-		expect(line).toMatch(/Good for/i);
-		expect(line).toMatch(/Avoid/i);
+	it('summarise returns good and avoid lists', () => {
+		const sum = summariseHour(hour({ tempC: 28, windKn: 6, waveHsM: 1.5, gustKn: 25 }));
+		expect(sum.good.length).toBeGreaterThan(0);
+		expect(sum.avoid.length).toBeGreaterThan(0);
 	});
 
 	it('land mode skips water-only activities in the summary', () => {
 		const h = hour({ tempC: 28, windKn: 6, waveHsM: 1.5, gustKn: 25, precipMmH: 0.2 });
 		const land = summariseHour(h, 'land');
-		expect(land).not.toMatch(/swimming/i);
-		expect(land).not.toMatch(/kayaking/i);
-		expect(land).not.toMatch(/ferry/i);
+		const all = [...land.good, ...land.avoid];
+		expect(all).not.toContain('swimming');
+		expect(all).not.toContain('kayaking');
+		expect(all).not.toContain('ferryOrBoat');
 	});
 
 	it('sea mode includes water activities', () => {
 		const h = hour({ tempC: 28, windKn: 6, waveHsM: 1.5, gustKn: 25 });
 		const sea = summariseHour(h, 'sea');
-		expect(sea).toMatch(/swimming|kayaking|ferry/i);
+		const all = [...sea.good, ...sea.avoid];
+		expect(all.some((a) => a === 'swimming' || a === 'kayaking' || a === 'ferryOrBoat')).toBe(true);
 	});
 
 	it('marine-absent (inland) → kayaking treats waveHs=null as 0', () => {

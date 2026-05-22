@@ -9,7 +9,6 @@
 	import { getCurrentPosition } from '$lib/client/geolocation';
 	import { addRecent } from '$lib/client/recentPlaces.svelte';
 	import { mergeSinglePoint } from '$lib/fusion';
-	import ModeToggle from './ModeToggle.svelte';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
 	import type { DaylightDay, FusedHour, ForecastHour, LabeledPoint, MarineHour, DayKey } from '$lib/types';
 
@@ -133,8 +132,6 @@
 
 	const aqiLabel: Record<number, string> = { 1: 'Good', 2: 'Fair', 3: 'Moderate', 4: 'Poor', 5: 'Very poor' };
 </script>
-
-<ModeToggle />
 
 <div class="card">
 	<div class="row">

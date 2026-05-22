@@ -6,7 +6,6 @@
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
-	import ModeToggle from './ModeToggle.svelte';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
 	import { addRecent } from '$lib/client/recentPlaces.svelte';
 	import type { DaylightDay, FusedHour, LabeledPoint, DayKey } from '$lib/types';
@@ -119,8 +118,6 @@
 		view.day = d;
 	}
 </script>
-
-<ModeToggle />
 
 <div class="card">
 	<div class="row">

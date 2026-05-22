@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Tabs from '$lib/components/Tabs.svelte';
+	import ModeToggle from '$lib/components/ModeToggle.svelte';
 	import RouteView from '$lib/components/RouteView.svelte';
 	import FixedView from '$lib/components/FixedView.svelte';
 	import { view } from '$lib/state.svelte';
@@ -9,6 +10,8 @@
 		view.tab = t;
 	}
 </script>
+
+<ModeToggle />
 
 <Tabs tab={view.tab} onChange={onTab} />
 

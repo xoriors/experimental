@@ -10,17 +10,6 @@
 <div class="mode-toggle" class:mode-sea={view.tripMode === 'sea'} class:mode-land={view.tripMode === 'land'} role="radiogroup" aria-label="Trip mode">
 	<button
 		type="button"
-		class="mode-btn mode-btn--sea"
-		role="radio"
-		aria-checked={view.tripMode === 'sea'}
-		onclick={() => pick('sea')}
-	>
-		<span class="mode-emoji" aria-hidden="true">🌊</span>
-		<span class="mode-label">Sea</span>
-		<span class="mode-hint">ferry · kayak · boat · swim</span>
-	</button>
-	<button
-		type="button"
 		class="mode-btn mode-btn--land"
 		role="radio"
 		aria-checked={view.tripMode === 'land'}
@@ -29,6 +18,17 @@
 		<span class="mode-emoji" aria-hidden="true">🏞️</span>
 		<span class="mode-label">Land</span>
 		<span class="mode-hint">hike · sightsee · drive · photo</span>
+	</button>
+	<button
+		type="button"
+		class="mode-btn mode-btn--sea"
+		role="radio"
+		aria-checked={view.tripMode === 'sea'}
+		onclick={() => pick('sea')}
+	>
+		<span class="mode-emoji" aria-hidden="true">🌊</span>
+		<span class="mode-label">Sea</span>
+		<span class="mode-hint">ferry · kayak · boat · swim</span>
 	</button>
 </div>
 

@@ -150,10 +150,35 @@
 			drawn.push(marker);
 		}
 
+		// Camera fits don't require the style to be loaded — run them eagerly so
+		// shared links open already framed on the route. Prefer polyline bounds
+		// (a routed sea/trail polyline can detour well outside the markers' bbox)
+		// and fall back to marker bounds when no route line is available yet.
+		const fitTarget = polyline && polyline.length >= 2 ? polyline : markers;
+		if (fitTarget.length >= 2) {
+			const bounds = new maplibregl.LngLatBounds();
+			fitTarget.forEach((p) => bounds.extend([p.lon, p.lat]));
+			map.fitBounds(bounds, { padding: 60, maxZoom: 11, duration: 400 });
+		} else if (markers.length === 1) {
+			map.flyTo({ center: [markers[0].lon, markers[0].lat], zoom: 11, duration: 400 });
+		}
+
+		// The route source/layer needs the MapLibre style to be loaded first; on a
+		// cold page load (shared link) this often isn't ready yet, so defer until
+		// the 'load' event if necessary.
+		if (map.isStyleLoaded()) {
+			renderRouteLayer();
+		} else {
+			map.once('load', renderRouteLayer);
+		}
+	}
+
+	function renderRouteLayer() {
+		if (!map) return;
 		if (map.getLayer('route-line')) map.removeLayer('route-line');
 		if (map.getSource('route-src')) map.removeSource('route-src');
 
-		if (polyline && polyline.length >= 2 && map.isStyleLoaded()) {
+		if (polyline && polyline.length >= 2) {
 			map.addSource('route-src', {
 				type: 'geojson',
 				data: {
@@ -171,14 +196,6 @@
 				source: 'route-src',
 				paint: { 'line-color': polylineColor, 'line-width': 3, 'line-opacity': 0.85 }
 			});
-		}
-
-		if (markers.length >= 2 && map.isStyleLoaded()) {
-			const bounds = new maplibregl.LngLatBounds();
-			markers.forEach((m) => bounds.extend([m.lon, m.lat]));
-			map.fitBounds(bounds, { padding: 60, maxZoom: 11, duration: 400 });
-		} else if (markers.length === 1) {
-			map.flyTo({ center: [markers[0].lon, markers[0].lat], zoom: 11, duration: 400 });
 		}
 	}
 </script>

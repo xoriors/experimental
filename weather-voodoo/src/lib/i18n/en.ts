@@ -302,6 +302,21 @@ export type Dict = {
 		tail: string;
 		relativeTooltip: string;
 	};
+	windMap: {
+		regionLabel: string;
+		now: string;
+		nowTitle: string;
+		jumpNowTitle: string;
+		prevHour: string;
+		nextHour: string;
+		verdict: {
+			head: string;
+			headCross: string;
+			cross: string;
+			tailCross: string;
+			tail: string;
+		};
+	};
 };
 
 export const en: Dict = {
@@ -623,5 +638,20 @@ export const en: Dict = {
 		tailCross: 'Tail-Cross',
 		tail: 'Tail',
 		relativeTooltip: '{cls} wind ({deg}° relative to direction of travel)'
+	},
+	windMap: {
+		regionLabel: 'Wind along route — use arrow keys to scrub through hours',
+		now: 'NOW',
+		nowTitle: 'Showing wind for the current hour',
+		jumpNowTitle: 'Jump back to the current hour',
+		prevHour: 'Previous hour',
+		nextHour: 'Next hour',
+		verdict: {
+			head: 'Head wind along the route — tough going',
+			headCross: 'Head-cross wind — fighting it',
+			cross: 'Cross wind — watch your balance',
+			tailCross: 'Tail-cross wind — pushing you along',
+			tail: 'Tail wind — free speed'
+		}
 	}
 };

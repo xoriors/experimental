@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { view, toggleExpanded, effectiveConfig, setDayOverride, resetDayOverride } from '$lib/state.svelte';
 	import MapView from './MapView.svelte';
+	import WindMapOverlay from './WindMapOverlay.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
 	import { t } from '$lib/i18n/index.svelte';
-	import type { DaylightDay, FusedHour, LabeledPoint, DayKey } from '$lib/types';
+	import { chevronsForHour, pickNowHour, worstClass } from '$lib/wind-map';
+	import type { RelativeWindClass } from '$lib/wind';
+	import type { DaylightDay, FusedHour, LabeledPoint, DayKey, WindSample } from '$lib/types';
 
 	type RouteMeta = {
 		kind: 'waypoints';
@@ -25,7 +28,10 @@
 		daylight: DaylightDay[];
 		polyline: { lat: number; lon: number }[];
 		route: RouteMeta;
+		windSamples: WindSample[];
 	} | null>(null);
+
+	let mapHour = $state<string | null>(null);
 
 	// Edit-mode buffer. While `editing === true`, taps on the map mutate
 	// `draft` only — we don't fetch routes or forecasts until the user
@@ -96,14 +102,17 @@
 					daylight?: DaylightDay[];
 					polyline: { lat: number; lon: number }[];
 					route: RouteMeta;
+					windSamples?: WindSample[];
 				};
 				result = {
 					hours: data.hours,
 					timezone: data.timezone,
 					daylight: data.daylight ?? [],
 					polyline: data.polyline,
-					route: data.route
+					route: data.route,
+					windSamples: data.windSamples ?? []
 				};
+				mapHour = null;
 			})
 			.catch((e: unknown) => {
 				if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -119,6 +128,37 @@
 	const eff = $derived(effectiveConfig(view.day));
 	const dayHours = $derived(result ? filterHoursForDay(result.hours, view.day, todayIso) : []);
 	const activeMode = $derived(eff.mode);
+
+	// Wind-overlay scrubber state. Chevrons are hidden while editing the
+	// track (the polyline isn't real yet).
+	const hourTimes = $derived(
+		!editing ? (result?.windSamples?.[0]?.hours.map((h) => h.time) ?? []) : []
+	);
+	const nowTime = $derived(hourTimes.length > 0 ? pickNowHour(hourTimes) : null);
+	const selectedTime = $derived(mapHour ?? nowTime ?? hourTimes[0] ?? '');
+	const classLabelMap = $derived<Record<RelativeWindClass, string>>({
+		head: t('wind.head'),
+		'head-cross': t('wind.headCross'),
+		cross: t('wind.cross'),
+		'tail-cross': t('wind.tailCross'),
+		tail: t('wind.tail')
+	});
+	const chevrons = $derived(
+		!editing && result && selectedTime
+			? chevronsForHour(result.windSamples, selectedTime, (c) => classLabelMap[c])
+			: []
+	);
+	const verdictKeyMap = $derived<Record<RelativeWindClass, string>>({
+		head: 'windMap.verdict.head',
+		'head-cross': 'windMap.verdict.headCross',
+		cross: 'windMap.verdict.cross',
+		'tail-cross': 'windMap.verdict.tailCross',
+		tail: 'windMap.verdict.tail'
+	});
+	const verdict = $derived.by(() => {
+		const w = worstClass(chevrons);
+		return w ? t(verdictKeyMap[w]) : undefined;
+	});
 
 	let selectedIdx: number | null = $state(null);
 	let hoveredIdx: number | null = $state(null);
@@ -307,7 +347,18 @@
 		polylineColor={editing ? '#ef4444' : '#38bdf8'}
 		highlightIdx={editing ? mapHighlightIdx : null}
 		height={fullscreen ? '100%' : undefined}
+		windChevrons={chevrons.length > 0 ? chevrons : undefined}
 	/>
+	{#if chevrons.length > 0 && hourTimes.length > 0 && selectedTime}
+		<WindMapOverlay
+			{hourTimes}
+			{selectedTime}
+			{nowTime}
+			timezone={result?.timezone}
+			{verdict}
+			onSelect={(t) => (mapHour = t)}
+		/>
+	{/if}
 	{#if !editing && loading && view.waypoints.length >= 2}
 		<div class="map-loading" aria-live="polite">
 			<span class="spinner" aria-hidden="true"></span>

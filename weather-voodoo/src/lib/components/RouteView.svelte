@@ -3,13 +3,16 @@
 	import PlaceSearch from './PlaceSearch.svelte';
 	import PlacesChips from './PlacesChips.svelte';
 	import MapView from './MapView.svelte';
+	import WindMapOverlay from './WindMapOverlay.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
 	import { addRecent } from '$lib/client/recentPlaces.svelte';
 	import { t } from '$lib/i18n/index.svelte';
-	import type { DaylightDay, FusedHour, LabeledPoint, DayKey } from '$lib/types';
+	import { chevronsForHour, pickNowHour, worstClass } from '$lib/wind-map';
+	import type { RelativeWindClass } from '$lib/wind';
+	import type { DaylightDay, FusedHour, LabeledPoint, DayKey, WindSample } from '$lib/types';
 
 	let loading = $state(false);
 	let error = $state<string | null>(null);
@@ -23,7 +26,12 @@
 		daylight: DaylightDay[];
 		polyline: { lat: number; lon: number }[];
 		route: RouteMeta;
+		windSamples: WindSample[];
 	} | null>(null);
+
+	// Currently-selected hour for the on-map wind chevron overlay. null = auto
+	// (use the first hour >= now). Resets when a new route loads.
+	let mapHour = $state<string | null>(null);
 
 	const markers = $derived(
 		[view.from, view.to].filter((m): m is LabeledPoint => m !== null)
@@ -58,6 +66,7 @@
 					daylight?: DaylightDay[];
 					polyline?: { lat: number; lon: number }[];
 					route?: RouteMeta;
+					windSamples?: WindSample[];
 				};
 				result = {
 					hours: data.hours,
@@ -67,8 +76,11 @@
 						{ lat: from.lat, lon: from.lon },
 						{ lat: to.lat, lon: to.lon }
 					],
-					route: data.route ?? { kind: 'straight' }
+					route: data.route ?? { kind: 'straight' },
+					windSamples: data.windSamples ?? []
 				};
+				// Reset scrubber to "now" whenever a new route comes in.
+				mapHour = null;
 			})
 			.catch((e: unknown) => {
 				if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -86,6 +98,34 @@
 		result ? filterHoursForDay(result.hours, view.day, todayIso) : []
 	);
 	const activeMode = $derived(eff.mode);
+
+	// Wind-overlay scrubber state.
+	const hourTimes = $derived(result?.windSamples?.[0]?.hours.map((h) => h.time) ?? []);
+	const nowTime = $derived(hourTimes.length > 0 ? pickNowHour(hourTimes) : null);
+	const selectedTime = $derived(mapHour ?? nowTime ?? hourTimes[0] ?? '');
+	const classLabelMap = $derived<Record<RelativeWindClass, string>>({
+		head: t('wind.head'),
+		'head-cross': t('wind.headCross'),
+		cross: t('wind.cross'),
+		'tail-cross': t('wind.tailCross'),
+		tail: t('wind.tail')
+	});
+	const chevrons = $derived(
+		result && selectedTime
+			? chevronsForHour(result.windSamples, selectedTime, (c) => classLabelMap[c])
+			: []
+	);
+	const verdictKeyMap = $derived<Record<RelativeWindClass, string>>({
+		head: 'windMap.verdict.head',
+		'head-cross': 'windMap.verdict.headCross',
+		cross: 'windMap.verdict.cross',
+		'tail-cross': 'windMap.verdict.tailCross',
+		tail: 'windMap.verdict.tail'
+	});
+	const verdict = $derived.by(() => {
+		const w = worstClass(chevrons);
+		return w ? t(verdictKeyMap[w]) : undefined;
+	});
 
 	let lastFocused: 'from' | 'to' | null = $state(null);
 
@@ -176,7 +216,23 @@
 </div>
 
 <div class="card map-card" class:loading-overlay={loading} style="padding: 0;">
-	<MapView {markers} {polyline} onPick={onMapPick} height={fullscreen ? '100%' : undefined} />
+	<MapView
+		{markers}
+		{polyline}
+		onPick={onMapPick}
+		height={fullscreen ? '100%' : undefined}
+		windChevrons={chevrons.length > 0 ? chevrons : undefined}
+	/>
+	{#if chevrons.length > 0 && hourTimes.length > 0 && selectedTime}
+		<WindMapOverlay
+			{hourTimes}
+			{selectedTime}
+			{nowTime}
+			timezone={result?.timezone}
+			{verdict}
+			onSelect={(t) => (mapHour = t)}
+		/>
+	{/if}
 	{#if loading && view.from && view.to}
 		<div class="map-loading" aria-live="polite">
 			<span class="spinner" aria-hidden="true"></span>

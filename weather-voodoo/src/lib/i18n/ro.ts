@@ -319,5 +319,20 @@ export const ro: Dict = {
 		tailCross: 'Spate-lateral',
 		tail: 'Spate',
 		relativeTooltip: '{cls} ({deg}° față de direcția de deplasare)'
+	},
+	windMap: {
+		regionLabel: 'Vânt de-a lungul rutei — folosește săgețile pentru a parcurge orele',
+		now: 'ACUM',
+		nowTitle: 'Se afișează vântul pentru ora curentă',
+		jumpNowTitle: 'Revino la ora curentă',
+		prevHour: 'Ora anterioară',
+		nextHour: 'Ora următoare',
+		verdict: {
+			head: 'Vânt din față pe traseu — pedalat greu',
+			headCross: 'Vânt din față-lateral — te lupți cu el',
+			cross: 'Vânt lateral — atenție la echilibru',
+			tailCross: 'Vânt din spate-lateral — te împinge înainte',
+			tail: 'Vânt din spate — viteză gratuită'
+		}
 	}
 };

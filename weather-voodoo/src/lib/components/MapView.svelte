@@ -3,6 +3,22 @@
 	import maplibregl, { type Map as MlMap, type Marker } from 'maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import type { LatLng } from '$lib/types';
+	import type { RelativeWindClass } from '$lib/wind';
+
+	export type WindChevron = {
+		point: LatLng;
+		/** Bearing of travel at this point (deg from N). Used for tooltip context. */
+		headingDeg: number;
+		/** Wind speed at the selected hour, knots. */
+		windKn: number;
+		/** Meteorological wind direction (from), deg from N. Used to orient the arrow. */
+		windDirDeg: number;
+		/** Wind angle relative to heading, in [-180, 180]. */
+		relWindDeg: number;
+		cls: RelativeWindClass;
+		/** Localized class label for tooltip ("Head", "Tail-Cross", …). */
+		classLabel: string;
+	};
 
 	type Props = {
 		markers?: LatLng[];
@@ -17,6 +33,12 @@
 		draggableMarkers?: boolean;
 		highlightIdx?: number | null;
 		height?: string;
+		/**
+		 * Wind chevrons rendered along the route — one per sample point, sized
+		 * for handlebar/glance-able use on mobile. Color = relative-wind class,
+		 * arrow direction = absolute wind direction (where the wind is going).
+		 */
+		windChevrons?: WindChevron[];
 	};
 
 	let {
@@ -31,12 +53,14 @@
 		polylineColor = '#38bdf8',
 		draggableMarkers = false,
 		highlightIdx = null,
-		height = '440px'
+		height = '440px',
+		windChevrons
 	}: Props = $props();
 
 	let el: HTMLDivElement | null = null;
 	let map: MlMap | null = null;
 	let drawn: Marker[] = [];
+	let drawnChevrons: Marker[] = [];
 
 	const STYLE = {
 		version: 8 as const,
@@ -89,6 +113,7 @@
 		}
 
 		renderMarkersAndLine();
+		renderWindChevrons();
 
 		// Re-measure when the container itself resizes (e.g. fullscreen toggle,
 		// orientation change). maplibre listens to window resize but not
@@ -105,6 +130,7 @@
 
 	onDestroy(() => {
 		drawn.forEach((m) => m.remove());
+		drawnChevrons.forEach((m) => m.remove());
 		resizeObs?.disconnect();
 		resizeObs = null;
 		map?.remove();
@@ -119,6 +145,11 @@
 		void draggableMarkers;
 		void highlightIdx;
 		renderMarkersAndLine();
+	});
+
+	$effect(() => {
+		void windChevrons;
+		renderWindChevrons();
 	});
 
 	function renderMarkersAndLine() {
@@ -173,6 +204,50 @@
 		}
 	}
 
+	function buildChevronElement(c: WindChevron): HTMLElement {
+		// Where the wind is going in absolute compass terms (meteo windDir is
+		// the direction the wind is FROM, so the arrow points to windDir + 180).
+		const arrowRot = c.windDirDeg + 180;
+		const speed = Math.round(c.windKn);
+		const wrap = document.createElement('div');
+		wrap.className = 'wind-chevron';
+		wrap.dataset.cls = c.cls;
+		const tooltipParts = [
+			`${c.classLabel} · ${speed} kn`,
+			`wind from ${Math.round(((c.windDirDeg % 360) + 360) % 360)}°`,
+			`heading ${Math.round(((c.headingDeg % 360) + 360) % 360)}°`,
+			`relative ${Math.round(c.relWindDeg)}°`
+		];
+		const tooltip = tooltipParts.join(' · ');
+		wrap.setAttribute('title', tooltip);
+		wrap.setAttribute('aria-label', tooltip);
+		wrap.setAttribute('role', 'img');
+		wrap.innerHTML = `
+			<div class="wc-ring">
+				<svg viewBox="0 0 24 24" style="transform: rotate(${arrowRot}deg)" aria-hidden="true">
+					<path d="M12 3 L12 21 M5 10 L12 3 L19 10" fill="none" stroke="#fff"
+						stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+			</div>
+			<div class="wc-label">${speed}<span class="wc-unit">kn</span></div>
+		`;
+		return wrap;
+	}
+
+	function renderWindChevrons() {
+		if (!map) return;
+		drawnChevrons.forEach((m) => m.remove());
+		drawnChevrons = [];
+		if (!windChevrons || windChevrons.length === 0) return;
+		for (const c of windChevrons) {
+			const element = buildChevronElement(c);
+			const marker = new maplibregl.Marker({ element, anchor: 'center' })
+				.setLngLat([c.point.lon, c.point.lat])
+				.addTo(map);
+			drawnChevrons.push(marker);
+		}
+	}
+
 	function renderRouteLayer() {
 		if (!map) return;
 		if (map.getLayer('route-line')) map.removeLayer('route-line');
@@ -210,5 +285,93 @@
 	:global(.marker-highlighted svg) {
 		transform: scale(1.3);
 		transform-origin: center bottom;
+	}
+
+	/*
+	 * Wind chevrons — sized for handlebar-mounted glance use. Dark backdrop
+	 * survives bright sun and water/land tile transitions; the colored ring
+	 * carries the head/tail/cross meaning while the white arrow stays readable
+	 * against any background.
+	 */
+	:global(.wind-chevron) {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2px;
+		pointer-events: auto;
+		cursor: help;
+		user-select: none;
+		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+		transition: transform 160ms ease;
+	}
+	:global(.wind-chevron:hover) {
+		transform: scale(1.08);
+		z-index: 30;
+	}
+	:global(.wind-chevron .wc-ring) {
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		background: rgba(15, 23, 42, 0.88);
+		border: 4px solid var(--wc-color, #cbd5e1);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-sizing: border-box;
+	}
+	:global(.wind-chevron .wc-ring svg) {
+		width: 28px;
+		height: 28px;
+		transition: transform 220ms ease;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+	}
+	:global(.wind-chevron .wc-label) {
+		font-size: 12px;
+		font-weight: 800;
+		color: #fff;
+		line-height: 1;
+		padding: 2px 6px;
+		background: rgba(15, 23, 42, 0.9);
+		border-radius: 6px;
+		border: 1.5px solid var(--wc-color, #cbd5e1);
+		font-variant-numeric: tabular-nums;
+		letter-spacing: 0.2px;
+		white-space: nowrap;
+	}
+	:global(.wind-chevron .wc-unit) {
+		font-size: 9px;
+		font-weight: 600;
+		opacity: 0.8;
+		margin-left: 1px;
+	}
+	:global(.wind-chevron[data-cls='head']) {
+		--wc-color: #f87171;
+	}
+	:global(.wind-chevron[data-cls='head-cross']) {
+		--wc-color: #fb923c;
+	}
+	:global(.wind-chevron[data-cls='cross']) {
+		--wc-color: #94a3b8;
+	}
+	:global(.wind-chevron[data-cls='tail-cross']) {
+		--wc-color: #a3e635;
+	}
+	:global(.wind-chevron[data-cls='tail']) {
+		--wc-color: #22c55e;
+	}
+	@media (max-width: 720px) {
+		:global(.wind-chevron .wc-ring) {
+			width: 42px;
+			height: 42px;
+			border-width: 3px;
+		}
+		:global(.wind-chevron .wc-ring svg) {
+			width: 24px;
+			height: 24px;
+		}
+		:global(.wind-chevron .wc-label) {
+			font-size: 11px;
+			padding: 1.5px 5px;
+		}
 	}
 </style>

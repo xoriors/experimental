@@ -311,5 +311,13 @@ export const ro: Dict = {
 		goodFor: 'Bun pentru {items}.',
 		avoid: 'De evitat {items}.',
 		mixed: 'Condiții mixte.'
+	},
+	wind: {
+		head: 'Față',
+		headCross: 'Față-lateral',
+		cross: 'Lateral',
+		tailCross: 'Spate-lateral',
+		tail: 'Spate',
+		relativeTooltip: '{cls} ({deg}° față de direcția de deplasare)'
 	}
 };

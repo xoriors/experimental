@@ -294,6 +294,14 @@ export type Dict = {
 		avoid: string;
 		mixed: string;
 	};
+	wind: {
+		head: string;
+		headCross: string;
+		cross: string;
+		tailCross: string;
+		tail: string;
+		relativeTooltip: string;
+	};
 };
 
 export const en: Dict = {
@@ -607,5 +615,13 @@ export const en: Dict = {
 		goodFor: 'Good for {items}.',
 		avoid: 'Avoid {items}.',
 		mixed: 'Mixed conditions.'
+	},
+	wind: {
+		head: 'Head',
+		headCross: 'Head-Cross',
+		cross: 'Cross',
+		tailCross: 'Tail-Cross',
+		tail: 'Tail',
+		relativeTooltip: '{cls} wind ({deg}° relative to direction of travel)'
 	}
 };

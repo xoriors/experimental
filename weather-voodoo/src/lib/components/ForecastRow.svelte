@@ -8,6 +8,7 @@
 	import WxIcon from './icons/WxIcon.svelte';
 	import HourCell from './HourCell.svelte';
 	import MarineBlock from './MarineBlock.svelte';
+	import WindIndicator from './WindIndicator.svelte';
 	import type { DaylightDay, FusedHour } from '$lib/types';
 	import { isDaylight, sunPhase } from '$lib/daylight';
 
@@ -137,7 +138,7 @@
 		<WxIcon code={slot.agg.weatherCode} />
 		<span>{round1(slot.agg.tempC)}°</span>
 	</td>
-	<td>{round1(slot.agg.windKn)} / {round1(slot.agg.gustKn)} kn {degToCompass(slot.hours[0]?.windDirDeg ?? 0)}</td>
+	<td>{round1(slot.agg.windKn)} / {round1(slot.agg.gustKn)} kn {degToCompass(slot.hours[0]?.windDirDeg ?? 0)}{#if slot.hours[0]?.relWindDeg !== undefined}<WindIndicator relWindDeg={slot.hours[0].relWindDeg} />{/if}</td>
 	<td>{round1(slot.agg.precipMmH)} mm <span class="muted">({slot.agg.pop}%)</span></td>
 	<td>{round1(slot.agg.cloudPct)}%</td>
 	<td>{round1(slot.agg.visKm)} km</td>

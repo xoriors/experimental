@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { haversineKm, midpoint, sampleAlongPolyline, sampleAlongRoute } from '../src/lib/geo';
+import {
+	bearing,
+	haversineKm,
+	midpoint,
+	sampleAlongPolyline,
+	sampleAlongPolylineWithHeadings,
+	sampleAlongRoute
+} from '../src/lib/geo';
 
 describe('geo', () => {
 	it('haversine returns ~33 km Phi Phi to Ao Nang', () => {
@@ -41,6 +48,38 @@ describe('geo', () => {
 		// nearly equal-length — within a few hundred km of (10, 0).
 		expect(pts[1].lat).toBeGreaterThan(8);
 		expect(pts[1].lon).toBeLessThan(2);
+	});
+
+	it('bearing returns east-ish for going east along the equator', () => {
+		const b = bearing({ lat: 0, lon: 0 }, { lat: 0, lon: 10 });
+		expect(b).toBeCloseTo(90, 1);
+	});
+
+	it('bearing returns north for going up the meridian', () => {
+		const b = bearing({ lat: 0, lon: 0 }, { lat: 10, lon: 0 });
+		expect(b).toBeCloseTo(0, 1);
+	});
+
+	it('bearing returns south for going down the meridian', () => {
+		const b = bearing({ lat: 10, lon: 0 }, { lat: 0, lon: 0 });
+		expect(b).toBeCloseTo(180, 1);
+	});
+
+	it('sampleAlongPolylineWithHeadings returns one heading per sample', () => {
+		// Two-segment polyline: south-bound then east-bound. With 3 samples
+		// (endpoints + midpoint), endpoint samples land on the relevant
+		// segment, so the first sample's heading is south-ish (~180°) and
+		// the last is east-ish (~90°).
+		const line = [
+			{ lat: 10, lon: 0 },
+			{ lat: 0, lon: 0 },
+			{ lat: 0, lon: 10 }
+		];
+		const { points, headings } = sampleAlongPolylineWithHeadings(line, 3);
+		expect(points.length).toBe(3);
+		expect(headings.length).toBe(3);
+		expect(headings[0]).toBeCloseTo(180, 0);
+		expect(headings[2]).toBeCloseTo(90, 0);
 	});
 
 	it('sampleAlongPolyline degrades gracefully for tiny inputs', () => {

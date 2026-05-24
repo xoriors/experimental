@@ -65,6 +65,12 @@ export type FusedHour = ForecastHour & {
 	waveHsM: number | null;
 	wavePeriodS: number | null;
 	swellHsM: number | null;
+	/**
+	 * Wind angle relative to the direction of travel, in [-180, 180]. Only
+	 * present for route-based forecasts (where a heading exists); omitted for
+	 * the Fixed Location view. See `$lib/wind`.
+	 */
+	relWindDeg?: number;
 };
 
 export type DaylightDay = { date: string; sunrise: string; sunset: string };

@@ -3,7 +3,7 @@ import { fetchForecast, fetchMarine } from '$lib/server/openmeteo';
 import { computeSeaRoute } from '$lib/server/sea-routing';
 import { computeFerryRoute } from '$lib/server/osm-ferry';
 import { fuseRoute } from '$lib/fusion';
-import { sampleAlongPolyline, sampleAlongRoute } from '$lib/geo';
+import { bearing, sampleAlongPolylineWithHeadings, sampleAlongRoute } from '$lib/geo';
 import type { LatLng } from '$lib/types';
 import type { RequestHandler } from './$types';
 
@@ -67,16 +67,30 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 	}
 
-	const points =
-		routeMeta.kind === 'straight'
-			? sampleAlongRoute(from, to, samples)
-			: sampleAlongPolyline(routePolyline, samples);
+	let points: LatLng[];
+	let headings: number[];
+	if (routeMeta.kind === 'straight') {
+		points = sampleAlongRoute(from, to, samples);
+		// Constant heading for a straight-line route.
+		const h = bearing(from, to);
+		headings = points.map(() => h);
+	} else {
+		const sampled = sampleAlongPolylineWithHeadings(routePolyline, samples);
+		points = sampled.points;
+		headings = sampled.headings;
+	}
 
 	try {
 		const results = await Promise.all(
-			points.map(async (p) => {
+			points.map(async (p, i) => {
 				const [f, m] = await Promise.all([fetchForecast(p.lat, p.lon, days), fetchMarine(p.lat, p.lon, days)]);
-				return { forecast: f.hours, marine: m?.hours ?? null, timezone: f.timezone, daylight: f.daylight };
+				return {
+					forecast: f.hours,
+					marine: m?.hours ?? null,
+					timezone: f.timezone,
+					daylight: f.daylight,
+					headingDeg: headings[i]
+				};
 			})
 		);
 		const hours = fuseRoute(results);

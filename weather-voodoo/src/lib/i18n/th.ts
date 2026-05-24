@@ -311,5 +311,13 @@ export const th: Dict = {
 		goodFor: 'เหมาะกับ {items}',
 		avoid: 'ควรเลี่ยง {items}',
 		mixed: 'สภาพคละกัน'
+	},
+	wind: {
+		head: 'ลมต้าน',
+		headCross: 'ลมต้านเฉียง',
+		cross: 'ลมข้าง',
+		tailCross: 'ลมส่งเฉียง',
+		tail: 'ลมส่ง',
+		relativeTooltip: '{cls} ({deg}° เทียบกับทิศทางการเดินทาง)'
 	}
 };

@@ -5,6 +5,7 @@
 	import { isDaylight, sunPhase } from '$lib/daylight';
 	import { t } from '$lib/i18n/index.svelte';
 	import WxIcon from './icons/WxIcon.svelte';
+	import WindIndicator from './WindIndicator.svelte';
 
 	type Props = {
 		hour: FusedHour;
@@ -61,7 +62,7 @@
 		<WxIcon code={hour.weatherCode} />
 		<span>{round1(hour.tempC)}°</span>
 	</td>
-	<td>{round1(hour.windKn)} / {round1(hour.gustKn)} kn {degToCompass(hour.windDirDeg)}</td>
+	<td>{round1(hour.windKn)} / {round1(hour.gustKn)} kn {degToCompass(hour.windDirDeg)}{#if hour.relWindDeg !== undefined}<WindIndicator relWindDeg={hour.relWindDeg} />{/if}</td>
 	<td>{round1(hour.precipMmH)} mm <span class="muted">({hour.pop}%)</span></td>
 	<td>{round1(hour.cloudPct)}%</td>
 	<td>{round1(hour.visKm)} km</td>

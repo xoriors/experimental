@@ -3,7 +3,7 @@ import { fetchForecast, fetchMarine } from '$lib/server/openmeteo';
 import { computeSeaRoute } from '$lib/server/sea-routing';
 import { computeFerryRoute } from '$lib/server/osm-ferry';
 import { fuseRoute } from '$lib/fusion';
-import { sampleAlongPolyline, sampleAlongRoute } from '$lib/geo';
+import { bearing, sampleAlongPolylineWithHeadings, sampleAlongRoute } from '$lib/geo';
 import type { LatLng } from '$lib/types';
 import type { RequestHandler } from './$types';
 
@@ -78,18 +78,32 @@ export const GET: RequestHandler = async ({ url }) => {
 	const straightLegs = legs.filter((l) => l.kind === 'straight').length;
 
 	const allStraight = legs.every((l) => l.kind === 'straight');
-	const samplePoints = allStraight
-		? sampleAlongRoute(points[0], points[points.length - 1], samples)
-		: sampleAlongPolyline(polyline, samples);
+	let samplePoints: LatLng[];
+	let sampleHeadings: number[];
+	if (allStraight) {
+		samplePoints = sampleAlongRoute(points[0], points[points.length - 1], samples);
+		const h = bearing(points[0], points[points.length - 1]);
+		sampleHeadings = samplePoints.map(() => h);
+	} else {
+		const sampled = sampleAlongPolylineWithHeadings(polyline, samples);
+		samplePoints = sampled.points;
+		sampleHeadings = sampled.headings;
+	}
 
 	try {
 		const results = await Promise.all(
-			samplePoints.map(async (p) => {
+			samplePoints.map(async (p, i) => {
 				const [f, m] = await Promise.all([
 					fetchForecast(p.lat, p.lon, days),
 					fetchMarine(p.lat, p.lon, days)
 				]);
-				return { forecast: f.hours, marine: m?.hours ?? null, timezone: f.timezone, daylight: f.daylight };
+				return {
+					forecast: f.hours,
+					marine: m?.hours ?? null,
+					timezone: f.timezone,
+					daylight: f.daylight,
+					headingDeg: sampleHeadings[i]
+				};
 			})
 		);
 		const hours = fuseRoute(results);

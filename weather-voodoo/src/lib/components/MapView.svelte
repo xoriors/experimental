@@ -5,6 +5,7 @@
 	import type { LatLng } from '$lib/types';
 	import type { RelativeWindClass } from '$lib/wind';
 	import { mapViewport } from '$lib/map-viewport.svelte';
+	import { browser } from '$app/environment';
 
 	export type WindChevron = {
 		point: LatLng;
@@ -449,7 +450,7 @@
 
 <div class="map-wrap" style="height: {height}">
 	<div bind:this={el} class="map"></div>
-	{#if 'geolocation' in globalThis.navigator}
+	{#if browser && 'geolocation' in navigator}
 		<button
 			type="button"
 			class="locate-btn"

@@ -2,6 +2,7 @@
 	import { view, toggleExpanded, effectiveConfig, setDayOverride, resetDayOverride } from '$lib/state.svelte';
 	import MapView from './MapView.svelte';
 	import WindMapOverlay from './WindMapOverlay.svelte';
+	import WindCompass from './WindCompass.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
@@ -365,6 +366,16 @@
 			{t('route.computing')}
 		</div>
 	{/if}
+	{#if chevrons.length > 0}
+		<div class="wind-compass-anchor">
+			<WindCompass
+				relWindDeg={chevrons[0].relWindDeg}
+				windKn={chevrons[0].windKn}
+				cls={chevrons[0].cls}
+				classLabel={chevrons[0].classLabel}
+			/>
+		</div>
+	{/if}
 	{#if editing && selectedIdx !== null && draft[selectedIdx]}
 		<div class="wp-popup" role="dialog" aria-label={t('waypoints.editAriaLabel')}>
 			<div class="wp-popup-title">
@@ -599,6 +610,13 @@
 	}
 	.map-card {
 		position: relative;
+	}
+	.wind-compass-anchor {
+		position: absolute;
+		bottom: 14px;
+		left: 14px;
+		z-index: 12;
+		pointer-events: auto;
 	}
 	.map-loading {
 		position: absolute;

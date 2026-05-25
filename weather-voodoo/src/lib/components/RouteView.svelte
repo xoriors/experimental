@@ -4,6 +4,7 @@
 	import PlacesChips from './PlacesChips.svelte';
 	import MapView from './MapView.svelte';
 	import WindMapOverlay from './WindMapOverlay.svelte';
+	import WindCompass from './WindCompass.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
@@ -233,6 +234,16 @@
 			onSelect={(t) => (mapHour = t)}
 		/>
 	{/if}
+	{#if chevrons.length > 0}
+		<div class="wind-compass-anchor">
+			<WindCompass
+				relWindDeg={chevrons[0].relWindDeg}
+				windKn={chevrons[0].windKn}
+				cls={chevrons[0].cls}
+				classLabel={chevrons[0].classLabel}
+			/>
+		</div>
+	{/if}
 	{#if loading && view.from && view.to}
 		<div class="map-loading" aria-live="polite">
 			<span class="spinner" aria-hidden="true"></span>
@@ -313,6 +324,13 @@
 	}
 	.map-card {
 		position: relative;
+	}
+	.wind-compass-anchor {
+		position: absolute;
+		bottom: 14px;
+		left: 14px;
+		z-index: 12;
+		pointer-events: auto;
 	}
 	.map-loading {
 		position: absolute;

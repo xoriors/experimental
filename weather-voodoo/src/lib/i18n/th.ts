@@ -107,6 +107,7 @@ export const th: Dict = {
 		legsMany: '{n} ช่วง',
 		ferryLegs: '{n} เฟอร์รี',
 		seaLegs: '{n} ทะเลเปิด',
+		trailLegs: '{n} เส้นทาง',
 		straightLegs: '{n} เส้นตรง',
 		straightPreview: '📐 เส้นตรงตัวอย่างขณะแก้ไข — กดเสร็จเพื่อคำนวณเส้นทางจริง',
 		editAriaLabel: 'แก้ไขจุดผ่าน',
@@ -127,7 +128,10 @@ export const th: Dict = {
 		greatCircleSuffix: 'ของเส้น great-circle',
 		straight: '📐 เส้นทางตรง — ไม่สามารถ snap เข้ากับเครือข่ายเส้นทางทะเลได้',
 		straightHint: 'จุดสุ่มอาจข้ามแผ่นดิน',
-		ferryLabel: 'เฟอร์รี'
+		ferryLabel: 'เฟอร์รี',
+		trailPrefix: '🥾 เส้นทางเดินป่าผ่าน OpenStreetMap:',
+		trailWaysSuffix: '({hike} เดินเท้า · {bike} จักรยาน)',
+		trailLabel: 'เส้นทาง'
 	},
 	days: {
 		today: 'วันนี้',

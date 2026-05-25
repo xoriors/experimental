@@ -65,15 +65,12 @@ async function cacheFirst(request: Request): Promise<Response> {
 			cache.put(request, response.clone()).catch(() => {});
 		}
 		return response;
-	} catch (err) {
-		// Last-ditch: fall back to the cached root document for navigations
-		// so the SPA can render and let the client-side router handle the
-		// requested path.
+	} catch {
 		if (request.mode === 'navigate') {
 			const fallback = await cache.match('/');
 			if (fallback) return fallback;
 		}
-		throw err;
+		return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
 	}
 }
 

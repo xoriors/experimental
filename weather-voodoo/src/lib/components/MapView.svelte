@@ -161,6 +161,10 @@
 			locMode = 'follow';
 			userDragged = false;
 			updateLocMarkerElement();
+			if (userLocMarker && map) {
+				const ll = userLocMarker.getLngLat();
+				map.easeTo({ center: [ll.lng, ll.lat], zoom: Math.max(map.getZoom(), 14), duration: 500 });
+			}
 		} else {
 			locMode = 'off';
 			userHeadingDeg = null;

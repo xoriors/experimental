@@ -42,6 +42,9 @@
 		windChevrons?: WindChevron[];
 		/** Show user's live GPS position as a pulsing blue dot. */
 		showUserLocation?: boolean;
+		/** Suppress auto-fitBounds. Use during editing when markers change
+		 *  incrementally and the user is positioning the map manually. */
+		suppressAutoFit?: boolean;
 	};
 
 	let {
@@ -58,7 +61,8 @@
 		highlightIdx = null,
 		height = '600px',
 		windChevrons,
-		showUserLocation = false
+		showUserLocation = false,
+		suppressAutoFit = false
 	}: Props = $props();
 
 	let el: HTMLDivElement | null = null;
@@ -260,16 +264,18 @@
 		// Only fit bounds when the markers/polyline actually change (new route).
 		// If the user panned or zoomed manually (or the shared viewport is set),
 		// don't override their position on every re-render.
-		const fitTarget = polyline && polyline.length >= 2 ? polyline : markers;
-		const fitKey = fitTarget.map((p) => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`).join('|');
-		if (fitKey && fitKey !== lastFitKey) {
-			lastFitKey = fitKey;
-			if (fitTarget.length >= 2) {
-				const bounds = new maplibregl.LngLatBounds();
-				fitTarget.forEach((p) => bounds.extend([p.lon, p.lat]));
-				map.fitBounds(bounds, { padding: 60, maxZoom: 11, duration: 400 });
-			} else if (markers.length === 1) {
-				map.flyTo({ center: [markers[0].lon, markers[0].lat], zoom: 11, duration: 400 });
+		if (!suppressAutoFit) {
+			const fitTarget = polyline && polyline.length >= 2 ? polyline : markers;
+			const fitKey = fitTarget.map((p) => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`).join('|');
+			if (fitKey && fitKey !== lastFitKey) {
+				lastFitKey = fitKey;
+				if (fitTarget.length >= 2) {
+					const bounds = new maplibregl.LngLatBounds();
+					fitTarget.forEach((p) => bounds.extend([p.lon, p.lat]));
+					map.fitBounds(bounds, { padding: 60, maxZoom: 11, duration: 400 });
+				} else if (markers.length === 1) {
+					map.flyTo({ center: [markers[0].lon, markers[0].lat], zoom: 11, duration: 400 });
+				}
 			}
 		}
 

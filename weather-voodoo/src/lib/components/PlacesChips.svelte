@@ -55,8 +55,8 @@
 	.places-chips {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.35rem;
-		margin-top: 0.5rem;
+		gap: 0.3rem;
+		margin-top: 0.45rem;
 	}
 	.chip {
 		display: inline-flex;
@@ -65,7 +65,8 @@
 		border-radius: 999px;
 		background: var(--bg);
 		overflow: hidden;
-		font-size: 0.85em;
+		font-size: 0.82em;
+		line-height: 1.2;
 	}
 	.chip.pinned {
 		border-color: var(--good, #4ade80);
@@ -76,27 +77,27 @@
 		border: none;
 		font: inherit;
 		cursor: pointer;
-		padding: 0.4rem 0.7rem;
-		min-height: 36px;
+		padding: 0.25rem 0.5rem;
+		min-height: 28px;
 	}
 	.chip button:hover,
 	.chip button:focus-visible {
 		background: var(--bg-elev, rgba(255, 255, 255, 0.06));
 	}
 	.chip-main {
-		max-width: 14rem;
+		max-width: 11rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.chip-pin,
 	.chip-del {
-		min-width: 36px;
-		padding-left: 0.5rem !important;
-		padding-right: 0.5rem !important;
+		min-width: 24px;
+		padding-left: 0.2rem !important;
+		padding-right: 0.3rem !important;
 		border-left: 1px solid var(--border);
 		color: var(--fg-dim);
-		font-size: 1.05em;
+		font-size: 0.95em;
 		line-height: 1;
 	}
 	.chip.pinned .chip-pin {
@@ -107,24 +108,23 @@
 	}
 	@media (max-width: 720px) {
 		.places-chips {
-			gap: 0.45rem;
+			gap: 0.35rem;
 		}
 		.chip {
-			font-size: 0.95em;
+			font-size: 0.85em;
 		}
 		.chip button {
-			padding: 0.55rem 0.8rem;
-			min-height: 44px;
+			padding: 0.35rem 0.55rem;
+			min-height: 34px;
 		}
 		.chip-pin,
 		.chip-del {
-			min-width: 44px;
-			padding-left: 0.65rem !important;
-			padding-right: 0.65rem !important;
-			font-size: 1.15em;
+			min-width: 30px;
+			padding-left: 0.3rem !important;
+			padding-right: 0.4rem !important;
 		}
 		.chip-main {
-			max-width: 10rem;
+			max-width: 9rem;
 		}
 	}
 </style>

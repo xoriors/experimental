@@ -65,6 +65,24 @@ export type FusedHour = ForecastHour & {
 	waveHsM: number | null;
 	wavePeriodS: number | null;
 	swellHsM: number | null;
+	/**
+	 * Wind angle relative to the direction of travel, in [-180, 180]. Only
+	 * present for route-based forecasts (where a heading exists); omitted for
+	 * the Fixed Location view. See `$lib/wind`.
+	 */
+	relWindDeg?: number;
+};
+
+/**
+ * Per-sample-point wind timeseries returned by the route APIs. Powers the
+ * on-map wind chevron overlay (#37 sketch 3) — one chevron per sample point,
+ * oriented and colored by the wind at the currently-selected hour.
+ */
+export type WindSample = {
+	point: LatLng;
+	/** Direction of travel at this sample point, in degrees clockwise from north. */
+	headingDeg: number;
+	hours: { time: string; windDirDeg: number; windKn: number; gustKn: number }[];
 };
 
 export type DaylightDay = { date: string; sunrise: string; sunset: string };

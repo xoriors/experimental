@@ -19,6 +19,19 @@ export function haversineKm(a: LatLng, b: LatLng): number {
 	return 2 * R_EARTH_KM * Math.asin(Math.sqrt(h));
 }
 
+/**
+ * Initial great-circle bearing from `a` to `b`, in degrees clockwise from north
+ * (0° = north, 90° = east). Returned in [0, 360).
+ */
+export function bearing(a: LatLng, b: LatLng): number {
+	const lat1 = toRad(a.lat);
+	const lat2 = toRad(b.lat);
+	const dLon = toRad(b.lon - a.lon);
+	const y = Math.sin(dLon) * Math.cos(lat2);
+	const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+	return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
 export function midpoint(a: LatLng, b: LatLng): LatLng {
 	const lat1 = toRad(a.lat);
 	const lon1 = toRad(a.lon);
@@ -59,23 +72,47 @@ function interpolate(a: LatLng, b: LatLng, t: number): LatLng {
 }
 
 export function sampleAlongPolyline(line: LatLng[], samples: number): LatLng[] {
-	if (line.length === 0) return [];
-	if (line.length === 1) return Array(samples).fill(line[0]);
-	if (samples < 2) return [line[0], line[line.length - 1]];
+	return sampleAlongPolylineWithHeadings(line, samples).points;
+}
+
+/**
+ * Like {@link sampleAlongPolyline} but also returns the heading (initial
+ * bearing of the polyline segment containing each sample) in degrees [0, 360).
+ * Heading at a sample is the bearing of the segment it lies on — for routes
+ * the polyline is dense enough that this is a good local tangent.
+ */
+export function sampleAlongPolylineWithHeadings(
+	line: LatLng[],
+	samples: number
+): { points: LatLng[]; headings: number[] } {
+	if (line.length === 0) return { points: [], headings: [] };
+	if (line.length === 1) {
+		return { points: Array(samples).fill(line[0]), headings: Array(samples).fill(0) };
+	}
+	if (samples < 2) {
+		const last = line.length - 1;
+		return {
+			points: [line[0], line[last]],
+			headings: [bearing(line[0], line[1]), bearing(line[last - 1], line[last])]
+		};
+	}
 
 	const { cumulative, total } = polylineKmLengths(line);
-	if (total === 0) return Array(samples).fill(line[0]);
+	if (total === 0) {
+		return { points: Array(samples).fill(line[0]), headings: Array(samples).fill(0) };
+	}
 
-	const out: LatLng[] = [];
+	const points: LatLng[] = [];
+	const headings: number[] = [];
 	for (let s = 0; s < samples; s++) {
 		const target = (s / (samples - 1)) * total;
-		// Find the segment containing the target distance
 		let i = 1;
 		while (i < cumulative.length - 1 && cumulative[i] < target) i++;
 		const segStart = cumulative[i - 1];
 		const segLen = cumulative[i] - segStart;
 		const t = segLen === 0 ? 0 : (target - segStart) / segLen;
-		out.push(interpolate(line[i - 1], line[i], t));
+		points.push(interpolate(line[i - 1], line[i], t));
+		headings.push(bearing(line[i - 1], line[i]));
 	}
-	return out;
+	return { points, headings };
 }

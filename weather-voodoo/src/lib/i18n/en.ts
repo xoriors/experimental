@@ -77,6 +77,8 @@ export type Dict = {
 	};
 	waypoints: {
 		editHelp: string;
+		editHelpShort: string;
+		editHelpTitle: string;
 		committedHelp: string;
 		cancel: string;
 		done: string;
@@ -294,6 +296,32 @@ export type Dict = {
 		avoid: string;
 		mixed: string;
 	};
+	wind: {
+		head: string;
+		headCross: string;
+		cross: string;
+		tailCross: string;
+		tail: string;
+		relativeTooltip: string;
+	};
+	windMap: {
+		regionLabel: string;
+		now: string;
+		nowTitle: string;
+		jumpNowTitle: string;
+		prevHour: string;
+		nextHour: string;
+		hideCompass: string;
+		showCompass: string;
+		relAngle: string;
+		verdict: {
+			head: string;
+			headCross: string;
+			cross: string;
+			tailCross: string;
+			tail: string;
+		};
+	};
 };
 
 export const en: Dict = {
@@ -382,6 +410,8 @@ export const en: Dict = {
 	},
 	waypoints: {
 		editHelp: '<strong>Tap the map</strong> to add a waypoint. To edit one, <strong>tap its red marker</strong> on the map or <strong>tap its chip in the list below</strong> — reorder, delete and move-to options open in a dialog. You can also drag a red marker directly (long-press on mobile). Straight-line preview shown while editing — press <strong>✓ Done</strong> to compute the real route and forecast.',
+		editHelpShort: 'Tap the map to add waypoints. Press ✓ Done when ready.',
+		editHelpTitle: 'How to use waypoints',
 		committedHelp: '<strong>Track committed.</strong> Press <strong>✎ Change waypoints</strong> to edit.',
 		cancel: 'Cancel',
 		done: '✓ Done',
@@ -607,5 +637,31 @@ export const en: Dict = {
 		goodFor: 'Good for {items}.',
 		avoid: 'Avoid {items}.',
 		mixed: 'Mixed conditions.'
+	},
+	wind: {
+		head: 'Head',
+		headCross: 'Head-Cross',
+		cross: 'Cross',
+		tailCross: 'Tail-Cross',
+		tail: 'Tail',
+		relativeTooltip: '{cls} wind ({deg}° relative to direction of travel)'
+	},
+	windMap: {
+		regionLabel: 'Wind along route — use arrow keys to scrub through hours',
+		now: 'NOW',
+		nowTitle: 'Showing wind for the current hour',
+		jumpNowTitle: 'Jump back to the current hour',
+		prevHour: 'Previous hour',
+		nextHour: 'Next hour',
+		hideCompass: 'Hide wind compass',
+		showCompass: 'Show wind compass',
+		relAngle: 'Relative angle',
+		verdict: {
+			head: 'Head wind along the route — tough going',
+			headCross: 'Head-cross wind — fighting it',
+			cross: 'Cross wind — watch your balance',
+			tailCross: 'Tail-cross wind — pushing you along',
+			tail: 'Tail wind — free speed'
+		}
 	}
 };

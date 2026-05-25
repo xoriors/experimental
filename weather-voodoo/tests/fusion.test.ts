@@ -55,6 +55,39 @@ describe('fusion', () => {
 		expect(fused[0].waveHsM).toBe(0.9);
 	});
 
+	it('fuseRoute emits relWindDeg when every point has a heading', () => {
+		// Two sample points, both heading east (90°). Point A's wind is FROM
+		// east (head wind, rel = 0). Point B's wind is FROM south-east (rel = -45°,
+		// head-cross). Worst-case relative wind is the smaller |angle|, i.e. point A.
+		const a = {
+			forecast: [mkHour('2026-05-20T10:00', { windDirDeg: 90 })],
+			marine: null,
+			headingDeg: 90
+		};
+		const b = {
+			forecast: [mkHour('2026-05-20T10:00', { windDirDeg: 135 })],
+			marine: null,
+			headingDeg: 90
+		};
+		const fused = fuseRoute([a, b]);
+		expect(fused[0].relWindDeg).toBe(0);
+	});
+
+	it('fuseRoute omits relWindDeg when any point is missing a heading', () => {
+		const a = {
+			forecast: [mkHour('2026-05-20T10:00', { windDirDeg: 90 })],
+			marine: null,
+			headingDeg: 90
+		};
+		const b = {
+			forecast: [mkHour('2026-05-20T10:00', { windDirDeg: 135 })],
+			marine: null
+			// no headingDeg
+		};
+		const fused = fuseRoute([a, b]);
+		expect(fused[0].relWindDeg).toBeUndefined();
+	});
+
 	it('mergeSinglePoint pairs forecast with marine hour-by-hour', () => {
 		const f = [mkHour('2026-05-20T10:00'), mkHour('2026-05-20T11:00')];
 		const m = [mkMarine('2026-05-20T10:00', { waveHsM: 0.7 }), mkMarine('2026-05-20T11:00', { waveHsM: 0.8 })];

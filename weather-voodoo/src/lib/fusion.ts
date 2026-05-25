@@ -1,8 +1,15 @@
 import type { ForecastHour, FusedHour, MarineHour } from './types';
+import { relativeWindDeg, worstRelativeWind } from './wind';
 
 type PointForecast = {
 	forecast: ForecastHour[];
 	marine?: MarineHour[] | null;
+	/**
+	 * Direction of travel at this sample point, in degrees clockwise from
+	 * north. Optional — when present on every point, fuseRoute emits the
+	 * worst-case relative wind angle per hour on the FusedHour.
+	 */
+	headingDeg?: number;
 };
 
 function maxOrNull(values: (number | null | undefined)[]): number | null {
@@ -25,12 +32,19 @@ export function fuseRoute(points: PointForecast[]): FusedHour[] {
 	if (points.length === 0) return [];
 
 	const hourCount = Math.min(...points.map((p) => p.forecast.length));
+	const allHaveHeading = points.every((p) => typeof p.headingDeg === 'number');
 	const out: FusedHour[] = [];
 
 	for (let i = 0; i < hourCount; i++) {
 		const hours = points.map((p) => p.forecast[i]);
 		const marines = points.map((p) => p.marine?.[i] ?? null);
 		const time = hours[0]?.time ?? '';
+
+		const relWindDeg = allHaveHeading
+			? (worstRelativeWind(
+					points.map((p, idx) => relativeWindDeg(hours[idx].windDirDeg, p.headingDeg as number))
+				) ?? undefined)
+			: undefined;
 
 		out.push({
 			time,
@@ -51,7 +65,8 @@ export function fuseRoute(points: PointForecast[]): FusedHour[] {
 			uv: maxOrNull(hours.map((h) => h.uv)) ?? undefined,
 			waveHsM: maxOrNull(marines.map((m) => m?.waveHsM ?? null)),
 			wavePeriodS: maxOrNull(marines.map((m) => m?.wavePeriodS ?? null)),
-			swellHsM: maxOrNull(marines.map((m) => m?.swellHsM ?? null))
+			swellHsM: maxOrNull(marines.map((m) => m?.swellHsM ?? null)),
+			...(relWindDeg !== undefined ? { relWindDeg } : {})
 		});
 
 		void minOrNull;

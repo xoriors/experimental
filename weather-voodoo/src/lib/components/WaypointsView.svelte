@@ -1,12 +1,16 @@
 <script lang="ts">
 	import { view, toggleExpanded, effectiveConfig, setDayOverride, resetDayOverride } from '$lib/state.svelte';
 	import MapView from './MapView.svelte';
+	import WindMapOverlay from './WindMapOverlay.svelte';
+	import WindCompass from './WindCompass.svelte';
 	import DayTabs from './DayTabs.svelte';
 	import ForecastTable from './ForecastTable.svelte';
 	import TripFinder from './TripFinder.svelte';
 	import { filterHoursForDay, localIsoDate } from '$lib/time';
 	import { t } from '$lib/i18n/index.svelte';
-	import type { DaylightDay, FusedHour, LabeledPoint, DayKey } from '$lib/types';
+	import { chevronsForHour, pickNowHour, worstClass } from '$lib/wind-map';
+	import type { RelativeWindClass } from '$lib/wind';
+	import type { DaylightDay, FusedHour, LabeledPoint, DayKey, WindSample } from '$lib/types';
 
 	type RouteMeta = {
 		kind: 'waypoints';
@@ -25,7 +29,10 @@
 		daylight: DaylightDay[];
 		polyline: { lat: number; lon: number }[];
 		route: RouteMeta;
+		windSamples: WindSample[];
 	} | null>(null);
+
+	let mapHour = $state<string | null>(null);
 
 	// Edit-mode buffer. While `editing === true`, taps on the map mutate
 	// `draft` only — we don't fetch routes or forecasts until the user
@@ -96,14 +103,17 @@
 					daylight?: DaylightDay[];
 					polyline: { lat: number; lon: number }[];
 					route: RouteMeta;
+					windSamples?: WindSample[];
 				};
 				result = {
 					hours: data.hours,
 					timezone: data.timezone,
 					daylight: data.daylight ?? [],
 					polyline: data.polyline,
-					route: data.route
+					route: data.route,
+					windSamples: data.windSamples ?? []
 				};
+				mapHour = null;
 			})
 			.catch((e: unknown) => {
 				if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -119,6 +129,37 @@
 	const eff = $derived(effectiveConfig(view.day));
 	const dayHours = $derived(result ? filterHoursForDay(result.hours, view.day, todayIso) : []);
 	const activeMode = $derived(eff.mode);
+
+	// Wind-overlay scrubber state. Chevrons are hidden while editing the
+	// track (the polyline isn't real yet).
+	const hourTimes = $derived(
+		!editing ? (result?.windSamples?.[0]?.hours.map((h) => h.time) ?? []) : []
+	);
+	const nowTime = $derived(hourTimes.length > 0 ? pickNowHour(hourTimes) : null);
+	const selectedTime = $derived(mapHour ?? nowTime ?? hourTimes[0] ?? '');
+	const classLabelMap = $derived<Record<RelativeWindClass, string>>({
+		head: t('wind.head'),
+		'head-cross': t('wind.headCross'),
+		cross: t('wind.cross'),
+		'tail-cross': t('wind.tailCross'),
+		tail: t('wind.tail')
+	});
+	const chevrons = $derived(
+		!editing && result && selectedTime
+			? chevronsForHour(result.windSamples, selectedTime, (c) => classLabelMap[c])
+			: []
+	);
+	const verdictKeyMap = $derived<Record<RelativeWindClass, string>>({
+		head: 'windMap.verdict.head',
+		'head-cross': 'windMap.verdict.headCross',
+		cross: 'windMap.verdict.cross',
+		'tail-cross': 'windMap.verdict.tailCross',
+		tail: 'windMap.verdict.tail'
+	});
+	const verdict = $derived.by(() => {
+		const w = worstClass(chevrons);
+		return w ? t(verdictKeyMap[w]) : undefined;
+	});
 
 	let selectedIdx: number | null = $state(null);
 	let hoveredIdx: number | null = $state(null);
@@ -192,6 +233,16 @@
 		removeDraft(selectedIdx);
 	}
 
+	let showHelpDialog = $state(false);
+
+	let compassVisible = $state(
+		typeof localStorage !== 'undefined' ? localStorage.getItem('wx-compass') !== 'hidden' : true
+	);
+	function setCompassVisible(v: boolean) {
+		compassVisible = v;
+		if (typeof localStorage !== 'undefined') localStorage.setItem('wx-compass', v ? 'visible' : 'hidden');
+	}
+
 	function onDay(d: DayKey) {
 		view.day = d;
 	}
@@ -206,7 +257,14 @@
 	<div class="wp-header">
 		<div class="muted wp-help">
 			{#if editing}
-				{@html t('waypoints.editHelp')}
+				<span>{t('waypoints.editHelpShort')}</span>
+				<button
+					type="button"
+					class="wp-help-btn"
+					onclick={() => (showHelpDialog = true)}
+					title={t('waypoints.editHelpTitle')}
+					aria-label={t('waypoints.editHelpTitle')}
+				>?</button>
 			{:else}
 				{@html t('waypoints.committedHelp')}
 			{/if}
@@ -307,11 +365,44 @@
 		polylineColor={editing ? '#ef4444' : '#38bdf8'}
 		highlightIdx={editing ? mapHighlightIdx : null}
 		height={fullscreen ? '100%' : undefined}
+		suppressAutoFit={editing}
+		showUserLocation={chevrons.length > 0}
 	/>
+	{#if chevrons.length > 0 && hourTimes.length > 0 && selectedTime}
+		<WindMapOverlay
+			{hourTimes}
+			{selectedTime}
+			{nowTime}
+			timezone={result?.timezone}
+			{verdict}
+			onSelect={(t) => (mapHour = t)}
+		/>
+	{/if}
 	{#if !editing && loading && view.waypoints.length >= 2}
 		<div class="map-loading" aria-live="polite">
 			<span class="spinner" aria-hidden="true"></span>
 			{t('route.computing')}
+		</div>
+	{/if}
+	{#if chevrons.length > 0}
+		<div class="wind-compass-anchor">
+			{#if compassVisible}
+				<WindCompass
+					relWindDeg={chevrons[0].relWindDeg}
+					windKn={chevrons[0].windKn}
+					cls={chevrons[0].cls}
+					classLabel={chevrons[0].classLabel}
+					onHide={() => setCompassVisible(false)}
+				/>
+			{:else}
+				<button
+					type="button"
+					class="wc-show-btn"
+					onclick={() => setCompassVisible(true)}
+					title={t('windMap.showCompass')}
+					aria-label={t('windMap.showCompass')}
+				>🧭</button>
+			{/if}
 		</div>
 	{/if}
 	{#if editing && selectedIdx !== null && draft[selectedIdx]}
@@ -388,6 +479,28 @@
 	</div>
 {/if}
 
+{#if showHelpDialog}
+	<div
+		class="wp-help-backdrop"
+		role="presentation"
+		onclick={() => (showHelpDialog = false)}
+		onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') showHelpDialog = false; }}
+	>
+		<div
+			class="wp-help-dialog"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="wp-help-title"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+		>
+			<h3 id="wp-help-title">{t('waypoints.editHelpTitle')}</h3>
+			<div class="wp-help-body">{@html t('waypoints.editHelp')}</div>
+			<button type="button" class="btn-ghost" onclick={() => (showHelpDialog = false)}>OK</button>
+		</div>
+	</div>
+{/if}
+
 <style>
 	/* .map-stage + .map-fs-btn live in app.css */
 	.wp-header {
@@ -401,6 +514,66 @@
 		flex: 1 1 240px;
 		font-size: 0.88em;
 		line-height: 1.4;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		flex-wrap: wrap;
+	}
+	.wp-help-btn {
+		all: unset;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 22px;
+		height: 22px;
+		font-size: 13px;
+		font-weight: 700;
+		border-radius: 50%;
+		border: 1.5px solid var(--fg-dim, #94a3b8);
+		color: var(--fg-dim, #94a3b8);
+		cursor: pointer;
+		flex-shrink: 0;
+	}
+	.wp-help-btn:hover {
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--fg);
+		border-color: var(--fg);
+	}
+	.wp-help-btn:focus-visible {
+		outline: 2px solid var(--good, #38bdf8);
+		outline-offset: 2px;
+	}
+	.wp-help-backdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.55);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 1rem;
+		z-index: 1000;
+	}
+	.wp-help-dialog {
+		background: var(--bg-elev, var(--bg));
+		color: var(--fg);
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		padding: 1rem 1.2rem;
+		max-width: 24rem;
+		width: 100%;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+	}
+	.wp-help-dialog h3 {
+		margin: 0 0 0.5rem 0;
+		font-size: 1rem;
+	}
+	.wp-help-body {
+		font-size: 0.9em;
+		line-height: 1.5;
+		margin-bottom: 0.8rem;
+	}
+	.wp-help-dialog .btn-ghost {
+		padding: 0.35rem 0.8rem;
 	}
 	.wp-cta {
 		display: flex;
@@ -548,6 +721,31 @@
 	}
 	.map-card {
 		position: relative;
+	}
+	.wind-compass-anchor {
+		position: absolute;
+		bottom: 14px;
+		left: 14px;
+		z-index: 12;
+		pointer-events: auto;
+	}
+	.wc-show-btn {
+		all: unset;
+		width: 44px;
+		height: 44px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 22px;
+		background: rgba(15, 23, 42, 0.88);
+		border: 1.5px solid rgba(148, 163, 184, 0.25);
+		border-radius: 50%;
+		cursor: pointer;
+		filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+	}
+	.wc-show-btn:hover {
+		background: rgba(15, 23, 42, 0.95);
+		border-color: rgba(255, 255, 255, 0.3);
 	}
 	.map-loading {
 		position: absolute;

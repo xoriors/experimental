@@ -448,7 +448,7 @@
 				id: 'route-line',
 				type: 'line',
 				source: 'route-src',
-				paint: { 'line-color': polylineColor, 'line-width': 3, 'line-opacity': 0.85 }
+				paint: { 'line-color': polylineColor, 'line-width': 5, 'line-opacity': 0.9 }
 			});
 		}
 	}

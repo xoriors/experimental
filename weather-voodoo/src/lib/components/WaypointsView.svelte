@@ -233,6 +233,8 @@
 		removeDraft(selectedIdx);
 	}
 
+	let showHelpDialog = $state(false);
+
 	function onDay(d: DayKey) {
 		view.day = d;
 	}
@@ -247,7 +249,14 @@
 	<div class="wp-header">
 		<div class="muted wp-help">
 			{#if editing}
-				{@html t('waypoints.editHelp')}
+				<span>{t('waypoints.editHelpShort')}</span>
+				<button
+					type="button"
+					class="wp-help-btn"
+					onclick={() => (showHelpDialog = true)}
+					title={t('waypoints.editHelpTitle')}
+					aria-label={t('waypoints.editHelpTitle')}
+				>?</button>
 			{:else}
 				{@html t('waypoints.committedHelp')}
 			{/if}
@@ -451,6 +460,28 @@
 	</div>
 {/if}
 
+{#if showHelpDialog}
+	<div
+		class="wp-help-backdrop"
+		role="presentation"
+		onclick={() => (showHelpDialog = false)}
+		onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') showHelpDialog = false; }}
+	>
+		<div
+			class="wp-help-dialog"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="wp-help-title"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+		>
+			<h3 id="wp-help-title">{t('waypoints.editHelpTitle')}</h3>
+			<div class="wp-help-body">{@html t('waypoints.editHelp')}</div>
+			<button type="button" class="btn-ghost" onclick={() => (showHelpDialog = false)}>OK</button>
+		</div>
+	</div>
+{/if}
+
 <style>
 	/* .map-stage + .map-fs-btn live in app.css */
 	.wp-header {
@@ -464,6 +495,66 @@
 		flex: 1 1 240px;
 		font-size: 0.88em;
 		line-height: 1.4;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		flex-wrap: wrap;
+	}
+	.wp-help-btn {
+		all: unset;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 22px;
+		height: 22px;
+		font-size: 13px;
+		font-weight: 700;
+		border-radius: 50%;
+		border: 1.5px solid var(--fg-dim, #94a3b8);
+		color: var(--fg-dim, #94a3b8);
+		cursor: pointer;
+		flex-shrink: 0;
+	}
+	.wp-help-btn:hover {
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--fg);
+		border-color: var(--fg);
+	}
+	.wp-help-btn:focus-visible {
+		outline: 2px solid var(--good, #38bdf8);
+		outline-offset: 2px;
+	}
+	.wp-help-backdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.55);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 1rem;
+		z-index: 1000;
+	}
+	.wp-help-dialog {
+		background: var(--bg-elev, var(--bg));
+		color: var(--fg);
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		padding: 1rem 1.2rem;
+		max-width: 24rem;
+		width: 100%;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+	}
+	.wp-help-dialog h3 {
+		margin: 0 0 0.5rem 0;
+		font-size: 1rem;
+	}
+	.wp-help-body {
+		font-size: 0.9em;
+		line-height: 1.5;
+		margin-bottom: 0.8rem;
+	}
+	.wp-help-dialog .btn-ghost {
+		padding: 0.35rem 0.8rem;
 	}
 	.wp-cta {
 		display: flex;

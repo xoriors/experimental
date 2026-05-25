@@ -77,6 +77,8 @@ export type Dict = {
 	};
 	waypoints: {
 		editHelp: string;
+		editHelpShort: string;
+		editHelpTitle: string;
 		committedHelp: string;
 		cancel: string;
 		done: string;
@@ -405,6 +407,8 @@ export const en: Dict = {
 	},
 	waypoints: {
 		editHelp: '<strong>Tap the map</strong> to add a waypoint. To edit one, <strong>tap its red marker</strong> on the map or <strong>tap its chip in the list below</strong> — reorder, delete and move-to options open in a dialog. You can also drag a red marker directly (long-press on mobile). Straight-line preview shown while editing — press <strong>✓ Done</strong> to compute the real route and forecast.',
+		editHelpShort: 'Tap the map to add waypoints. Press ✓ Done when ready.',
+		editHelpTitle: 'How to use waypoints',
 		committedHelp: '<strong>Track committed.</strong> Press <strong>✎ Change waypoints</strong> to edit.',
 		cancel: 'Cancel',
 		done: '✓ Done',

@@ -86,6 +86,8 @@ export const ro: Dict = {
 	},
 	waypoints: {
 		editHelp: '<strong>Apasă pe hartă</strong> pentru a adăuga un punct de trecere. Pentru a edita unul, <strong>apasă pinul roșu</strong> de pe hartă sau <strong>apasă chip-ul din lista de mai jos</strong> — opțiunile de reordonare, ștergere și mutare se deschid într-un dialog. Poți și trage direct un pin roșu (apăsare lungă pe mobil). Previzualizare în linie dreaptă în timpul editării — apasă <strong>✓ Gata</strong> pentru a calcula ruta și prognoza reale.',
+		editHelpShort: 'Apasă pe hartă pentru a adăuga puncte. Apasă ✓ Gata când ești pregătit.',
+		editHelpTitle: 'Cum se folosesc punctele de trecere',
 		committedHelp: '<strong>Traseu confirmat.</strong> Apasă <strong>✎ Modifică punctele</strong> pentru a edita.',
 		cancel: 'Anulează',
 		done: '✓ Gata',

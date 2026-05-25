@@ -7,16 +7,17 @@
 		windKn: number;
 		cls: RelativeWindClass;
 		classLabel: string;
+		onHide: () => void;
 	};
 
-	let { relWindDeg, windKn, cls, classLabel }: Props = $props();
+	let { relWindDeg, windKn, cls, classLabel, onHide }: Props = $props();
 
-	const CX = 75;
-	const CY = 75;
-	const R = 70;
-	const RING = 16;
+	const CX = 80;
+	const CY = 80;
+	const R = 74;
+	const RING = 18;
 	const RI = R - RING / 2;
-	const INNER_R = 24;
+	const INNER_R = 26;
 
 	function arc(startDeg: number, endDeg: number): string {
 		const toRad = (d: number) => ((d - 90) * Math.PI) / 180;
@@ -28,20 +29,25 @@
 		return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${RI} ${RI} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
 	}
 
-	const zones: { start: number; end: number; color: string; id: RelativeWindClass }[] = [
-		{ start: -30, end: 30, color: '#f87171', id: 'head' },
-		{ start: 30, end: 60, color: '#fb923c', id: 'head-cross' },
-		{ start: -60, end: -30, color: '#fb923c', id: 'head-cross' },
-		{ start: 60, end: 120, color: '#94a3b8', id: 'cross' },
-		{ start: -120, end: -60, color: '#94a3b8', id: 'cross' },
-		{ start: 120, end: 150, color: '#a3e635', id: 'tail-cross' },
-		{ start: -150, end: -120, color: '#a3e635', id: 'tail-cross' },
-		{ start: 150, end: 210, color: '#22c55e', id: 'tail' }
+	function labelPos(deg: number, r: number): { x: number; y: number } {
+		const rad = (deg - 90) * Math.PI / 180;
+		return { x: CX + r * Math.cos(rad), y: CY + r * Math.sin(rad) };
+	}
+
+	const zones: { start: number; end: number; color: string; id: RelativeWindClass; label: string }[] = [
+		{ start: -30, end: 30, color: '#f87171', id: 'head', label: 'H' },
+		{ start: 30, end: 60, color: '#fb923c', id: 'head-cross', label: '' },
+		{ start: -60, end: -30, color: '#fb923c', id: 'head-cross', label: '' },
+		{ start: 60, end: 120, color: '#94a3b8', id: 'cross', label: '×' },
+		{ start: -120, end: -60, color: '#94a3b8', id: 'cross', label: '×' },
+		{ start: 120, end: 150, color: '#a3e635', id: 'tail-cross', label: '' },
+		{ start: -150, end: -120, color: '#a3e635', id: 'tail-cross', label: '' },
+		{ start: 150, end: 210, color: '#22c55e', id: 'tail', label: 'T' }
 	];
 
 	const arrowAngle = $derived(relWindDeg + 180);
 
-	const ARROW_START = INNER_R + 4;
+	const ARROW_START = INNER_R + 5;
 	const ARROW_TIP = R - RING + 2;
 
 	const COLORS: Record<RelativeWindClass, string> = {
@@ -57,70 +63,109 @@
 	let showDetail = $state(false);
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-	class="wc-compass"
-	onclick={() => (showDetail = !showDetail)}
-	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') showDetail = !showDetail; }}
-	role="button"
-	tabindex="0"
-	aria-label="{classLabel} · {Math.round(windKn)} kn"
->
-	<svg viewBox="0 0 150 150" aria-hidden="true">
-		<!-- Dark background -->
-		<circle cx={CX} cy={CY} r={R} fill="rgba(15, 23, 42, 0.92)" />
+<div class="wc-wrap">
+	<button
+		type="button"
+		class="wc-hide-btn"
+		onclick={(e) => { e.stopPropagation(); onHide(); }}
+		aria-label={t('windMap.hideCompass')}
+		title={t('windMap.hideCompass')}
+	>×</button>
 
-		<!-- Zone arcs — thick, bold -->
-		{#each zones as z}
-			<path
-				d={arc(z.start, z.end)}
-				stroke={z.color}
-				stroke-width={RING}
-				fill="none"
-				stroke-linecap="butt"
-				opacity={z.id === cls ? 1 : 0.3}
-			/>
-		{/each}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="wc-compass"
+		onclick={() => (showDetail = !showDetail)}
+		onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') showDetail = !showDetail; }}
+		role="button"
+		tabindex="0"
+		aria-label="{classLabel} · {Math.round(windKn)} kn"
+	>
+		<svg viewBox="0 0 160 160" aria-hidden="true">
+			<defs>
+				<filter id="arrow-glow">
+					<feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="{labelColor}" flood-opacity="0.7" />
+				</filter>
+				<filter id="zone-glow">
+					<feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="{labelColor}" flood-opacity="0.5" />
+				</filter>
+			</defs>
 
-		<!-- Faint zone dividers -->
-		{#each [-150, -120, -60, -30, 30, 60, 120, 150] as deg}
-			{@const rad = (deg - 90) * Math.PI / 180}
-			<line
-				x1={CX + (RI - RING / 2) * Math.cos(rad)}
-				y1={CY + (RI - RING / 2) * Math.sin(rad)}
-				x2={CX + (RI + RING / 2) * Math.cos(rad)}
-				y2={CY + (RI + RING / 2) * Math.sin(rad)}
-				stroke="rgba(15, 23, 42, 0.8)"
-				stroke-width="2"
-			/>
-		{/each}
+			<!-- Dark background -->
+			<circle cx={CX} cy={CY} r={R} fill="rgba(15, 23, 42, 0.93)" />
 
-		<!-- "YOU" heading triangle at top -->
-		<polygon points="{CX},{CY - R + 2} {CX - 7},{CY - R + 12} {CX + 7},{CY - R + 12}"
-			fill="white" opacity="0.95" />
+			<!-- Inner glow matching active class -->
+			<circle cx={CX} cy={CY} r={R - RING - 1} fill={labelColor} opacity="0.08" />
 
-		<!-- Wind arrow — bold, starts outside the speed zone -->
-		<g transform="rotate({arrowAngle}, {CX}, {CY})" class="wc-arrow">
-			<line
-				x1={CX} y1={CY - ARROW_START}
-				x2={CX} y2={CY - ARROW_TIP + 10}
-				stroke="white"
-				stroke-width="5"
-				stroke-linecap="round"
-			/>
-			<polygon
-				points="{CX},{CY - ARROW_TIP} {CX - 8},{CY - ARROW_TIP + 14} {CX + 8},{CY - ARROW_TIP + 14}"
-				fill="white"
-			/>
-		</g>
+			<!-- Zone arcs — inactive very dim, active glows -->
+			{#each zones as z}
+				<path
+					d={arc(z.start, z.end)}
+					stroke={z.color}
+					stroke-width={RING}
+					fill="none"
+					stroke-linecap="butt"
+					opacity={z.id === cls ? 1 : 0.15}
+					filter={z.id === cls ? 'url(#zone-glow)' : 'none'}
+				/>
+			{/each}
 
-		<!-- Center speed — big, bold, just the number -->
-		<text x={CX} y={CY + 2} text-anchor="middle" dominant-baseline="central"
-			fill="white" font-size="28" font-weight="800" font-family="system-ui, sans-serif"
-			style="font-variant-numeric: tabular-nums;"
-		>{Math.round(windKn)}</text>
-	</svg>
-	<div class="wc-class" style="color: {labelColor}">{classLabel}</div>
+			<!-- Zone dividers -->
+			{#each [-150, -120, -60, -30, 30, 60, 120, 150] as deg}
+				{@const rad = (deg - 90) * Math.PI / 180}
+				<line
+					x1={CX + (RI - RING / 2) * Math.cos(rad)}
+					y1={CY + (RI - RING / 2) * Math.sin(rad)}
+					x2={CX + (RI + RING / 2) * Math.cos(rad)}
+					y2={CY + (RI + RING / 2) * Math.sin(rad)}
+					stroke="rgba(15, 23, 42, 0.85)"
+					stroke-width="2"
+				/>
+			{/each}
+
+			<!-- Zone labels on the ring -->
+			{#each zones as z}
+				{#if z.label}
+					{@const mid = (z.start + z.end) / 2}
+					{@const pos = labelPos(mid, RI)}
+					<text
+						x={pos.x} y={pos.y}
+						text-anchor="middle" dominant-baseline="central"
+						fill={z.id === cls ? '#fff' : z.color}
+						font-size="11" font-weight="800"
+						font-family="system-ui, sans-serif"
+						opacity={z.id === cls ? 1 : 0.5}
+					>{z.label}</text>
+				{/if}
+			{/each}
+
+			<!-- "YOU" heading triangle at top -->
+			<polygon points="{CX},{CY - R + 2} {CX - 7},{CY - R + 13} {CX + 7},{CY - R + 13}"
+				fill="white" opacity="0.95" />
+
+			<!-- Wind arrow — bold, glowing with the class color -->
+			<g transform="rotate({arrowAngle}, {CX}, {CY})" class="wc-arrow" filter="url(#arrow-glow)">
+				<line
+					x1={CX} y1={CY - ARROW_START}
+					x2={CX} y2={CY - ARROW_TIP + 12}
+					stroke="white"
+					stroke-width="5.5"
+					stroke-linecap="round"
+				/>
+				<polygon
+					points="{CX},{CY - ARROW_TIP} {CX - 9},{CY - ARROW_TIP + 16} {CX + 9},{CY - ARROW_TIP + 16}"
+					fill="white"
+				/>
+			</g>
+
+			<!-- Center speed — just the number, big -->
+			<text x={CX} y={CY + 2} text-anchor="middle" dominant-baseline="central"
+				fill="white" font-size="30" font-weight="900" font-family="system-ui, sans-serif"
+				style="font-variant-numeric: tabular-nums;"
+			>{Math.round(windKn)}</text>
+		</svg>
+		<div class="wc-class" style="color: {labelColor}; border-color: {labelColor}">{classLabel}</div>
+	</div>
 </div>
 
 {#if showDetail}
@@ -150,13 +195,40 @@
 {/if}
 
 <style>
+	.wc-wrap {
+		position: relative;
+	}
+	.wc-hide-btn {
+		all: unset;
+		position: absolute;
+		top: -4px;
+		right: -4px;
+		z-index: 2;
+		width: 26px;
+		height: 26px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 15px;
+		font-weight: 700;
+		color: #94a3b8;
+		background: rgba(15, 23, 42, 0.9);
+		border: 1.5px solid rgba(148, 163, 184, 0.3);
+		border-radius: 50%;
+		cursor: pointer;
+		line-height: 1;
+	}
+	.wc-hide-btn:hover {
+		color: #fff;
+		border-color: rgba(255, 255, 255, 0.4);
+	}
 	.wc-compass {
-		width: 150px;
+		width: 160px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 2px;
-		filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.65));
+		gap: 3px;
+		filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7));
 		cursor: pointer;
 		user-select: none;
 	}
@@ -166,8 +238,8 @@
 		border-radius: 50%;
 	}
 	.wc-compass svg {
-		width: 150px;
-		height: 150px;
+		width: 160px;
+		height: 160px;
 	}
 	:global(.wc-arrow) {
 		transition: transform 280ms ease;
@@ -176,10 +248,11 @@
 		font-size: 14px;
 		font-weight: 800;
 		text-transform: uppercase;
-		letter-spacing: 0.8px;
+		letter-spacing: 1px;
 		text-align: center;
-		padding: 3px 10px;
-		background: rgba(15, 23, 42, 0.9);
+		padding: 4px 12px;
+		background: rgba(15, 23, 42, 0.92);
+		border: 1.5px solid;
 		border-radius: 6px;
 		line-height: 1;
 	}
@@ -227,15 +300,15 @@
 	}
 	@media (max-width: 720px) {
 		.wc-compass {
-			width: 130px;
+			width: 136px;
 		}
 		.wc-compass svg {
-			width: 130px;
-			height: 130px;
+			width: 136px;
+			height: 136px;
 		}
 		.wc-class {
 			font-size: 12px;
-			padding: 2px 8px;
+			padding: 3px 9px;
 		}
 	}
 </style>

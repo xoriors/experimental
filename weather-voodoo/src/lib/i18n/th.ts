@@ -329,6 +329,8 @@ export const th: Dict = {
 		jumpNowTitle: 'กลับไปยังชั่วโมงปัจจุบัน',
 		prevHour: 'ชั่วโมงก่อนหน้า',
 		nextHour: 'ชั่วโมงถัดไป',
+		hideCompass: 'ซ่อนเข็มทิศลม',
+		showCompass: 'แสดงเข็มทิศลม',
 		relAngle: 'มุมสัมพัทธ์',
 		verdict: {
 			head: 'ลมต้านตลอดเส้นทาง — ปั่นยาก',

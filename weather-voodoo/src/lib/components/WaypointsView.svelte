@@ -235,6 +235,14 @@
 
 	let showHelpDialog = $state(false);
 
+	let compassVisible = $state(
+		typeof localStorage !== 'undefined' ? localStorage.getItem('wx-compass') !== 'hidden' : true
+	);
+	function setCompassVisible(v: boolean) {
+		compassVisible = v;
+		if (typeof localStorage !== 'undefined') localStorage.setItem('wx-compass', v ? 'visible' : 'hidden');
+	}
+
 	function onDay(d: DayKey) {
 		view.day = d;
 	}
@@ -377,12 +385,23 @@
 	{/if}
 	{#if chevrons.length > 0}
 		<div class="wind-compass-anchor">
-			<WindCompass
-				relWindDeg={chevrons[0].relWindDeg}
-				windKn={chevrons[0].windKn}
-				cls={chevrons[0].cls}
-				classLabel={chevrons[0].classLabel}
-			/>
+			{#if compassVisible}
+				<WindCompass
+					relWindDeg={chevrons[0].relWindDeg}
+					windKn={chevrons[0].windKn}
+					cls={chevrons[0].cls}
+					classLabel={chevrons[0].classLabel}
+					onHide={() => setCompassVisible(false)}
+				/>
+			{:else}
+				<button
+					type="button"
+					class="wc-show-btn"
+					onclick={() => setCompassVisible(true)}
+					title={t('windMap.showCompass')}
+					aria-label={t('windMap.showCompass')}
+				>🧭</button>
+			{/if}
 		</div>
 	{/if}
 	{#if editing && selectedIdx !== null && draft[selectedIdx]}
@@ -708,6 +727,24 @@
 		left: 14px;
 		z-index: 12;
 		pointer-events: auto;
+	}
+	.wc-show-btn {
+		all: unset;
+		width: 44px;
+		height: 44px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 22px;
+		background: rgba(15, 23, 42, 0.88);
+		border: 1.5px solid rgba(148, 163, 184, 0.25);
+		border-radius: 50%;
+		cursor: pointer;
+		filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+	}
+	.wc-show-btn:hover {
+		background: rgba(15, 23, 42, 0.95);
+		border-color: rgba(255, 255, 255, 0.3);
 	}
 	.map-loading {
 		position: absolute;

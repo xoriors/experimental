@@ -311,6 +311,8 @@ export type Dict = {
 		jumpNowTitle: string;
 		prevHour: string;
 		nextHour: string;
+		hideCompass: string;
+		showCompass: string;
 		relAngle: string;
 		verdict: {
 			head: string;
@@ -651,6 +653,8 @@ export const en: Dict = {
 		jumpNowTitle: 'Jump back to the current hour',
 		prevHour: 'Previous hour',
 		nextHour: 'Next hour',
+		hideCompass: 'Hide wind compass',
+		showCompass: 'Show wind compass',
 		relAngle: 'Relative angle',
 		verdict: {
 			head: 'Head wind along the route — tough going',

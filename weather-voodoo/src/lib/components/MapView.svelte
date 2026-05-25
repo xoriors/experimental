@@ -73,6 +73,14 @@
 	let geoWatchId: number | null = null;
 	let lastFitKey = '';
 
+	// Follow-mode state: 'off' → 'locate' (one-shot) → 'follow' (continuous).
+	type LocMode = 'off' | 'locate' | 'follow';
+	let locMode = $state<LocMode>('off');
+	let locating = $state(false);
+	let userHeadingDeg = $state<number | null>(null);
+	let prevPos: { lat: number; lon: number; time: number } | null = null;
+	let userDragged = false;
+
 	const STYLE = {
 		version: 8 as const,
 		sources: {
@@ -86,23 +94,31 @@
 		layers: [{ id: 'osm', type: 'raster' as const, source: 'osm' }]
 	};
 
-	let locating = $state(false);
-
-	function locateMe() {
+	function cycleLocMode() {
 		if (!map || !('geolocation' in navigator)) return;
-		locating = true;
-		navigator.geolocation.getCurrentPosition(
-			(pos) => {
-				if (!map) return;
-				const { latitude: lat, longitude: lon } = pos.coords;
-				map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 12), duration: 600 });
-				mapViewport.center = { lat, lon };
-				mapViewport.zoom = Math.max(map.getZoom(), 12);
-				locating = false;
-			},
-			() => { locating = false; },
-			{ enableHighAccuracy: true, timeout: 10_000 }
-		);
+		if (locMode === 'off') {
+			locMode = 'locate';
+			locating = true;
+			navigator.geolocation.getCurrentPosition(
+				(pos) => {
+					if (!map) return;
+					const { latitude: lat, longitude: lon } = pos.coords;
+					map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 13), duration: 600 });
+					mapViewport.center = { lat, lon };
+					mapViewport.zoom = Math.max(map.getZoom(), 13);
+					locating = false;
+				},
+				() => { locating = false; locMode = 'off'; },
+				{ enableHighAccuracy: true, timeout: 10_000 }
+			);
+		} else if (locMode === 'locate') {
+			locMode = 'follow';
+			userDragged = false;
+		} else {
+			locMode = 'off';
+			userHeadingDeg = null;
+			updateLocMarkerElement();
+		}
 	}
 
 	onMount(() => {
@@ -204,31 +220,98 @@
 		renderWindChevrons();
 	});
 
-	function buildUserDot(): HTMLElement {
-		const dot = document.createElement('div');
-		dot.className = 'user-loc-dot';
-		dot.setAttribute('aria-label', 'Your location');
-		dot.innerHTML = '<div class="user-loc-pulse"></div><div class="user-loc-core"></div>';
-		return dot;
+	function buildLocElement(arrow: boolean): HTMLElement {
+		const el = document.createElement('div');
+		if (arrow) {
+			el.className = 'user-loc-arrow';
+			el.setAttribute('aria-label', 'Your location and heading');
+			// Navigation arrow — points up by default, rotated via inline transform
+			el.innerHTML = `<svg viewBox="0 0 32 32" width="32" height="32">
+				<polygon points="16,4 6,28 16,22 26,28" fill="#3b82f6" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+			</svg>`;
+		} else {
+			el.className = 'user-loc-dot';
+			el.setAttribute('aria-label', 'Your location');
+			el.innerHTML = '<div class="user-loc-pulse"></div><div class="user-loc-core"></div>';
+		}
+		return el;
+	}
+
+	function updateLocMarkerElement() {
+		if (!userLocMarker || !map) return;
+		const isFollow = locMode === 'follow';
+		const ll = userLocMarker.getLngLat();
+		userLocMarker.remove();
+		userLocMarker = new maplibregl.Marker({ element: buildLocElement(isFollow), anchor: 'center' })
+			.setLngLat(ll)
+			.addTo(map);
+		if (isFollow && userHeadingDeg !== null) {
+			rotateArrow(userHeadingDeg);
+		}
+	}
+
+	function rotateArrow(deg: number) {
+		if (!userLocMarker) return;
+		const svg = userLocMarker.getElement().querySelector('svg');
+		if (svg) svg.style.transform = `rotate(${deg}deg)`;
+	}
+
+	function computeHeading(lat: number, lon: number, time: number): number | null {
+		if (!prevPos) { prevPos = { lat, lon, time }; return null; }
+		const dLat = lat - prevPos.lat;
+		const dLon = lon - prevPos.lon;
+		const dist = Math.sqrt(dLat * dLat + dLon * dLon) * 111_000; // rough metres
+		const dt = time - prevPos.time;
+		prevPos = { lat, lon, time };
+		if (dist < 5 || dt < 2_000) return null; // need ≥5m and ≥2s
+		const rad = Math.atan2(dLon * Math.cos(lat * Math.PI / 180), dLat);
+		return ((rad * 180 / Math.PI) + 360) % 360;
 	}
 
 	function startGeolocation() {
 		if (!showUserLocation || !map || !('geolocation' in navigator)) return;
+
+		// Exit follow mode if the user manually drags the map.
+		map.on('dragstart', () => {
+			if (locMode === 'follow') {
+				userDragged = true;
+				locMode = 'locate';
+				updateLocMarkerElement();
+			}
+		});
+
 		geoWatchId = navigator.geolocation.watchPosition(
 			(pos) => {
 				if (!map) return;
-				const lng = pos.coords.longitude;
+				const lon = pos.coords.longitude;
 				const lat = pos.coords.latitude;
+				const now = Date.now();
+				const isFollow = locMode === 'follow';
+
 				if (!userLocMarker) {
-					userLocMarker = new maplibregl.Marker({ element: buildUserDot(), anchor: 'center' })
-						.setLngLat([lng, lat])
+					userLocMarker = new maplibregl.Marker({
+						element: buildLocElement(isFollow),
+						anchor: 'center'
+					})
+						.setLngLat([lon, lat])
 						.addTo(map);
 				} else {
-					userLocMarker.setLngLat([lng, lat]);
+					userLocMarker.setLngLat([lon, lat]);
+				}
+
+				if (isFollow) {
+					const heading = computeHeading(lat, lon, now);
+					if (heading !== null) {
+						userHeadingDeg = heading;
+						rotateArrow(heading);
+					}
+					map.easeTo({ center: [lon, lat], duration: 800 });
+				} else {
+					computeHeading(lat, lon, now);
 				}
 			},
 			() => {},
-			{ enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 }
+			{ enableHighAccuracy: true, maximumAge: 3_000, timeout: 15_000 }
 		);
 	}
 
@@ -367,16 +450,27 @@
 			type="button"
 			class="locate-btn"
 			class:locating
-			onclick={locateMe}
-			aria-label="Go to my location"
+			class:following={locMode === 'follow'}
+			class:located={locMode === 'locate'}
+			onclick={cycleLocMode}
+			aria-label={locMode === 'follow' ? 'Exit follow mode' : locMode === 'locate' ? 'Follow my position' : 'Go to my location'}
+			title={locMode === 'follow' ? 'Following — tap to stop' : locMode === 'locate' ? 'Tap again to follow' : 'Go to my location'}
 		>
-			<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-				<circle cx="12" cy="12" r="4" />
-				<line x1="12" y1="2" x2="12" y2="6" />
-				<line x1="12" y1="18" x2="12" y2="22" />
-				<line x1="2" y1="12" x2="6" y2="12" />
-				<line x1="18" y1="12" x2="22" y2="12" />
-			</svg>
+			{#if locMode === 'follow'}
+				<!-- Navigation arrow icon -->
+				<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="none">
+					<polygon points="12,2 4,20 12,16 20,20" />
+				</svg>
+			{:else}
+				<!-- Crosshair icon -->
+				<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="12" cy="12" r="4" />
+					<line x1="12" y1="2" x2="12" y2="6" />
+					<line x1="12" y1="18" x2="12" y2="22" />
+					<line x1="2" y1="12" x2="6" y2="12" />
+					<line x1="18" y1="12" x2="22" y2="12" />
+				</svg>
+			{/if}
 		</button>
 	{/if}
 </div>
@@ -424,9 +518,21 @@
 	.locate-btn:active {
 		background: rgba(59, 130, 246, 0.3);
 	}
+	.locate-btn.located {
+		color: #3b82f6;
+		border-color: rgba(59, 130, 246, 0.5);
+	}
 	.locate-btn.locating {
 		color: #3b82f6;
 		animation: loc-btn-pulse 1s ease-in-out infinite;
+	}
+	.locate-btn.following {
+		color: #fff;
+		background: #3b82f6;
+		border-color: #3b82f6;
+	}
+	.locate-btn.following:hover {
+		background: #2563eb;
 	}
 	@keyframes loc-btn-pulse {
 		0%, 100% { opacity: 1; }
@@ -537,6 +643,14 @@
 		border-radius: 50%;
 		background: rgba(59, 130, 246, 0.25);
 		animation: loc-pulse 2s ease-out infinite;
+	}
+	/* Directional navigation arrow — replaces the dot in follow mode */
+	:global(.user-loc-arrow) {
+		z-index: 16;
+		filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+	}
+	:global(.user-loc-arrow svg) {
+		transition: transform 400ms ease;
 	}
 	@keyframes loc-pulse {
 		0% { transform: scale(0.6); opacity: 1; }

@@ -94,11 +94,56 @@
 		layers: [{ id: 'osm', type: 'raster' as const, source: 'osm' }]
 	};
 
+	function ensureGeoWatch() {
+		if (geoWatchId !== null || !map || !('geolocation' in navigator)) return;
+		map.on('dragstart', () => {
+			if (locMode === 'follow') {
+				userDragged = true;
+				locMode = 'locate';
+				updateLocMarkerElement();
+			}
+		});
+		geoWatchId = navigator.geolocation.watchPosition(
+			(pos) => {
+				if (!map) return;
+				const lon = pos.coords.longitude;
+				const lat = pos.coords.latitude;
+				const now = Date.now();
+				const isFollow = locMode === 'follow';
+
+				if (!userLocMarker) {
+					userLocMarker = new maplibregl.Marker({
+						element: buildLocElement(isFollow),
+						anchor: 'center'
+					})
+						.setLngLat([lon, lat])
+						.addTo(map);
+				} else {
+					userLocMarker.setLngLat([lon, lat]);
+				}
+
+				if (isFollow) {
+					const heading = computeHeading(lat, lon, now);
+					if (heading !== null) {
+						userHeadingDeg = heading;
+						rotateArrow(heading);
+					}
+					map.easeTo({ center: [lon, lat], duration: 800 });
+				} else {
+					computeHeading(lat, lon, now);
+				}
+			},
+			() => {},
+			{ enableHighAccuracy: true, maximumAge: 3_000, timeout: 15_000 }
+		);
+	}
+
 	function cycleLocMode() {
 		if (!map || !('geolocation' in navigator)) return;
 		if (locMode === 'off') {
 			locMode = 'locate';
 			locating = true;
+			ensureGeoWatch();
 			navigator.geolocation.getCurrentPosition(
 				(pos) => {
 					if (!map) return;
@@ -114,6 +159,7 @@
 		} else if (locMode === 'locate') {
 			locMode = 'follow';
 			userDragged = false;
+			updateLocMarkerElement();
 		} else {
 			locMode = 'off';
 			userHeadingDeg = null;
@@ -269,50 +315,8 @@
 	}
 
 	function startGeolocation() {
-		if (!showUserLocation || !map || !('geolocation' in navigator)) return;
-
-		// Exit follow mode if the user manually drags the map.
-		map.on('dragstart', () => {
-			if (locMode === 'follow') {
-				userDragged = true;
-				locMode = 'locate';
-				updateLocMarkerElement();
-			}
-		});
-
-		geoWatchId = navigator.geolocation.watchPosition(
-			(pos) => {
-				if (!map) return;
-				const lon = pos.coords.longitude;
-				const lat = pos.coords.latitude;
-				const now = Date.now();
-				const isFollow = locMode === 'follow';
-
-				if (!userLocMarker) {
-					userLocMarker = new maplibregl.Marker({
-						element: buildLocElement(isFollow),
-						anchor: 'center'
-					})
-						.setLngLat([lon, lat])
-						.addTo(map);
-				} else {
-					userLocMarker.setLngLat([lon, lat]);
-				}
-
-				if (isFollow) {
-					const heading = computeHeading(lat, lon, now);
-					if (heading !== null) {
-						userHeadingDeg = heading;
-						rotateArrow(heading);
-					}
-					map.easeTo({ center: [lon, lat], duration: 800 });
-				} else {
-					computeHeading(lat, lon, now);
-				}
-			},
-			() => {},
-			{ enableHighAccuracy: true, maximumAge: 3_000, timeout: 15_000 }
-		);
+		if (!showUserLocation) return;
+		ensureGeoWatch();
 	}
 
 	function renderMarkersAndLine() {
@@ -445,7 +449,7 @@
 
 <div class="map-wrap" style="height: {height}">
 	<div bind:this={el} class="map"></div>
-	{#if interactive}
+	{#if 'geolocation' in globalThis.navigator}
 		<button
 			type="button"
 			class="locate-btn"

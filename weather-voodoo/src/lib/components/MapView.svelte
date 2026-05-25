@@ -4,6 +4,7 @@
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import type { LatLng } from '$lib/types';
 	import type { RelativeWindClass } from '$lib/wind';
+	import { mapViewport } from '$lib/map-viewport.svelte';
 
 	export type WindChevron = {
 		point: LatLng;
@@ -66,6 +67,7 @@
 	let drawnChevrons: Marker[] = [];
 	let userLocMarker: Marker | null = null;
 	let geoWatchId: number | null = null;
+	let lastFitKey = '';
 
 	const STYLE = {
 		version: 8 as const,
@@ -80,13 +82,51 @@
 		layers: [{ id: 'osm', type: 'raster' as const, source: 'osm' }]
 	};
 
+	let locating = $state(false);
+
+	function locateMe() {
+		if (!map || !('geolocation' in navigator)) return;
+		locating = true;
+		navigator.geolocation.getCurrentPosition(
+			(pos) => {
+				if (!map) return;
+				const { latitude: lat, longitude: lon } = pos.coords;
+				map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 12), duration: 600 });
+				mapViewport.center = { lat, lon };
+				mapViewport.zoom = Math.max(map.getZoom(), 12);
+				locating = false;
+			},
+			() => { locating = false; },
+			{ enableHighAccuracy: true, timeout: 10_000 }
+		);
+	}
+
 	onMount(() => {
 		if (!el) return;
+
+		// Use shared viewport if available (persisted from another tab), else
+		// fall back to markers or the default view.
+		const initCenter: [number, number] = mapViewport.center
+			? [mapViewport.center.lon, mapViewport.center.lat]
+			: markers.length
+				? [markers[0].lon, markers[0].lat]
+				: [98.85, 7.9];
+		const initZoom = mapViewport.zoom
+			?? (markers.length ? 9 : 4);
+
 		map = new maplibregl.Map({
 			container: el,
 			style: STYLE,
-			center: markers.length ? [markers[0].lon, markers[0].lat] : [98.85, 7.9],
-			zoom: markers.length ? 9 : 4
+			center: initCenter,
+			zoom: initZoom
+		});
+
+		// Write viewport changes back to the shared store on every move/zoom.
+		map.on('moveend', () => {
+			if (!map) return;
+			const c = map.getCenter();
+			mapViewport.center = { lat: c.lat, lon: c.lng };
+			mapViewport.zoom = map.getZoom();
 		});
 
 		if (interactive) {
@@ -217,17 +257,20 @@
 			drawn.push(marker);
 		}
 
-		// Camera fits don't require the style to be loaded — run them eagerly so
-		// shared links open already framed on the route. Prefer polyline bounds
-		// (a routed sea/trail polyline can detour well outside the markers' bbox)
-		// and fall back to marker bounds when no route line is available yet.
+		// Only fit bounds when the markers/polyline actually change (new route).
+		// If the user panned or zoomed manually (or the shared viewport is set),
+		// don't override their position on every re-render.
 		const fitTarget = polyline && polyline.length >= 2 ? polyline : markers;
-		if (fitTarget.length >= 2) {
-			const bounds = new maplibregl.LngLatBounds();
-			fitTarget.forEach((p) => bounds.extend([p.lon, p.lat]));
-			map.fitBounds(bounds, { padding: 60, maxZoom: 11, duration: 400 });
-		} else if (markers.length === 1) {
-			map.flyTo({ center: [markers[0].lon, markers[0].lat], zoom: 11, duration: 400 });
+		const fitKey = fitTarget.map((p) => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`).join('|');
+		if (fitKey && fitKey !== lastFitKey) {
+			lastFitKey = fitKey;
+			if (fitTarget.length >= 2) {
+				const bounds = new maplibregl.LngLatBounds();
+				fitTarget.forEach((p) => bounds.extend([p.lon, p.lat]));
+				map.fitBounds(bounds, { padding: 60, maxZoom: 11, duration: 400 });
+			} else if (markers.length === 1) {
+				map.flyTo({ center: [markers[0].lon, markers[0].lat], zoom: 11, duration: 400 });
+			}
 		}
 
 		// The route source/layer needs the MapLibre style to be loaded first; on a
@@ -311,17 +354,77 @@
 	}
 </script>
 
-<div bind:this={el} class="map" style="height: {height}"></div>
+<div class="map-wrap" style="height: {height}">
+	<div bind:this={el} class="map"></div>
+	{#if interactive}
+		<button
+			type="button"
+			class="locate-btn"
+			class:locating
+			onclick={locateMe}
+			aria-label="Go to my location"
+		>
+			<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+				<circle cx="12" cy="12" r="4" />
+				<line x1="12" y1="2" x2="12" y2="6" />
+				<line x1="12" y1="18" x2="12" y2="22" />
+				<line x1="2" y1="12" x2="6" y2="12" />
+				<line x1="18" y1="12" x2="22" y2="12" />
+			</svg>
+		</button>
+	{/if}
+</div>
 
 <style>
-	.map {
+	.map-wrap {
+		position: relative;
 		width: 100%;
 		border-radius: 8px;
+		overflow: hidden;
+	}
+	.map {
+		width: 100%;
+		height: 100%;
 	}
 	@media (max-width: 720px) {
-		.map {
+		.map-wrap {
 			max-height: 55vh;
 		}
+	}
+	.locate-btn {
+		all: unset;
+		position: absolute;
+		bottom: 32px;
+		right: 12px;
+		z-index: 10;
+		width: 40px;
+		height: 40px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(15, 23, 42, 0.9);
+		border: 1.5px solid rgba(148, 163, 184, 0.3);
+		border-radius: 8px;
+		color: #e2e8f0;
+		cursor: pointer;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+		transition: background 120ms, border-color 120ms;
+	}
+	.locate-btn:hover {
+		background: rgba(15, 23, 42, 1);
+		border-color: rgba(255, 255, 255, 0.4);
+		color: #fff;
+	}
+	.locate-btn:active {
+		background: rgba(59, 130, 246, 0.3);
+	}
+	.locate-btn.locating {
+		color: #3b82f6;
+		animation: loc-btn-pulse 1s ease-in-out infinite;
+	}
+	@keyframes loc-btn-pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.5; }
 	}
 	:global(.marker-highlighted) {
 		filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.9));

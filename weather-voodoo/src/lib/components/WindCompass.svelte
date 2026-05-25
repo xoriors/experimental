@@ -35,14 +35,14 @@
 	}
 
 	const zones: { start: number; end: number; color: string; id: RelativeWindClass; label: string }[] = [
-		{ start: -30, end: 30, color: '#f87171', id: 'head', label: 'H' },
-		{ start: 30, end: 60, color: '#fb923c', id: 'head-cross', label: '' },
-		{ start: -60, end: -30, color: '#fb923c', id: 'head-cross', label: '' },
-		{ start: 60, end: 120, color: '#94a3b8', id: 'cross', label: '×' },
-		{ start: -120, end: -60, color: '#94a3b8', id: 'cross', label: '×' },
-		{ start: 120, end: 150, color: '#a3e635', id: 'tail-cross', label: '' },
-		{ start: -150, end: -120, color: '#a3e635', id: 'tail-cross', label: '' },
-		{ start: 150, end: 210, color: '#22c55e', id: 'tail', label: 'T' }
+		{ start: -30, end: 30, color: '#ff5555', id: 'head', label: 'H' },
+		{ start: 30, end: 60, color: '#b45309', id: 'head-cross', label: '' },
+		{ start: -60, end: -30, color: '#b45309', id: 'head-cross', label: '' },
+		{ start: 60, end: 120, color: '#64748b', id: 'cross', label: '×' },
+		{ start: -120, end: -60, color: '#64748b', id: 'cross', label: '×' },
+		{ start: 120, end: 150, color: '#65a30d', id: 'tail-cross', label: '' },
+		{ start: -150, end: -120, color: '#65a30d', id: 'tail-cross', label: '' },
+		{ start: 150, end: 210, color: '#4ade80', id: 'tail', label: 'T' }
 	];
 
 	const arrowAngle = $derived(relWindDeg + 180);
@@ -51,11 +51,11 @@
 	const ARROW_TIP = R - RING + 2;
 
 	const COLORS: Record<RelativeWindClass, string> = {
-		head: '#f87171',
-		'head-cross': '#fb923c',
-		cross: '#94a3b8',
-		'tail-cross': '#a3e635',
-		tail: '#22c55e'
+		head: '#ff5555',
+		'head-cross': '#b45309',
+		cross: '#64748b',
+		'tail-cross': '#65a30d',
+		tail: '#4ade80'
 	};
 
 	const labelColor = $derived(COLORS[cls]);

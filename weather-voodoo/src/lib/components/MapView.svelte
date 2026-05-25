@@ -499,19 +499,19 @@
 		margin-left: 1px;
 	}
 	:global(.wind-chevron[data-cls='head']) {
-		--wc-color: #f87171;
+		--wc-color: #ff5555;
 	}
 	:global(.wind-chevron[data-cls='head-cross']) {
-		--wc-color: #fb923c;
+		--wc-color: #b45309;
 	}
 	:global(.wind-chevron[data-cls='cross']) {
-		--wc-color: #94a3b8;
+		--wc-color: #64748b;
 	}
 	:global(.wind-chevron[data-cls='tail-cross']) {
-		--wc-color: #a3e635;
+		--wc-color: #65a30d;
 	}
 	:global(.wind-chevron[data-cls='tail']) {
-		--wc-color: #22c55e;
+		--wc-color: #4ade80;
 	}
 	/* Live GPS blue dot — pulsing ring + solid core */
 	:global(.user-loc-dot) {

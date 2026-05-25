@@ -190,7 +190,7 @@
 		font-size: 9px;
 		font-weight: 800;
 		letter-spacing: 0.8px;
-		background: #22c55e;
+		background: #4ade80;
 		color: #052e16;
 		border-radius: 4px;
 		margin-bottom: 2px;

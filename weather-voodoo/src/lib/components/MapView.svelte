@@ -55,7 +55,7 @@
 		polylineColor = '#38bdf8',
 		draggableMarkers = false,
 		highlightIdx = null,
-		height = '440px',
+		height = '600px',
 		windChevrons,
 		showUserLocation = false
 	}: Props = $props();
@@ -314,6 +314,15 @@
 <div bind:this={el} class="map" style="height: {height}"></div>
 
 <style>
+	.map {
+		width: 100%;
+		border-radius: 8px;
+	}
+	@media (max-width: 720px) {
+		.map {
+			max-height: 55vh;
+		}
+	}
 	:global(.marker-highlighted) {
 		filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.9));
 		transform-origin: center bottom;

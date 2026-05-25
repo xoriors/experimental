@@ -129,8 +129,8 @@
 						userHeadingDeg = heading;
 						rotateArrow(heading);
 					}
-					if (!map.isMoving()) {
-						map.setCenter([lon, lat]);
+					if (!map.isZooming()) {
+						map.easeTo({ center: [lon, lat], duration: 200 });
 					}
 				} else {
 					computeHeading(lat, lon, now);

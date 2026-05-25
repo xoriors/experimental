@@ -54,24 +54,24 @@
 		transform-origin: 50% 50%;
 	}
 	.rw[data-cls='head'] {
-		background: rgba(248, 113, 113, 0.18);
-		color: #fca5a5;
+		background: rgba(255, 85, 85, 0.22);
+		color: #ff8888;
 	}
 	.rw[data-cls='head-cross'] {
-		background: rgba(251, 146, 60, 0.18);
-		color: #fdba74;
+		background: rgba(180, 83, 9, 0.18);
+		color: #d97706;
 	}
 	.rw[data-cls='cross'] {
-		background: rgba(148, 163, 184, 0.18);
-		color: #cbd5e1;
+		background: rgba(100, 116, 139, 0.18);
+		color: #94a3b8;
 	}
 	.rw[data-cls='tail-cross'] {
-		background: rgba(132, 204, 22, 0.2);
-		color: #bef264;
+		background: rgba(101, 163, 13, 0.18);
+		color: #84cc16;
 	}
 	.rw[data-cls='tail'] {
-		background: rgba(34, 197, 94, 0.22);
-		color: #86efac;
+		background: rgba(74, 222, 128, 0.25);
+		color: #4ade80;
 	}
 	@media (max-width: 720px) {
 		.rw {

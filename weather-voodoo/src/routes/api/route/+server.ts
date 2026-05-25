@@ -94,6 +94,16 @@ export const GET: RequestHandler = async ({ url }) => {
 			})
 		);
 		const hours = fuseRoute(results);
+		const windSamples = results.map((r, i) => ({
+			point: points[i],
+			headingDeg: headings[i],
+			hours: r.forecast.map((h) => ({
+				time: h.time,
+				windDirDeg: h.windDirDeg,
+				windKn: h.windKn,
+				gustKn: h.gustKn
+			}))
+		}));
 		return json(
 			{
 				timezone: results[0]?.timezone ?? 'UTC',
@@ -101,7 +111,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				hours,
 				daylight: results[0]?.daylight ?? [],
 				polyline: routePolyline,
-				route: routeMeta
+				route: routeMeta,
+				windSamples
 			},
 			{ headers: { 'cache-control': 'public, s-maxage=600, stale-while-revalidate=3600' } }
 		);

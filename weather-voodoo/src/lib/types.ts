@@ -73,6 +73,18 @@ export type FusedHour = ForecastHour & {
 	relWindDeg?: number;
 };
 
+/**
+ * Per-sample-point wind timeseries returned by the route APIs. Powers the
+ * on-map wind chevron overlay (#37 sketch 3) — one chevron per sample point,
+ * oriented and colored by the wind at the currently-selected hour.
+ */
+export type WindSample = {
+	point: LatLng;
+	/** Direction of travel at this sample point, in degrees clockwise from north. */
+	headingDeg: number;
+	hours: { time: string; windDirDeg: number; windKn: number; gustKn: number }[];
+};
+
 export type DaylightDay = { date: string; sunrise: string; sunset: string };
 
 export type Activity =

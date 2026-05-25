@@ -174,25 +174,64 @@ export async function fetchMarine(lat: number, lon: number, days = 3): Promise<M
 }
 
 const GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/search';
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 
 export type GeocodeResult = { name: string; lat: number; lon: number; country?: string; admin1?: string };
 
 export async function geocode(query: string, limit = 5): Promise<GeocodeResult[]> {
 	if (!query.trim()) return [];
+	const results = await geocodeOpenMeteo(query, limit);
+	if (results.length > 0) return results;
+	return geocodeNominatim(query, limit);
+}
+
+async function geocodeOpenMeteo(query: string, limit: number): Promise<GeocodeResult[]> {
 	const params = new URLSearchParams({
 		name: query,
 		count: limit.toString(),
 		language: 'en',
 		format: 'json'
 	});
-	const res = await fetch(`${GEOCODE_URL}?${params.toString()}`);
-	if (!res.ok) return [];
-	const data = (await res.json()) as { results?: { name: string; latitude: number; longitude: number; country?: string; admin1?: string }[] };
-	return (data.results ?? []).map((r) => ({
-		name: r.name,
-		lat: r.latitude,
-		lon: r.longitude,
-		country: r.country,
-		admin1: r.admin1
-	}));
+	try {
+		const res = await fetch(`${GEOCODE_URL}?${params.toString()}`);
+		if (!res.ok) return [];
+		const data = (await res.json()) as { results?: { name: string; latitude: number; longitude: number; country?: string; admin1?: string }[] };
+		return (data.results ?? []).map((r) => ({
+			name: r.name,
+			lat: r.latitude,
+			lon: r.longitude,
+			country: r.country,
+			admin1: r.admin1
+		}));
+	} catch {
+		return [];
+	}
+}
+
+async function geocodeNominatim(query: string, limit: number): Promise<GeocodeResult[]> {
+	const params = new URLSearchParams({
+		q: query,
+		format: 'jsonv2',
+		limit: limit.toString(),
+		addressdetails: '1'
+	});
+	try {
+		const res = await fetch(`${NOMINATIM_URL}?${params.toString()}`, {
+			headers: { 'user-agent': 'weather-voodoo (https://weather-voodoo.vercel.app)' }
+		});
+		if (!res.ok) return [];
+		const data = (await res.json()) as { display_name: string; lat: string; lon: string; address?: { country?: string; state?: string } }[];
+		return data.map((r) => {
+			const parts = r.display_name.split(',').map((s) => s.trim());
+			return {
+				name: parts[0] ?? r.display_name,
+				lat: Number(r.lat),
+				lon: Number(r.lon),
+				country: r.address?.country,
+				admin1: r.address?.state ?? parts[1]
+			};
+		});
+	} catch {
+		return [];
+	}
 }

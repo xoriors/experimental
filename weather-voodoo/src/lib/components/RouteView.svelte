@@ -223,6 +223,7 @@
 		onPick={onMapPick}
 		height={fullscreen ? '100%' : undefined}
 		windChevrons={chevrons.length > 0 ? chevrons : undefined}
+		showUserLocation={chevrons.length > 0}
 	/>
 	{#if chevrons.length > 0 && hourTimes.length > 0 && selectedTime}
 		<WindMapOverlay

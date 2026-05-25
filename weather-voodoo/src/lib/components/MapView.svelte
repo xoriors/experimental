@@ -39,6 +39,8 @@
 		 * arrow direction = absolute wind direction (where the wind is going).
 		 */
 		windChevrons?: WindChevron[];
+		/** Show user's live GPS position as a pulsing blue dot. */
+		showUserLocation?: boolean;
 	};
 
 	let {
@@ -54,13 +56,16 @@
 		draggableMarkers = false,
 		highlightIdx = null,
 		height = '440px',
-		windChevrons
+		windChevrons,
+		showUserLocation = false
 	}: Props = $props();
 
 	let el: HTMLDivElement | null = null;
 	let map: MlMap | null = null;
 	let drawn: Marker[] = [];
 	let drawnChevrons: Marker[] = [];
+	let userLocMarker: Marker | null = null;
+	let geoWatchId: number | null = null;
 
 	const STYLE = {
 		version: 8 as const,
@@ -114,6 +119,7 @@
 
 		renderMarkersAndLine();
 		renderWindChevrons();
+		startGeolocation();
 
 		// Re-measure when the container itself resizes (e.g. fullscreen toggle,
 		// orientation change). maplibre listens to window resize but not
@@ -131,6 +137,8 @@
 	onDestroy(() => {
 		drawn.forEach((m) => m.remove());
 		drawnChevrons.forEach((m) => m.remove());
+		userLocMarker?.remove();
+		if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
 		resizeObs?.disconnect();
 		resizeObs = null;
 		map?.remove();
@@ -151,6 +159,34 @@
 		void windChevrons;
 		renderWindChevrons();
 	});
+
+	function buildUserDot(): HTMLElement {
+		const dot = document.createElement('div');
+		dot.className = 'user-loc-dot';
+		dot.setAttribute('aria-label', 'Your location');
+		dot.innerHTML = '<div class="user-loc-pulse"></div><div class="user-loc-core"></div>';
+		return dot;
+	}
+
+	function startGeolocation() {
+		if (!showUserLocation || !map || !('geolocation' in navigator)) return;
+		geoWatchId = navigator.geolocation.watchPosition(
+			(pos) => {
+				if (!map) return;
+				const lng = pos.coords.longitude;
+				const lat = pos.coords.latitude;
+				if (!userLocMarker) {
+					userLocMarker = new maplibregl.Marker({ element: buildUserDot(), anchor: 'center' })
+						.setLngLat([lng, lat])
+						.addTo(map);
+				} else {
+					userLocMarker.setLngLat([lng, lat]);
+				}
+			},
+			() => {},
+			{ enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 }
+		);
+	}
 
 	function renderMarkersAndLine() {
 		if (!map) return;
@@ -358,6 +394,35 @@
 	}
 	:global(.wind-chevron[data-cls='tail']) {
 		--wc-color: #22c55e;
+	}
+	/* Live GPS blue dot — pulsing ring + solid core */
+	:global(.user-loc-dot) {
+		position: relative;
+		width: 20px;
+		height: 20px;
+		z-index: 15;
+	}
+	:global(.user-loc-core) {
+		position: absolute;
+		top: 4px;
+		left: 4px;
+		width: 12px;
+		height: 12px;
+		background: #3b82f6;
+		border: 2.5px solid #fff;
+		border-radius: 50%;
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+	}
+	:global(.user-loc-pulse) {
+		position: absolute;
+		inset: -6px;
+		border-radius: 50%;
+		background: rgba(59, 130, 246, 0.25);
+		animation: loc-pulse 2s ease-out infinite;
+	}
+	@keyframes loc-pulse {
+		0% { transform: scale(0.6); opacity: 1; }
+		100% { transform: scale(2.2); opacity: 0; }
 	}
 	@media (max-width: 720px) {
 		:global(.wind-chevron .wc-ring) {

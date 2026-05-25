@@ -329,6 +329,7 @@ export const ro: Dict = {
 		jumpNowTitle: 'Revino la ora curentă',
 		prevHour: 'Ora anterioară',
 		nextHour: 'Ora următoare',
+		relAngle: 'Unghi relativ',
 		verdict: {
 			head: 'Vânt din față pe traseu — pedalat greu',
 			headCross: 'Vânt din față-lateral — te lupți cu el',

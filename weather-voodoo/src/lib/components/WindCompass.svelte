@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { RelativeWindClass } from '$lib/wind';
+	import { t } from '$lib/i18n/index.svelte';
 
 	type Props = {
 		relWindDeg: number;
@@ -10,12 +11,12 @@
 
 	let { relWindDeg, windKn, cls, classLabel }: Props = $props();
 
-	const CX = 70;
-	const CY = 70;
-	const R = 62;
-	const RING = 11;
+	const CX = 75;
+	const CY = 75;
+	const R = 70;
+	const RING = 16;
 	const RI = R - RING / 2;
-	const INNER_R = 22;
+	const INNER_R = 24;
 
 	function arc(startDeg: number, endDeg: number): string {
 		const toRad = (d: number) => ((d - 90) * Math.PI) / 180;
@@ -41,8 +42,7 @@
 	const arrowAngle = $derived(relWindDeg + 180);
 
 	const ARROW_START = INNER_R + 4;
-	const ARROW_END = R - RING - 2;
-	const HEAD_LEN = 10;
+	const ARROW_TIP = R - RING + 2;
 
 	const COLORS: Record<RelativeWindClass, string> = {
 		head: '#f87171',
@@ -53,14 +53,24 @@
 	};
 
 	const labelColor = $derived(COLORS[cls]);
+
+	let showDetail = $state(false);
 </script>
 
-<div class="wc-compass" title="{classLabel} · {Math.round(windKn)} kn · {Math.round(relWindDeg)}° relative">
-	<svg viewBox="0 0 140 140" aria-hidden="true">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="wc-compass"
+	onclick={() => (showDetail = !showDetail)}
+	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') showDetail = !showDetail; }}
+	role="button"
+	tabindex="0"
+	aria-label="{classLabel} · {Math.round(windKn)} kn"
+>
+	<svg viewBox="0 0 150 150" aria-hidden="true">
 		<!-- Dark background -->
 		<circle cx={CX} cy={CY} r={R} fill="rgba(15, 23, 42, 0.92)" />
 
-		<!-- Zone arcs -->
+		<!-- Zone arcs — thick, bold -->
 		{#each zones as z}
 			<path
 				d={arc(z.start, z.end)}
@@ -68,7 +78,7 @@
 				stroke-width={RING}
 				fill="none"
 				stroke-linecap="butt"
-				opacity={z.id === cls ? 1 : 0.35}
+				opacity={z.id === cls ? 1 : 0.3}
 			/>
 		{/each}
 
@@ -80,59 +90,90 @@
 				y1={CY + (RI - RING / 2) * Math.sin(rad)}
 				x2={CX + (RI + RING / 2) * Math.cos(rad)}
 				y2={CY + (RI + RING / 2) * Math.sin(rad)}
-				stroke="rgba(15, 23, 42, 0.7)"
-				stroke-width="1.5"
+				stroke="rgba(15, 23, 42, 0.8)"
+				stroke-width="2"
 			/>
 		{/each}
 
 		<!-- "YOU" heading triangle at top -->
-		<polygon points="{CX},{CY - R + 1} {CX - 6},{CY - R + 10} {CX + 6},{CY - R + 10}"
-			fill="white" opacity="0.9" />
+		<polygon points="{CX},{CY - R + 2} {CX - 7},{CY - R + 12} {CX + 7},{CY - R + 12}"
+			fill="white" opacity="0.95" />
 
-		<!-- Wind arrow — starts OUTSIDE the speed text zone, never covers the number -->
+		<!-- Wind arrow — bold, starts outside the speed zone -->
 		<g transform="rotate({arrowAngle}, {CX}, {CY})" class="wc-arrow">
 			<line
 				x1={CX} y1={CY - ARROW_START}
-				x2={CX} y2={CY - ARROW_END}
+				x2={CX} y2={CY - ARROW_TIP + 10}
 				stroke="white"
-				stroke-width="3.5"
+				stroke-width="5"
 				stroke-linecap="round"
 			/>
 			<polygon
-				points="{CX},{CY - ARROW_END - HEAD_LEN / 2} {CX - 6},{CY - ARROW_END + HEAD_LEN / 2} {CX + 6},{CY - ARROW_END + HEAD_LEN / 2}"
+				points="{CX},{CY - ARROW_TIP} {CX - 8},{CY - ARROW_TIP + 14} {CX + 8},{CY - ARROW_TIP + 14}"
 				fill="white"
 			/>
 		</g>
 
-		<!-- Center speed — inside the inner zone, always readable -->
-		<text x={CX} y={CY + 1} text-anchor="middle" dominant-baseline="central"
-			fill="white" font-size="22" font-weight="800" font-family="system-ui, sans-serif"
+		<!-- Center speed — big, bold, just the number -->
+		<text x={CX} y={CY + 2} text-anchor="middle" dominant-baseline="central"
+			fill="white" font-size="28" font-weight="800" font-family="system-ui, sans-serif"
 			style="font-variant-numeric: tabular-nums;"
-		>{Math.round(windKn)}<tspan font-size="11" font-weight="600" opacity="0.8">kn</tspan></text>
+		>{Math.round(windKn)}</text>
 	</svg>
 	<div class="wc-class" style="color: {labelColor}">{classLabel}</div>
 </div>
 
+{#if showDetail}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="wc-detail-backdrop"
+		onclick={() => (showDetail = false)}
+		onkeydown={(e) => { if (e.key === 'Escape') showDetail = false; }}
+	>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="wc-detail" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+			<div class="wc-detail-row">
+				<span class="wc-detail-label">{t('wind.head')}/{t('wind.tail')}</span>
+				<span class="wc-detail-value" style="color: {labelColor}">{classLabel}</span>
+			</div>
+			<div class="wc-detail-row">
+				<span class="wc-detail-label">{t('table.windGust')}</span>
+				<span class="wc-detail-value">{Math.round(windKn)} kn</span>
+			</div>
+			<div class="wc-detail-row">
+				<span class="wc-detail-label">{t('windMap.verdict.relAngle')}</span>
+				<span class="wc-detail-value">{Math.round(relWindDeg)}°</span>
+			</div>
+			<button type="button" class="btn-ghost wc-detail-close" onclick={() => (showDetail = false)}>OK</button>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.wc-compass {
-		width: 140px;
+		width: 150px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: 2px;
-		filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
-		cursor: help;
+		filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.65));
+		cursor: pointer;
 		user-select: none;
 	}
+	.wc-compass:focus-visible {
+		outline: 2px solid #38bdf8;
+		outline-offset: 4px;
+		border-radius: 50%;
+	}
 	.wc-compass svg {
-		width: 140px;
-		height: 140px;
+		width: 150px;
+		height: 150px;
 	}
 	:global(.wc-arrow) {
 		transition: transform 280ms ease;
 	}
 	.wc-class {
-		font-size: 13px;
+		font-size: 14px;
 		font-weight: 800;
 		text-transform: uppercase;
 		letter-spacing: 0.8px;
@@ -142,16 +183,58 @@
 		border-radius: 6px;
 		line-height: 1;
 	}
+	.wc-detail-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 1100;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		padding: 1rem;
+		background: rgba(0, 0, 0, 0.4);
+	}
+	.wc-detail {
+		background: var(--bg-elev, var(--bg, #1e293b));
+		color: var(--fg, #e2e8f0);
+		border: 1px solid var(--border, #334155);
+		border-radius: 12px;
+		padding: 0.8rem 1rem;
+		width: 100%;
+		max-width: 20rem;
+		box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+	.wc-detail-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 0.92em;
+	}
+	.wc-detail-label {
+		color: var(--fg-dim, #94a3b8);
+		font-weight: 500;
+	}
+	.wc-detail-value {
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+	.wc-detail-close {
+		margin-top: 0.3rem;
+		align-self: center;
+		padding: 0.3rem 1rem;
+	}
 	@media (max-width: 720px) {
 		.wc-compass {
-			width: 120px;
+			width: 130px;
 		}
 		.wc-compass svg {
-			width: 120px;
-			height: 120px;
+			width: 130px;
+			height: 130px;
 		}
 		.wc-class {
-			font-size: 11px;
+			font-size: 12px;
 			padding: 2px 8px;
 		}
 	}

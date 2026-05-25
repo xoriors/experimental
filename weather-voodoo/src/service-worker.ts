@@ -51,8 +51,28 @@ sw.addEventListener('fetch', (event) => {
 		return;
 	}
 
+	// Navigation requests (HTML pages) always go network-first so a deploy
+	// transition never serves a stale shell pointing at vanished assets.
+	if (request.mode === 'navigate') {
+		event.respondWith(networkFirstNav(request));
+		return;
+	}
+
 	event.respondWith(cacheFirst(request));
 });
+
+async function networkFirstNav(request: Request): Promise<Response> {
+	try {
+		const response = await fetch(request);
+		const cache = await caches.open(SHELL_CACHE);
+		cache.put(request, response.clone()).catch(() => {});
+		return response;
+	} catch {
+		const cache = await caches.open(SHELL_CACHE);
+		const cached = await cache.match(request) ?? await cache.match('/');
+		return cached ?? new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+	}
+}
 
 async function cacheFirst(request: Request): Promise<Response> {
 	const cache = await caches.open(SHELL_CACHE);
@@ -65,15 +85,12 @@ async function cacheFirst(request: Request): Promise<Response> {
 			cache.put(request, response.clone()).catch(() => {});
 		}
 		return response;
-	} catch (err) {
-		// Last-ditch: fall back to the cached root document for navigations
-		// so the SPA can render and let the client-side router handle the
-		// requested path.
+	} catch {
 		if (request.mode === 'navigate') {
 			const fallback = await cache.match('/');
 			if (fallback) return fallback;
 		}
-		throw err;
+		return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
 	}
 }
 

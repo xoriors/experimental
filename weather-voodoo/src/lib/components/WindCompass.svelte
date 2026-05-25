@@ -10,11 +10,12 @@
 
 	let { relWindDeg, windKn, cls, classLabel }: Props = $props();
 
-	const CX = 60;
-	const CY = 60;
-	const R = 48;
-	const RING = 10;
+	const CX = 70;
+	const CY = 70;
+	const R = 62;
+	const RING = 11;
 	const RI = R - RING / 2;
+	const INNER_R = 22;
 
 	function arc(startDeg: number, endDeg: number): string {
 		const toRad = (d: number) => ((d - 90) * Math.PI) / 180;
@@ -37,8 +38,11 @@
 		{ start: 150, end: 210, color: '#22c55e', id: 'tail' }
 	];
 
-	// Arrow shows "where the wind goes" relative to heading. Up = forward.
 	const arrowAngle = $derived(relWindDeg + 180);
+
+	const ARROW_START = INNER_R + 4;
+	const ARROW_END = R - RING - 2;
+	const HEAD_LEN = 10;
 
 	const COLORS: Record<RelativeWindClass, string> = {
 		head: '#f87171',
@@ -52,7 +56,7 @@
 </script>
 
 <div class="wc-compass" title="{classLabel} · {Math.round(windKn)} kn · {Math.round(relWindDeg)}° relative">
-	<svg viewBox="0 0 120 120" aria-hidden="true">
+	<svg viewBox="0 0 140 140" aria-hidden="true">
 		<!-- Dark background -->
 		<circle cx={CX} cy={CY} r={R} fill="rgba(15, 23, 42, 0.92)" />
 
@@ -82,36 +86,36 @@
 		{/each}
 
 		<!-- "YOU" heading triangle at top -->
-		<polygon points="{CX},{CY - R + 1} {CX - 5},{CY - R + 9} {CX + 5},{CY - R + 9}"
+		<polygon points="{CX},{CY - R + 1} {CX - 6},{CY - R + 10} {CX + 6},{CY - R + 10}"
 			fill="white" opacity="0.9" />
 
-		<!-- Wind arrow — rotates to show "where wind goes" -->
+		<!-- Wind arrow — starts OUTSIDE the speed text zone, never covers the number -->
 		<g transform="rotate({arrowAngle}, {CX}, {CY})" class="wc-arrow">
 			<line
-				x1={CX} y1={CY + 4}
-				x2={CX} y2={CY - R + RING + 8}
+				x1={CX} y1={CY - ARROW_START}
+				x2={CX} y2={CY - ARROW_END}
 				stroke="white"
 				stroke-width="3.5"
 				stroke-linecap="round"
 			/>
 			<polygon
-				points="{CX},{CY - R + RING + 2} {CX - 6},{CY - R + RING + 12} {CX + 6},{CY - R + RING + 12}"
+				points="{CX},{CY - ARROW_END - HEAD_LEN / 2} {CX - 6},{CY - ARROW_END + HEAD_LEN / 2} {CX + 6},{CY - ARROW_END + HEAD_LEN / 2}"
 				fill="white"
 			/>
 		</g>
 
-		<!-- Center speed -->
-		<text x={CX} y={CY + 2} text-anchor="middle" dominant-baseline="central"
-			fill="white" font-size="16" font-weight="800" font-family="system-ui, sans-serif"
+		<!-- Center speed — inside the inner zone, always readable -->
+		<text x={CX} y={CY + 1} text-anchor="middle" dominant-baseline="central"
+			fill="white" font-size="22" font-weight="800" font-family="system-ui, sans-serif"
 			style="font-variant-numeric: tabular-nums;"
-		>{Math.round(windKn)}<tspan font-size="9" font-weight="600" opacity="0.8">kn</tspan></text>
+		>{Math.round(windKn)}<tspan font-size="11" font-weight="600" opacity="0.8">kn</tspan></text>
 	</svg>
 	<div class="wc-class" style="color: {labelColor}">{classLabel}</div>
 </div>
 
 <style>
 	.wc-compass {
-		width: 120px;
+		width: 140px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -121,8 +125,8 @@
 		user-select: none;
 	}
 	.wc-compass svg {
-		width: 120px;
-		height: 120px;
+		width: 140px;
+		height: 140px;
 	}
 	:global(.wc-arrow) {
 		transition: transform 280ms ease;
@@ -140,11 +144,11 @@
 	}
 	@media (max-width: 720px) {
 		.wc-compass {
-			width: 100px;
+			width: 120px;
 		}
 		.wc-compass svg {
-			width: 100px;
-			height: 100px;
+			width: 120px;
+			height: 120px;
 		}
 		.wc-class {
 			font-size: 11px;

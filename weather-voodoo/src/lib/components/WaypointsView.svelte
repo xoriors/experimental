@@ -357,7 +357,6 @@
 		polylineColor={editing ? '#ef4444' : '#38bdf8'}
 		highlightIdx={editing ? mapHighlightIdx : null}
 		height={fullscreen ? '100%' : undefined}
-		windChevrons={chevrons.length > 0 ? chevrons : undefined}
 		showUserLocation={chevrons.length > 0}
 	/>
 	{#if chevrons.length > 0 && hourTimes.length > 0 && selectedTime}

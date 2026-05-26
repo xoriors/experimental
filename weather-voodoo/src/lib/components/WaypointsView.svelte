@@ -17,6 +17,7 @@
 		legCount: number;
 		ferryLegs: number;
 		seaLegs: number;
+		trailLegs: number;
 		straightLegs: number;
 		totalKm: number;
 	};
@@ -340,6 +341,7 @@
 			· {t(result.route.legCount === 1 ? 'waypoints.legsOne' : 'waypoints.legsMany', { n: result.route.legCount })}
 			{#if result.route.ferryLegs > 0} · ⛴️ {t('waypoints.ferryLegs', { n: result.route.ferryLegs })}{/if}
 			{#if result.route.seaLegs > 0} · ⚓ {t('waypoints.seaLegs', { n: result.route.seaLegs })}{/if}
+			{#if result.route.trailLegs > 0} · 🥾 {t('waypoints.trailLegs', { n: result.route.trailLegs })}{/if}
 			{#if result.route.straightLegs > 0} · 📐 {t('waypoints.straightLegs', { n: result.route.straightLegs })}{/if}
 		</div>
 	{:else if editing && draft.length >= 2}

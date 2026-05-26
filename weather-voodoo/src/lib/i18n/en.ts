@@ -98,6 +98,7 @@ export type Dict = {
 		legsMany: string;
 		ferryLegs: string;
 		seaLegs: string;
+		trailLegs: string;
 		straightLegs: string;
 		straightPreview: string;
 		editAriaLabel: string;
@@ -119,6 +120,9 @@ export type Dict = {
 		straight: string;
 		straightHint: string;
 		ferryLabel: string;
+		trailPrefix: string;
+		trailWaysSuffix: string;
+		trailLabel: string;
 	};
 	days: { today: string; tomorrow: string; d2: string };
 	share: {
@@ -431,6 +435,7 @@ export const en: Dict = {
 		legsMany: '{n} legs',
 		ferryLegs: '{n} ferry',
 		seaLegs: '{n} open-ocean',
+		trailLegs: '{n} trail',
 		straightLegs: '{n} straight',
 		straightPreview: '📐 Straight-line preview while editing — press Done to compute the real route.',
 		editAriaLabel: 'Edit waypoint',
@@ -451,7 +456,10 @@ export const en: Dict = {
 		greatCircleSuffix: 'the great-circle line',
 		straight: "📐 Straight-line route — couldn't snap to a sea-route network.",
 		straightHint: 'Sample points may cross land.',
-		ferryLabel: 'ferry'
+		ferryLabel: 'ferry',
+		trailPrefix: '🥾 Trail route via OpenStreetMap:',
+		trailWaysSuffix: '({hike} hike · {bike} bike ways)',
+		trailLabel: 'trail'
 	},
 	days: {
 		today: 'Today',

@@ -366,7 +366,7 @@
 				if (fitTarget.length >= 2) {
 					const bounds = new maplibregl.LngLatBounds();
 					fitTarget.forEach((p) => bounds.extend([p.lon, p.lat]));
-					map.fitBounds(bounds, { padding: 60, maxZoom: 11, duration: 400 });
+					map.fitBounds(bounds, { padding: 60, maxZoom: 16, duration: 400 });
 				} else if (markers.length === 1) {
 					map.flyTo({ center: [markers[0].lon, markers[0].lat], zoom: 11, duration: 400 });
 				}
@@ -448,7 +448,7 @@
 				id: 'route-line',
 				type: 'line',
 				source: 'route-src',
-				paint: { 'line-color': polylineColor, 'line-width': 3, 'line-opacity': 0.85 }
+				paint: { 'line-color': polylineColor, 'line-width': 5, 'line-opacity': 0.9 }
 			});
 		}
 	}

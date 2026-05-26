@@ -20,7 +20,8 @@
 	type RouteMeta =
 		| { kind: 'ferry'; lengthKm: number; wayCount: number; originSnapKm: number; destinationSnapKm: number }
 		| { kind: 'sea'; lengthKm: number; greatCircleKm: number; detourRatio: number }
-		| { kind: 'straight'; ferryFallback?: string; ferryDetail?: string };
+		| { kind: 'trail'; lengthKm: number; wayCount: number; hikeWayCount: number; bikeWayCount: number; originSnapKm: number; destinationSnapKm: number }
+		| { kind: 'straight'; ferryFallback?: string; ferryDetail?: string; trailFallback?: string; trailDetail?: string };
 	let result = $state<{
 		hours: FusedHour[];
 		timezone: string;
@@ -212,6 +213,11 @@
 			{t('route.ferryPrefix')} <strong>{result.route.lengthKm.toFixed(0)} km</strong>
 			<span title={t('route.waysTitle')}>{t('route.waysSuffix', { n: result.route.wayCount })}</span>
 		</div>
+	{:else if result?.route.kind === 'trail'}
+		<div class="muted route-meta">
+			{t('route.trailPrefix')} <strong>{result.route.lengthKm.toFixed(0)} km</strong>
+			{t('route.trailWaysSuffix', { hike: result.route.hikeWayCount, bike: result.route.bikeWayCount })}
+		</div>
 	{:else if result?.route.kind === 'sea'}
 		<div class="muted route-meta">
 			{t('route.seaPrefix')} <strong>{result.route.lengthKm.toFixed(0)} km</strong>
@@ -219,7 +225,7 @@
 		</div>
 	{:else if view.from && view.to && result}
 		<div class="muted route-meta">
-			{t('route.straight')}{#if result.route.kind === 'straight' && result.route.ferryFallback} ({t('route.ferryLabel')}: {result.route.ferryFallback}{#if result.route.ferryDetail} · {result.route.ferryDetail}{/if}){/if} {t('route.straightHint')}
+			{t('route.straight')}{#if result.route.kind === 'straight' && result.route.ferryFallback} ({t('route.ferryLabel')}: {result.route.ferryFallback}{#if result.route.ferryDetail} · {result.route.ferryDetail}{/if}){/if}{#if result.route.kind === 'straight' && result.route.trailFallback} ({t('route.trailLabel')}: {result.route.trailFallback}{#if result.route.trailDetail} · {result.route.trailDetail}{/if}){/if} {t('route.straightHint')}
 		</div>
 	{/if}
 </div>

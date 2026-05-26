@@ -107,6 +107,7 @@ export const ro: Dict = {
 		legsMany: '{n} segmente',
 		ferryLegs: '{n} feribot',
 		seaLegs: '{n} larg',
+		trailLegs: '{n} traseu',
 		straightLegs: '{n} drept',
 		straightPreview: '📐 Previzualizare în linie dreaptă în timpul editării — apasă Gata pentru a calcula ruta reală.',
 		editAriaLabel: 'Editează punctul de trecere',
@@ -127,7 +128,10 @@ export const ro: Dict = {
 		greatCircleSuffix: 'din linia great-circle',
 		straight: '📐 Rută în linie dreaptă — nu am putut potrivi cu o rețea de rute marine.',
 		straightHint: 'Punctele de eșantionare pot traversa uscatul.',
-		ferryLabel: 'feribot'
+		ferryLabel: 'feribot',
+		trailPrefix: '🥾 Traseu drumeție via OpenStreetMap:',
+		trailWaysSuffix: '({hike} drumeție · {bike} bicicletă)',
+		trailLabel: 'traseu'
 	},
 	days: {
 		today: 'Azi',

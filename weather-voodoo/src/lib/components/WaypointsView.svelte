@@ -370,7 +370,7 @@
 		suppressAutoFit={editing}
 		showUserLocation={chevrons.length > 0}
 	/>
-	{#if chevrons.length > 0 && hourTimes.length > 0 && selectedTime}
+	{#if chevrons.length > 0 && hourTimes.length > 0 && selectedTime && compassVisible}
 		<WindMapOverlay
 			{hourTimes}
 			{selectedTime}

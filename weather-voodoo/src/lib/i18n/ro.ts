@@ -202,6 +202,8 @@ export const ro: Dict = {
 		minutesSuffix: '{n} min',
 		hoursMinutesSuffix: '{h} h {m} min',
 		allDay: 'Toată ziua',
+		rightNow: 'Acum',
+		rightNowAt: 'Acum · {time}',
 		legendTitle: 'Scor 0 (cel mai slab) → 100 (cel mai bun)',
 		legendRange: '0 → 100',
 		bestAcross3Days: '★ Cel mai bun din 3 zile:',

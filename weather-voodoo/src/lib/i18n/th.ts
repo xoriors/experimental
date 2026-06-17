@@ -202,6 +202,8 @@ export const th: Dict = {
 		minutesSuffix: '{n} นาที',
 		hoursMinutesSuffix: '{h} ชม. {m} นาที',
 		allDay: 'ตลอดวัน',
+		rightNow: 'ตอนนี้',
+		rightNowAt: 'ตอนนี้ · {time}',
 		legendTitle: 'คะแนน 0 (แย่ที่สุด) → 100 (ดีที่สุด)',
 		legendRange: '0 → 100',
 		bestAcross3Days: '★ ดีที่สุดใน 3 วัน:',

@@ -110,7 +110,7 @@ function parseOverride(s: string): DayOverride {
 	return {
 		min: parts[0] ? clampHalfHour(parts[0], 0) : null,
 		max: parts[1] ? clampHalfHour(parts[1], 1380) : null,
-		durationH: parts[2] ? clampDurationHours(parts[2], 0.5, 12, 2) : null,
+		durationH: parts[2] ? clampDurationHours(parts[2], 0, 12, 2) : null,
 		mode: isMode(parts[3]) ? parts[3] : null
 	};
 }
@@ -173,7 +173,7 @@ function decodeShortKeys(p: URLSearchParams): ViewState {
 	}
 	const md = p.get('md');
 	if (md !== null) base.tripMode = coerceMode(md, base.tripMode);
-	if (p.has('dh')) base.tripDurationH = clampDurationHours(p.get('dh'), 0.5, 12, base.tripDurationH);
+	if (p.has('dh')) base.tripDurationH = clampDurationHours(p.get('dh'), 0, 12, base.tripDurationH);
 	if (p.has('mn')) base.tripMinMin = clampHalfHour(p.get('mn'), base.tripMinMin);
 	if (p.has('mx')) base.tripMaxMin = clampHalfHour(p.get('mx'), base.tripMaxMin);
 	for (const key of ['today', 'tomorrow', 'd2'] as DayKey[]) {

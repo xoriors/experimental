@@ -80,7 +80,8 @@ export function findBestWindows(
 ): TripWindow[] {
 	// Forecast data is hourly — round fractional durations up to the next
 	// whole hour for slicing so a 1.5h trip still considers 2 hours of conditions.
-	const sliceLen = Math.max(1, Math.ceil(durationH));
+	// Duration 0 means "right now" — score the current hour as a point reading.
+	const sliceLen = Math.max(1, Math.ceil(durationH || 1));
 	if (sliceLen < 1 || hours.length < sliceLen) return [];
 	const windows: TripWindow[] = [];
 	for (let i = 0; i + sliceLen <= hours.length; i++) {
@@ -125,7 +126,7 @@ export function windowScoreAt(
 	durationH: number,
 	mode: ResolvedMode
 ): number | null {
-	const sliceLen = Math.max(1, Math.ceil(durationH));
+	const sliceLen = Math.max(1, Math.ceil(durationH || 1));
 	if (startIdx < 0 || startIdx + sliceLen > allHours.length) return null;
 	let min = 100;
 	for (let i = startIdx; i < startIdx + sliceLen; i++) {

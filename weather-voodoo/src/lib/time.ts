@@ -35,6 +35,17 @@ export function localNowIso(d: Date = new Date()): string {
 	return `${localIsoDate(d)}T${hh}:${mm}`;
 }
 
+/**
+ * Like {@link localNowIso} but rounded down to the start of the current hour
+ * (e.g. 23:55 → "T23:00"). Forecast resolution is 1 h, so when comparing
+ * "is this forecast hour still in the future?" we want to treat the current
+ * forecast hour as valid until the wall clock crosses into the next one.
+ */
+export function localNowHourIso(d: Date = new Date()): string {
+	const hh = String(d.getHours()).padStart(2, '0');
+	return `${localIsoDate(d)}T${hh}:00`;
+}
+
 export function isoOfDayOffset(reference: Date, offset: number): string {
 	const d = new Date(reference);
 	d.setDate(d.getDate() + offset);

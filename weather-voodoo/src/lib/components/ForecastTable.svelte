@@ -117,9 +117,10 @@
 		override.min !== null || override.max !== null || override.durationH !== null || override.mode !== null
 	);
 
-	const DURATIONS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 6, 8, 12];
+	const DURATIONS = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 6, 8, 12];
 
 	function formatDuration(d: number): string {
+		if (d === 0) return t('trip.rightNow');
 		if (d < 1) return t('trip.minutesSuffix', { n: Math.round(d * 60) });
 		if (d === Math.floor(d)) return t('trip.hoursSuffix', { n: d });
 		const h = Math.floor(d);
@@ -127,6 +128,7 @@
 		return t('trip.hoursMinutesSuffix', { h, m });
 	}
 
+	const isRightNow = $derived(durationH === 0);
 	const allDay = $derived(minMin === 0 && maxMin >= 1380);
 
 	function onAllDayChange(e: Event) {
@@ -237,7 +239,7 @@
 <div class="interval-bar">
 	<span class="muted" style="font-size: 0.85em; margin-right: 0.4rem;">{t('intervalBar.forThisDay')}</span>
 	<label class="all-day-mini">
-		<input type="checkbox" checked={allDay} onchange={onAllDayChange} />
+		<input type="checkbox" checked={allDay} onchange={onAllDayChange} disabled={isRightNow} />
 		<span class="muted">{t('trip.allDay')}</span>
 	</label>
 	<label>
@@ -249,7 +251,7 @@
 			max="23:30"
 			value={minToHHMM(minMin)}
 			onchange={onMinChange}
-			disabled={allDay}
+			disabled={allDay || isRightNow}
 		/>
 	</label>
 	<label>
@@ -261,7 +263,7 @@
 			max="23:30"
 			value={minToHHMM(maxMin)}
 			onchange={onMaxChange}
-			disabled={allDay}
+			disabled={allDay || isRightNow}
 		/>
 	</label>
 	<label>

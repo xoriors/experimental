@@ -189,6 +189,8 @@ export type Dict = {
 		minutesSuffix: string;
 		hoursMinutesSuffix: string;
 		allDay: string;
+		rightNow: string;
+		rightNowAt: string;
 		legendTitle: string;
 		legendRange: string;
 		bestAcross3Days: string;
@@ -533,6 +535,8 @@ export const en: Dict = {
 		minutesSuffix: '{n} min',
 		hoursMinutesSuffix: '{h} h {m} min',
 		allDay: 'All day',
+		rightNow: 'Right now',
+		rightNowAt: 'Right now · {time}',
 		legendTitle: 'Score 0 (worst) → 100 (best)',
 		legendRange: '0 → 100',
 		bestAcross3Days: '★ Best across 3 days:',

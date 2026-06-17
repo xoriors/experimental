@@ -3,11 +3,12 @@
 	import { view, effectiveConfig } from '$lib/state.svelte';
 	import {
 		findBestWindows,
+		hourTripScore,
 		pickTopNonOverlapping,
 		scoreToCss,
 		type TripWindow
 	} from '$lib/trip-score';
-	import { filterHoursForDay, localIsoDate, localNowIso } from '$lib/time';
+	import { filterHoursForDay, localIsoDate, localNowHourIso } from '$lib/time';
 	import { minToHHMM, hhmmToMin } from '$lib/url-state';
 	import { round1 } from '$lib/units';
 	import { t } from '$lib/i18n/index.svelte';
@@ -26,13 +27,38 @@
 
 	const activeMode = $derived(view.tripMode);
 	const topBounds = $derived(toHourBounds(view.tripMinMin, view.tripMaxMin));
-	const nowIso = $derived(localNowIso());
+	// Round "now" down to the current hour so the active forecast hour
+	// (e.g. T23:00) remains a valid start until the clock crosses into
+	// the next hour. Otherwise short trips disappear from "today" once
+	// the minute counter ticks past :00.
+	const nowIso = $derived(localNowHourIso());
+	const isRightNow = $derived(view.tripDurationH === 0);
 	const allWindows = $derived(
-		findBestWindows(hours, view.tripDurationH, activeMode, topBounds[0], topBounds[1], nowIso)
+		isRightNow
+			? []
+			: findBestWindows(hours, view.tripDurationH, activeMode, topBounds[0], topBounds[1], nowIso)
 	);
 	const topOverall = $derived(pickTopNonOverlapping(allWindows, 2));
 	const bestOverall = $derived<TripWindow | undefined>(topOverall[0]);
 	const secondOverall = $derived<TripWindow | undefined>(topOverall[1]);
+
+	// "Right now" mode: single-hour point reading from the current forecast hour.
+	const rightNowWindow = $derived.by<TripWindow | undefined>(() => {
+		if (!isRightNow) return undefined;
+		const hourEntry = hours.find((h) => h.time >= nowIso) ?? hours[0];
+		if (!hourEntry) return undefined;
+		const match = /T(\d{2}):/.exec(hourEntry.time);
+		const startHour = match ? Number(match[1]) : 0;
+		const scores = [hourEntry].map((h) => hourTripScore(h, activeMode));
+		return {
+			startTime: hourEntry.time,
+			startHour,
+			durationH: 0,
+			hours: [hourEntry],
+			score: scores[0],
+			avgScore: scores[0]
+		};
+	});
 
 	const todayIso = $derived(localIsoDate());
 
@@ -55,12 +81,16 @@
 		})
 	);
 
-	// Fractional hours for sub-hour trips (30-min granularity up to 4h,
-	// then whole hours). findBestWindows / windowScoreAt use Math.ceil to
-	// pick the matching number of hourly forecast samples.
-	const DURATIONS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 6, 8, 12];
+	// Duration options:
+	//   0    → "Right now" (point-in-time read of the current forecast hour)
+	//   0.5–4 in half-hour steps for short outings
+	//   6/8/12 for longer day-trips
+	// findBestWindows / windowScoreAt fall back to 1-hour slices when the
+	// passed durationH rounds to 0.
+	const DURATIONS = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 6, 8, 12];
 
 	function formatDuration(d: number): string {
+		if (d === 0) return t('trip.rightNow');
 		if (d < 1) return t('trip.minutesSuffix', { n: Math.round(d * 60) });
 		if (d === Math.floor(d)) return t('trip.hoursSuffix', { n: d });
 		const h = Math.floor(d);
@@ -192,7 +222,7 @@
 <div class="card trip-finder">
 	<div class="row" style="gap: 1rem; align-items: center;">
 		<label class="all-day">
-			<input type="checkbox" checked={allDay} onchange={onAllDayChange} />
+			<input type="checkbox" checked={allDay} onchange={onAllDayChange} disabled={isRightNow} />
 			<span>{t('trip.allDay')}</span>
 		</label>
 		<label>
@@ -204,9 +234,9 @@
 				max="23:30"
 				value={minToHHMM(view.tripMinMin)}
 				onchange={onMinChange}
-				disabled={allDay}
+				disabled={allDay || isRightNow}
 			/>
-			<button type="button" class="now-btn" onclick={setMinNow} title={t('trip.nowTitle')} disabled={allDay}>{t('trip.now')}</button>
+			<button type="button" class="now-btn" onclick={setMinNow} title={t('trip.nowTitle')} disabled={allDay || isRightNow}>{t('trip.now')}</button>
 		</label>
 		<label>
 			<span class="muted">{t('trip.latestStart')}</span>
@@ -217,9 +247,9 @@
 				max="23:30"
 				value={minToHHMM(view.tripMaxMin)}
 				onchange={onMaxChange}
-				disabled={allDay}
+				disabled={allDay || isRightNow}
 			/>
-			<button type="button" class="now-btn" onclick={setMaxNow} title={t('trip.nowTitle')} disabled={allDay}>{t('trip.now')}</button>
+			<button type="button" class="now-btn" onclick={setMaxNow} title={t('trip.nowTitle')} disabled={allDay || isRightNow}>{t('trip.now')}</button>
 		</label>
 		<label>
 			<span class="muted">{t('trip.duration')}</span>
@@ -235,7 +265,24 @@
 		</div>
 	</div>
 
-	{#if bestOverall}
+	{#if isRightNow && rightNowWindow}
+		{@const rnCss = scoreToCss(rightNowWindow.score)}
+		<button
+			type="button"
+			class="best-pick"
+			style="border-left: 4px solid {rnCss.border}; background: {rnCss.bg};"
+			onclick={() => selectWindow(rightNowWindow, 1)}
+			title={t('trip.clickToHighlight')}
+		>
+			<div style="font-size: 1.1em;">
+				<strong>{t('trip.rightNowAt', { time: rightNowWindow.startTime.slice(11, 16) })}</strong> —
+				<strong>{rightNowWindow.score}/100</strong>
+			</div>
+			<div class="muted" style="margin-top: 0.25rem;">
+				{summariseConditions(rightNowWindow.hours)}
+			</div>
+		</button>
+	{:else if bestOverall}
 		<button
 			type="button"
 			class="best-pick"

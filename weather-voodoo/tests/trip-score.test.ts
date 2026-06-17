@@ -217,3 +217,47 @@ describe('scoreToCss', () => {
 		expect(scoreToCss(-10).border).toContain('hsl(0');
 	});
 });
+
+describe('findBestWindows late-day + right-now edge cases', () => {
+	it('keeps the current hour valid when minStartTime is exactly that hour', () => {
+		// User at 23:55 today — rounded down to 23:00. The 23:00 forecast hour
+		// should still be a valid start (slice[0].time < minStartTime is false).
+		const hours = [
+			mk('2026-06-17T22:00', { windKn: 4 }),
+			mk('2026-06-17T23:00', { windKn: 5 }),
+			mk('2026-06-18T00:00', { windKn: 6 })
+		];
+		const wins = findBestWindows(hours, 0.5, 'land', 0, 23, '2026-06-17T23:00');
+		expect(wins.find((w) => w.startTime === '2026-06-17T23:00')).toBeDefined();
+	});
+
+	it('still filters out past hours when minStartTime is set', () => {
+		const hours = [
+			mk('2026-06-17T22:00', { windKn: 4 }),
+			mk('2026-06-17T23:00', { windKn: 5 })
+		];
+		const wins = findBestWindows(hours, 1, 'land', 0, 23, '2026-06-17T23:00');
+		expect(wins.find((w) => w.startTime === '2026-06-17T22:00')).toBeUndefined();
+	});
+
+	it('treats durationH=0 as a 1-hour point reading', () => {
+		const hours = [
+			mk('2026-06-17T10:00', { windKn: 5 }),
+			mk('2026-06-17T11:00', { windKn: 6 }),
+			mk('2026-06-17T12:00', { windKn: 7 })
+		];
+		const wins = findBestWindows(hours, 0, 'land');
+		expect(wins.length).toBe(3);
+		expect(wins[0].hours).toHaveLength(1);
+	});
+
+	it('windowScoreAt with durationH=0 returns the current-hour score', () => {
+		const hours = [
+			mk('2026-06-17T10:00', { windKn: 5 }),
+			mk('2026-06-17T11:00', { windKn: 6 })
+		];
+		const score0 = windowScoreAt(hours, 0, 0, 'land');
+		const score1 = windowScoreAt(hours, 0, 1, 'land');
+		expect(score0).toBe(score1);
+	});
+});

@@ -186,6 +186,9 @@ export type Dict = {
 		modeSea: string;
 		modeLand: string;
 		hoursSuffix: string;
+		minutesSuffix: string;
+		hoursMinutesSuffix: string;
+		allDay: string;
 		legendTitle: string;
 		legendRange: string;
 		bestAcross3Days: string;
@@ -527,6 +530,9 @@ export const en: Dict = {
 		modeSea: 'Sea',
 		modeLand: 'Land',
 		hoursSuffix: '{n} h',
+		minutesSuffix: '{n} min',
+		hoursMinutesSuffix: '{h} h {m} min',
+		allDay: 'All day',
 		legendTitle: 'Score 0 (worst) → 100 (best)',
 		legendRange: '0 → 100',
 		bestAcross3Days: '★ Best across 3 days:',

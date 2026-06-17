@@ -117,7 +117,26 @@
 		override.min !== null || override.max !== null || override.durationH !== null || override.mode !== null
 	);
 
-	const DURATIONS = [1, 2, 3, 4, 6, 8, 12];
+	const DURATIONS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 6, 8, 12];
+
+	function formatDuration(d: number): string {
+		if (d < 1) return t('trip.minutesSuffix', { n: Math.round(d * 60) });
+		if (d === Math.floor(d)) return t('trip.hoursSuffix', { n: d });
+		const h = Math.floor(d);
+		const m = Math.round((d - h) * 60);
+		return t('trip.hoursMinutesSuffix', { h, m });
+	}
+
+	const allDay = $derived(minMin === 0 && maxMin >= 1380);
+
+	function onAllDayChange(e: Event) {
+		const checked = (e.target as HTMLInputElement).checked;
+		if (checked) {
+			onChangeOverride({ min: topMinMin === 0 ? null : 0, max: topMaxMin >= 1380 ? null : 1380 });
+		} else {
+			onChangeOverride({ min: topMinMin === 9 * 60 ? null : 9 * 60, max: topMaxMin === 17 * 60 ? null : 17 * 60 });
+		}
+	}
 
 	function snapHalfHour(min: number): number {
 		return Math.max(0, Math.min(1410, Math.round(min / 30) * 30));
@@ -217,6 +236,10 @@
 
 <div class="interval-bar">
 	<span class="muted" style="font-size: 0.85em; margin-right: 0.4rem;">{t('intervalBar.forThisDay')}</span>
+	<label class="all-day-mini">
+		<input type="checkbox" checked={allDay} onchange={onAllDayChange} />
+		<span class="muted">{t('trip.allDay')}</span>
+	</label>
 	<label>
 		<span class="muted">{t('intervalBar.earliest')}</span>
 		<input
@@ -226,6 +249,7 @@
 			max="23:30"
 			value={minToHHMM(minMin)}
 			onchange={onMinChange}
+			disabled={allDay}
 		/>
 	</label>
 	<label>
@@ -237,13 +261,14 @@
 			max="23:30"
 			value={minToHHMM(maxMin)}
 			onchange={onMaxChange}
+			disabled={allDay}
 		/>
 	</label>
 	<label>
 		<span class="muted">{t('intervalBar.duration')}</span>
 		<select value={durationH} onchange={onDurationChange}>
 			{#each DURATIONS as d}
-				<option value={d}>{t('trip.hoursSuffix', { n: d })}</option>
+				<option value={d}>{formatDuration(d)}</option>
 			{/each}
 		</select>
 	</label>
@@ -389,6 +414,24 @@
 		padding: 0.5rem 0;
 		margin-bottom: 0.5rem;
 		border-bottom: 1px solid var(--border);
+	}
+	.all-day-mini {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.all-day-mini input[type='checkbox'] {
+		width: 14px;
+		height: 14px;
+		accent-color: var(--good, #4ade80);
+		cursor: pointer;
+	}
+	.interval-bar input:disabled,
+	.interval-bar select:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 	.interval-bar select,
 	.interval-bar input[type='time'] {

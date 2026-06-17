@@ -55,10 +55,38 @@
 		})
 	);
 
-	const DURATIONS = [1, 2, 3, 4, 6, 8, 12];
+	// Fractional hours for sub-hour trips (30-min granularity up to 4h,
+	// then whole hours). findBestWindows / windowScoreAt use Math.ceil to
+	// pick the matching number of hourly forecast samples.
+	const DURATIONS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 6, 8, 12];
+
+	function formatDuration(d: number): string {
+		if (d < 1) return t('trip.minutesSuffix', { n: Math.round(d * 60) });
+		if (d === Math.floor(d)) return t('trip.hoursSuffix', { n: d });
+		const h = Math.floor(d);
+		const m = Math.round((d - h) * 60);
+		return t('trip.hoursMinutesSuffix', { h, m });
+	}
 
 	function onDurationChange(e: Event) {
 		view.tripDurationH = Number((e.target as HTMLSelectElement).value);
+	}
+
+	// "All day" = the full 24h is allowed as a start window. Default range
+	// is 00:00–23:00 which already covers all 24 start hours; we treat any
+	// range that spans the full 0–1380 as "all day" for the toggle.
+	const allDay = $derived(view.tripMinMin === 0 && view.tripMaxMin >= 1380);
+
+	function onAllDayChange(e: Event) {
+		const checked = (e.target as HTMLInputElement).checked;
+		if (checked) {
+			view.tripMinMin = 0;
+			view.tripMaxMin = 1380;
+		} else {
+			// Sensible daylight defaults when leaving "all day".
+			view.tripMinMin = 9 * 60;
+			view.tripMaxMin = 17 * 60;
+		}
 	}
 	function parseTimeInput(value: string, fallback: number): number {
 		const parsed = hhmmToMin(value);
@@ -163,6 +191,10 @@
 
 <div class="card trip-finder">
 	<div class="row" style="gap: 1rem; align-items: center;">
+		<label class="all-day">
+			<input type="checkbox" checked={allDay} onchange={onAllDayChange} />
+			<span>{t('trip.allDay')}</span>
+		</label>
 		<label>
 			<span class="muted">{t('trip.earliestStart')}</span>
 			<input
@@ -172,8 +204,9 @@
 				max="23:30"
 				value={minToHHMM(view.tripMinMin)}
 				onchange={onMinChange}
+				disabled={allDay}
 			/>
-			<button type="button" class="now-btn" onclick={setMinNow} title={t('trip.nowTitle')}>{t('trip.now')}</button>
+			<button type="button" class="now-btn" onclick={setMinNow} title={t('trip.nowTitle')} disabled={allDay}>{t('trip.now')}</button>
 		</label>
 		<label>
 			<span class="muted">{t('trip.latestStart')}</span>
@@ -184,14 +217,15 @@
 				max="23:30"
 				value={minToHHMM(view.tripMaxMin)}
 				onchange={onMaxChange}
+				disabled={allDay}
 			/>
-			<button type="button" class="now-btn" onclick={setMaxNow} title={t('trip.nowTitle')}>{t('trip.now')}</button>
+			<button type="button" class="now-btn" onclick={setMaxNow} title={t('trip.nowTitle')} disabled={allDay}>{t('trip.now')}</button>
 		</label>
 		<label>
 			<span class="muted">{t('trip.duration')}</span>
 			<select onchange={onDurationChange} value={view.tripDurationH}>
 				{#each DURATIONS as d}
-					<option value={d}>{t('trip.hoursSuffix', { n: d })}</option>
+					<option value={d}>{formatDuration(d)}</option>
 				{/each}
 			</select>
 		</label>
@@ -320,6 +354,25 @@
 		font: inherit;
 		font-size: 0.85em;
 		font-weight: 600;
+		cursor: pointer;
+	}
+	.now-btn:disabled,
+	.trip-finder input:disabled,
+	.trip-finder select:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	.all-day {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.all-day input[type='checkbox'] {
+		width: 16px;
+		height: 16px;
+		accent-color: var(--good, #4ade80);
 		cursor: pointer;
 	}
 	.now-btn:hover {

@@ -74,6 +74,14 @@ function clampHalfHour(n: unknown, fallback: number): number {
 	return Math.max(0, Math.min(1410, Math.round(v / 30) * 30));
 }
 
+function clampDurationHours(n: unknown, lo: number, hi: number, fallback: number): number {
+	const v = Number(n);
+	if (!Number.isFinite(v)) return fallback;
+	// Snap to half-hour granularity within [lo, hi].
+	const snapped = Math.round(v * 2) / 2;
+	return Math.max(lo, Math.min(hi, snapped));
+}
+
 function pointCoord(p: LabeledPoint): string {
 	return `${Number(p.lat.toFixed(4))},${Number(p.lon.toFixed(4))}`;
 }
@@ -102,7 +110,7 @@ function parseOverride(s: string): DayOverride {
 	return {
 		min: parts[0] ? clampHalfHour(parts[0], 0) : null,
 		max: parts[1] ? clampHalfHour(parts[1], 1380) : null,
-		durationH: parts[2] ? clampMin(parts[2], 1, 12, 2) : null,
+		durationH: parts[2] ? clampDurationHours(parts[2], 0.5, 12, 2) : null,
 		mode: isMode(parts[3]) ? parts[3] : null
 	};
 }
@@ -165,7 +173,7 @@ function decodeShortKeys(p: URLSearchParams): ViewState {
 	}
 	const md = p.get('md');
 	if (md !== null) base.tripMode = coerceMode(md, base.tripMode);
-	if (p.has('dh')) base.tripDurationH = clampMin(p.get('dh'), 1, 12, base.tripDurationH);
+	if (p.has('dh')) base.tripDurationH = clampDurationHours(p.get('dh'), 0.5, 12, base.tripDurationH);
 	if (p.has('mn')) base.tripMinMin = clampHalfHour(p.get('mn'), base.tripMinMin);
 	if (p.has('mx')) base.tripMaxMin = clampHalfHour(p.get('mx'), base.tripMaxMin);
 	for (const key of ['today', 'tomorrow', 'd2'] as DayKey[]) {

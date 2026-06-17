@@ -78,10 +78,13 @@ export function findBestWindows(
 	maxStartHour = 23,
 	minStartTime?: string
 ): TripWindow[] {
-	if (durationH < 1 || hours.length < durationH) return [];
+	// Forecast data is hourly — round fractional durations up to the next
+	// whole hour for slicing so a 1.5h trip still considers 2 hours of conditions.
+	const sliceLen = Math.max(1, Math.ceil(durationH));
+	if (sliceLen < 1 || hours.length < sliceLen) return [];
 	const windows: TripWindow[] = [];
-	for (let i = 0; i + durationH <= hours.length; i++) {
-		const slice = hours.slice(i, i + durationH);
+	for (let i = 0; i + sliceLen <= hours.length; i++) {
+		const slice = hours.slice(i, i + sliceLen);
 		const match = /T(\d{2}):/.exec(slice[0].time);
 		const startHour = match ? Number(match[1]) : 0;
 		if (startHour < minStartHour || startHour > maxStartHour) continue;
@@ -122,9 +125,10 @@ export function windowScoreAt(
 	durationH: number,
 	mode: ResolvedMode
 ): number | null {
-	if (startIdx < 0 || startIdx + durationH > allHours.length) return null;
+	const sliceLen = Math.max(1, Math.ceil(durationH));
+	if (startIdx < 0 || startIdx + sliceLen > allHours.length) return null;
 	let min = 100;
-	for (let i = startIdx; i < startIdx + durationH; i++) {
+	for (let i = startIdx; i < startIdx + sliceLen; i++) {
 		const s = hourTripScore(allHours[i], mode);
 		if (s < min) min = s;
 	}

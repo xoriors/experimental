@@ -93,7 +93,7 @@
 		error = null;
 		const landParam = view.tripMode === 'land' ? '&land=1' : '';
 		fetch(
-			`/api/multi-route?pts=${encodeURIComponent(ptsParam(pts))}&samples=3&days=3${landParam}`,
+			`/api/multi-route?pts=${encodeURIComponent(ptsParam(pts))}&samples=3&days=4${landParam}`,
 			{ signal: ac.signal }
 		)
 			.then(async (r) => {

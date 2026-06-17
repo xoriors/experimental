@@ -34,7 +34,7 @@
 		error = null;
 
 		Promise.all([
-			fetch(`/api/forecast?lat=${at.lat.toFixed(4)}&lon=${at.lon.toFixed(4)}&days=3`, {
+			fetch(`/api/forecast?lat=${at.lat.toFixed(4)}&lon=${at.lon.toFixed(4)}&days=4`, {
 				signal: ac.signal
 			}).then(
 				(r) =>
@@ -44,7 +44,7 @@
 						daylight?: DaylightDay[];
 					}>
 			),
-			fetch(`/api/marine?lat=${at.lat.toFixed(4)}&lon=${at.lon.toFixed(4)}&days=3`, {
+			fetch(`/api/marine?lat=${at.lat.toFixed(4)}&lon=${at.lon.toFixed(4)}&days=4`, {
 				signal: ac.signal
 			})
 				.then((r) => r.json() as Promise<{ timezone: string; hours: MarineHour[] }>)

@@ -57,7 +57,7 @@
 		error = null;
 		const landParam = view.tripMode === 'land' ? '&land=1' : '';
 		fetch(
-			`/api/route?from=${from.lat.toFixed(4)},${from.lon.toFixed(4)}&to=${to.lat.toFixed(4)},${to.lon.toFixed(4)}&samples=3&days=3${landParam}`,
+			`/api/route?from=${from.lat.toFixed(4)},${from.lon.toFixed(4)}&to=${to.lat.toFixed(4)},${to.lon.toFixed(4)}&samples=3&days=4${landParam}`,
 			{ signal: ac.signal }
 		)
 			.then(async (r) => {

@@ -184,9 +184,14 @@
 
 	function formatDay(iso: string): string {
 		const date = iso.slice(0, 10);
-		const today = new Date().toISOString().slice(0, 10);
-		const tomorrow = new Date(Date.now() + 86400_000).toISOString().slice(0, 10);
-		const d2 = new Date(Date.now() + 2 * 86400_000).toISOString().slice(0, 10);
+		const now = new Date();
+		const today = localIsoDate(now);
+		const t1 = new Date(now);
+		t1.setDate(t1.getDate() + 1);
+		const tomorrow = localIsoDate(t1);
+		const t2 = new Date(now);
+		t2.setDate(t2.getDate() + 2);
+		const d2 = localIsoDate(t2);
 		if (date === today) return t('days.today');
 		if (date === tomorrow) return t('days.tomorrow');
 		if (date === d2) return t('days.d2');

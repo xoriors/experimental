@@ -1,0 +1,20 @@
+# Secrets and runtime state — never commit these
+.env
+
+# Baileys login credentials (scanning the QR writes these)
+auth/
+
+# SQLite database and any captured message data
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log

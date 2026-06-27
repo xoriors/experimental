@@ -1,0 +1,21 @@
+services:
+  whatsapp-summary-agent:
+    build: .
+    image: whatsapp-summary-agent
+    container_name: whatsapp-summary-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Persisted paths inside the container (override .env defaults).
+      DB_PATH: /app/data/messages.db
+      AUTH_DIR: /app/auth
+    volumes:
+      # Login credentials (scan the QR once) and the message DB survive restarts.
+      - ./auth:/app/auth
+      - ./data:/app/data
+    # First boot is interactive so you can scan the QR:
+    #   docker compose run --rm whatsapp-summary-agent
+    # then Ctrl+C and `docker compose up -d` to run detached.
+    stdin_open: true
+    tty: true

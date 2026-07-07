@@ -10,14 +10,19 @@ step wires it to a real LLM through the AG-UI protocol and CopilotKit.
 ## How it works
 
 - `src/uiSpec.ts` defines the contract: a `FormSpec` JSON shape the agent uses
-  to describe a form, plus `parseFormSpec`, which validates untrusted input and
-  fails with messages precise enough to feed back to the agent for a retry.
-- `src/AdHocForm.tsx` renders a validated spec as a live form. Submitting
-  freezes it into a read-only receipt, so the conversation moves forward and
-  the past stays immutable.
-- `src/App.tsx` is a chat transcript demo: the mock agent answers a booking
-  request with a form, the submitted values flow back into the conversation.
-  Each form message has a "view spec" toggle showing the JSON behind it.
+  to describe a form. `parseFormField` validates each field line on its own
+  (specs stream JSONL style, one field at a time) and `parseFormSpec` validates
+  whole specs. Errors are precise enough to feed back to the agent for a retry.
+- `src/mockAgent.ts` simulates the agent as an event stream, the shape AG-UI
+  actually delivers: typing, text, then a form that arrives field by field.
+  Swapping it for a real LLM behind AG-UI only changes the event source.
+- `src/AdHocForm.tsx` renders a spec as a live form, growing while it streams.
+  Submitting freezes it into a read-only receipt, so the conversation moves
+  forward and the past stays immutable.
+- `src/App.tsx` drives a multi-turn conversation: a booking request produces a
+  form, the submitted values make the agent generate a second form (time slots
+  tailored to those values), and confirming closes the loop. Each form has a
+  "view spec" toggle showing the JSON behind it.
 
 ## Background
 

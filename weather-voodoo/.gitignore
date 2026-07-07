@@ -11,3 +11,4 @@ dist
 playwright-report
 test-results
 .playwright
+.env*

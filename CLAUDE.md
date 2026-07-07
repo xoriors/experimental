@@ -4,82 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is **experimental** - a sandbox for experimental ideas and proofs of concept by xorio. Contains multiple independent sub-projects that explore different concepts.
+This is **experimental** — a sandbox for experimental ideas and proofs of concept by xorio. It contains multiple independent sub-projects at very different maturity levels: one deployed app, a couple of working prototypes, and several idea/planning documents with **no code**. Check what actually exists in a sub-project before assuming an implementation is present.
 
 ## Sub-Projects
 
-### llm-password-reset (GUARD)
-A semantic authentication system using LLM embeddings for "fuzzy" password reset. Users prove identity through meaning-based matching rather than exact string matching.
+### weather-voodoo — deployed app (the flagship)
 
-**Tech stack:** Python 3.12, FastAPI, SQLite, sentence-transformers (SBERT), bcrypt, PyTorch
+SvelteKit PWA with hour-by-hour fused weather forecasts for routes, waypoint trips, and fixed locations, plus trip-window scoring. Deployed on Vercel.
 
-**Run locally:**
-```bash
-cd llm-password-reset
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn guard_server:app --reload --port 8000
-```
+**It has its own `weather-voodoo/CLAUDE.md`** — commands, architecture, deploy pitfalls, and the mandatory i18n workflow live there. Read it before making any change in that directory.
 
-**Run with Docker:**
-```bash
-cd llm-password-reset
-echo "NGROK_AUTHTOKEN=your_token" > .env
-docker-compose up --build
-```
+### llm-git-conflict-resolve — working prototype
 
-**Key endpoints:**
-- `GET /user/{user_id}` - Check user existence and lock status
-- `POST /enroll` - Register user with password and semantic phrases
-- `POST /verify` - Authenticate via password or semantic phrase matching
-- `POST /update_account` - Update password after verification
+LLM-assisted git merge-conflict resolution driven by semantic intent (commit messages + three-way diff) rather than textual diffs. Python 3 stdlib only.
 
-**Architecture:**
-- `guard_server.py` - Main FastAPI application with all endpoints
-- Uses SBERT model `all-MiniLM-L6-v2` for embedding phrases (384-dimensional vectors)
-- SQLite database (`guard_secure.db`) with tables: `users`, `phrases`, `auth_context`
-- Verification thresholds: >=0.80 authorized, 0.60-0.80 ambiguous (one clarification allowed), <0.60 denied
-- Account lockout after 3 failed attempts (10 min cooldown)
+- Core tool: `python3 skill/git_tools.py {list|extract <file>|verify <file>}` — JSON output. `list` parses `git status --porcelain` for conflicts, `extract` pulls base/local/remote (`git show :1: :2: :3:`) plus commit intent, `verify` AST-checks Python syntax.
+- `skill/instructions.md` is the Claude Code skill prompt defining the `scan` / `resolve <file>` / `apply` workflow.
+- Demo conflict repos: `make rename`, `make logic`; clean up with `make clean`.
 
-### llm-linter
-Exploration of using LLMs as static code analyzers. Currently contains planning/approach documentation only.
+### ansible — working infra example
 
-### ansible
-Infrastructure automation experiments with Ansible and Docker.
+Tutorial-scale Ansible + Docker playground: one container runs Apache, another runs the playbook against it. Run with `docker-compose up --build` from `ansible/`.
 
-### weather-voodoo
-SvelteKit app showing hour-by-hour fused weather forecasts for routes and fixed locations, with trip-window scoring.
+### Idea / planning docs only (no code)
 
-**Tech stack:** SvelteKit (Svelte 5 runes), TypeScript, MapLibre GL, Vitest, Vercel adapter
-
-**Run locally:**
-```bash
-cd weather-voodoo
-pnpm install
-pnpm dev
-```
-
-**Localization (i18n)** — required for any text-facing change:
-
-- Source of truth dictionary: `weather-voodoo/src/lib/i18n/en.ts`. The exported `Dict` type defines the shape every locale must implement.
-- Supported locales: English (`en`), Thai (`th`), Romanian (`ro`). Files: `src/lib/i18n/{en,th,ro}.ts`.
-- Reactive locale state + `t(key, vars?)` helper: `src/lib/i18n/index.svelte.ts`.
-- Locale is part of the URL state (`lng=` param) and is also persisted in localStorage (`wx-voodoo-locale`).
-- Language switcher lives in the layout header: `src/lib/components/LanguageSwitcher.svelte`.
-
-**When adding or changing any user-facing text:**
-
-1. Add (or update) the key in `src/lib/i18n/en.ts` — extend the `Dict` type if it's a new key.
-2. Add the equivalent translation in **every** other locale file (`th.ts`, `ro.ts`) — never leave keys English-only. TypeScript will fail the build if a locale is missing a key.
-3. Use `t('your.key', { vars })` in the component instead of hardcoding strings. Interpolation uses `{name}` placeholders.
-4. Strings inside `.ts` library helpers should be returned as **keys** or **structured data**, not pre-localized strings — let the component call `t()`.
-5. Tooltips (`title=`), `aria-label`, placeholders, toast messages, document title, and error messages are user-facing too — translate them.
-
-If you add a new locale, add it to `LOCALES` and `LOCALE_NAMES` in `src/lib/i18n/index.svelte.ts`, and to the `isLocale` predicate.
-
-## Development Notes
-
-- The GUARD frontend is a Custom GPT (ChatGPT Agent) - not a traditional website
-- Raw passphrases are never stored; only vector embeddings are persisted (zero-knowledge approach)
-- The `guard_openai.yaml` file contains the OpenAPI schema for the Custom GPT actions
+- **llm-password-reset** — concept for semantic ("fuzzy") password reset via LLM embeddings instead of exact security-question answers. README only.
+- **llm-linter** — roadmap for using LLMs as static analyzers (prompts → skills → MCP → CI). README only.
+- **AI-agents-delegate-actions** — design notes on reducing MCP context bloat via a tool-search/sub-agent proxy pattern. README only.
+- **generative-ui**, **n8n** — placeholder link dumps / empty scratch spaces.

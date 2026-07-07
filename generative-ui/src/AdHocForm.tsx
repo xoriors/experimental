@@ -9,6 +9,9 @@ import type { FormField, FormSpec, FormValues } from './uiSpec'
 
 interface Props {
   spec: FormSpec
+  // True while the spec is still streaming in from the agent. The form
+  // renders and grows field by field, but cannot be submitted yet.
+  streaming?: boolean
   onSubmit: (values: FormValues) => void
 }
 
@@ -20,10 +23,16 @@ function initialValues(fields: FormField[]): FormValues {
   return values
 }
 
-export default function AdHocForm({ spec, onSubmit }: Props) {
+export default function AdHocForm({ spec, streaming = false, onSubmit }: Props) {
   const [values, setValues] = useState<FormValues>(() => initialValues(spec.fields))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
+
+  // Fields can arrive after mount while the spec streams in, so a field
+  // may not have an entry in values yet. Reads always go through here.
+  function valueOf(f: FormField): string | number | boolean {
+    return values[f.id] ?? (f.type === 'checkbox' ? false : '')
+  }
 
   function setValue(id: string, value: string | number | boolean) {
     setValues((prev) => ({ ...prev, [id]: value }))
@@ -38,7 +47,7 @@ export default function AdHocForm({ spec, onSubmit }: Props) {
   function validate(): boolean {
     const found: Record<string, string> = {}
     for (const f of spec.fields) {
-      const v = values[f.id]
+      const v = valueOf(f)
       const empty = f.type === 'checkbox' ? v !== true : v === ''
       if (f.required && empty) {
         found[f.id] = 'This field is required'
@@ -56,9 +65,11 @@ export default function AdHocForm({ spec, onSubmit }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (submitted || !validate()) return
+    if (submitted || streaming || !validate()) return
     setSubmitted(true)
-    onSubmit(values)
+    const complete: FormValues = {}
+    for (const f of spec.fields) complete[f.id] = valueOf(f)
+    onSubmit(complete)
   }
 
   return (
@@ -72,7 +83,7 @@ export default function AdHocForm({ spec, onSubmit }: Props) {
         <div key={field.id} className="form-field">
           <FieldInput
             field={field}
-            value={values[field.id]}
+            value={valueOf(field)}
             disabled={submitted}
             onChange={(v) => setValue(field.id, v)}
           />
@@ -80,8 +91,12 @@ export default function AdHocForm({ spec, onSubmit }: Props) {
         </div>
       ))}
 
-      <button type="submit" disabled={submitted}>
-        {submitted ? 'Sent to agent' : (spec.submitLabel ?? 'Submit')}
+      <button type="submit" disabled={submitted || streaming}>
+        {streaming
+          ? 'Receiving form...'
+          : submitted
+            ? 'Sent to agent'
+            : (spec.submitLabel ?? 'Submit')}
       </button>
     </form>
   )

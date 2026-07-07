@@ -63,6 +63,53 @@ function fail(message: string): never {
   throw new SpecError(message)
 }
 
+// Validates a single field line. Specs can stream in JSONL style, one
+// field per line, so each line must be checkable on its own the moment
+// it arrives.
+export function parseFormField(raw: unknown, i = 0): FormField {
+  if (typeof raw !== 'object' || raw === null) fail(`fields[${i}] must be an object`)
+  const f = raw as Record<string, unknown>
+
+  if (typeof f.id !== 'string' || f.id.trim() === '') {
+    fail(`fields[${i}].id must be a non-empty string`)
+  }
+  if (typeof f.label !== 'string' || f.label.trim() === '') {
+    fail(`fields[${i}].label must be a non-empty string`)
+  }
+  if (!FIELD_TYPES.includes(f.type as FieldType)) {
+    fail(`fields[${i}].type must be one of: ${FIELD_TYPES.join(', ')}`)
+  }
+  if (f.required !== undefined && typeof f.required !== 'boolean') {
+    fail(`fields[${i}].required must be a boolean when present`)
+  }
+
+  if (f.type === 'select') {
+    const opts = f.options
+    const valid =
+      Array.isArray(opts) && opts.length > 0 && opts.every((o) => typeof o === 'string')
+    if (!valid) fail(`fields[${i}].options must be a non-empty array of strings`)
+  }
+  if (f.type === 'number') {
+    if (f.min !== undefined && typeof f.min !== 'number') {
+      fail(`fields[${i}].min must be a number when present`)
+    }
+    if (f.max !== undefined && typeof f.max !== 'number') {
+      fail(`fields[${i}].max must be a number when present`)
+    }
+  }
+  if (f.type === 'date') {
+    const isoDate = /^\d{4}-\d{2}-\d{2}$/
+    for (const bound of ['min', 'max'] as const) {
+      const v = f[bound]
+      if (v !== undefined && (typeof v !== 'string' || !isoDate.test(v))) {
+        fail(`fields[${i}].${bound} must be an ISO date (YYYY-MM-DD) when present`)
+      }
+    }
+  }
+
+  return f as unknown as FormField
+}
+
 // Validates untrusted JSON (eventually coming from an LLM) into a FormSpec.
 // Throws SpecError with a message precise enough to feed back to the agent
 // so it can correct itself and retry.
@@ -85,50 +132,10 @@ export function parseFormSpec(input: unknown): FormSpec {
 
   const seen = new Set<string>()
   const fields = spec.fields.map((raw, i) => {
-    if (typeof raw !== 'object' || raw === null) fail(`fields[${i}] must be an object`)
-    const f = raw as Record<string, unknown>
-
-    if (typeof f.id !== 'string' || f.id.trim() === '') {
-      fail(`fields[${i}].id must be a non-empty string`)
-    }
+    const f = parseFormField(raw, i)
     if (seen.has(f.id)) fail(`duplicate field id "${f.id}"`)
     seen.add(f.id)
-
-    if (typeof f.label !== 'string' || f.label.trim() === '') {
-      fail(`fields[${i}].label must be a non-empty string`)
-    }
-    if (!FIELD_TYPES.includes(f.type as FieldType)) {
-      fail(`fields[${i}].type must be one of: ${FIELD_TYPES.join(', ')}`)
-    }
-    if (f.required !== undefined && typeof f.required !== 'boolean') {
-      fail(`fields[${i}].required must be a boolean when present`)
-    }
-
-    if (f.type === 'select') {
-      const opts = f.options
-      const valid =
-        Array.isArray(opts) && opts.length > 0 && opts.every((o) => typeof o === 'string')
-      if (!valid) fail(`fields[${i}].options must be a non-empty array of strings`)
-    }
-    if (f.type === 'number') {
-      if (f.min !== undefined && typeof f.min !== 'number') {
-        fail(`fields[${i}].min must be a number when present`)
-      }
-      if (f.max !== undefined && typeof f.max !== 'number') {
-        fail(`fields[${i}].max must be a number when present`)
-      }
-    }
-    if (f.type === 'date') {
-      const isoDate = /^\d{4}-\d{2}-\d{2}$/
-      for (const bound of ['min', 'max'] as const) {
-        const v = f[bound]
-        if (v !== undefined && (typeof v !== 'string' || !isoDate.test(v))) {
-          fail(`fields[${i}].${bound} must be an ISO date (YYYY-MM-DD) when present`)
-        }
-      }
-    }
-
-    return f as unknown as FormField
+    return f
   })
 
   return {

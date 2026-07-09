@@ -23,7 +23,7 @@ function withoutTrailingTyping(list: ChatMessage[]): ChatMessage[] {
   return last && last.kind === 'typing' ? list.slice(0, -1) : list
 }
 
-export default function App() {
+export default function MockDemo() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const runRef = useRef(0)
   const idRef = useRef(1)

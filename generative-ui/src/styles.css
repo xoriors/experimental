@@ -299,3 +299,43 @@ body {
     animation: none;
   }
 }
+
+/* Live / mock switcher */
+.mode-bar {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 0;
+}
+
+.mode-bar button {
+  padding: 0.4rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.mode-bar button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* The CopilotKit chat fills the rest of the viewport */
+.live-wrap {
+  height: calc(100vh - 3.5rem);
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.live-wrap > * {
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}

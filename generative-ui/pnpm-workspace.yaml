@@ -1,2 +1,4 @@
 allowBuilds:
+  # scarf is download analytics, it does not need to run anything
+  '@scarf/scarf': false
   esbuild: true

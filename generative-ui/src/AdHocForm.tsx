@@ -73,25 +73,62 @@ export default function AdHocForm({ spec, streaming = false, onSubmit }: Props) 
   }
 
   return (
-    <form className={`adhoc-form${submitted ? ' is-submitted' : ''}`} onSubmit={handleSubmit}>
-      <header>
-        <h3>{spec.title}</h3>
-        {spec.description && <p className="form-description">{spec.description}</p>}
+    <form
+      className={`adhoc-form${submitted ? ' is-submitted' : ''}${streaming ? ' is-streaming' : ''}`}
+      onSubmit={handleSubmit}
+      noValidate
+    >
+      <header className="adhoc-form-header">
+        <div className="adhoc-form-heading">
+          <h3>{spec.title}</h3>
+          {spec.description && <p className="form-description">{spec.description}</p>}
+        </div>
+        {streaming && (
+          <span className="form-status form-status-streaming" aria-live="polite">
+            <span className="status-dot" aria-hidden="true" />
+            Receiving
+          </span>
+        )}
+        {submitted && (
+          <span className="form-status form-status-sent">
+            <svg viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path
+                d="M2.5 6.5L5 9L9.5 3.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Sent
+          </span>
+        )}
       </header>
 
-      {spec.fields.map((field) => (
-        <div key={field.id} className="form-field">
-          <FieldInput
-            field={field}
-            value={valueOf(field)}
-            disabled={submitted}
-            onChange={(v) => setValue(field.id, v)}
-          />
-          {errors[field.id] && <span className="field-error">{errors[field.id]}</span>}
-        </div>
-      ))}
+      <div className="adhoc-form-fields">
+        {spec.fields.map((field) => (
+          <div key={field.id} className="form-field">
+            <FieldInput
+              field={field}
+              value={valueOf(field)}
+              disabled={submitted}
+              onChange={(v) => setValue(field.id, v)}
+            />
+            {errors[field.id] && (
+              <span className="field-error" role="alert">
+                {errors[field.id]}
+              </span>
+            )}
+          </div>
+        ))}
+        {streaming && (
+          <div className="form-caret" aria-hidden="true">
+            <span />
+          </div>
+        )}
+      </div>
 
-      <button type="submit" disabled={submitted || streaming}>
+      <button type="submit" className="form-submit" disabled={submitted || streaming}>
         {streaming
           ? 'Receiving form...'
           : submitted

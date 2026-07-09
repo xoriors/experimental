@@ -93,13 +93,15 @@ export default function LiveChat() {
     <CopilotKit runtimeUrl="/api/copilotkit">
       <FormAction />
       <div className="live-wrap">
-        <CopilotChat
-          instructions={CHAT_INSTRUCTIONS}
-          labels={{
-            title: 'Generative UI, live',
-            initial: 'Ask me anything. When structured input helps, I will hand you a form instead of twenty questions.',
-          }}
-        />
+        <div className="copilot-frame">
+          <CopilotChat
+            instructions={CHAT_INSTRUCTIONS}
+            labels={{
+              title: 'Generative UI, live',
+              initial: 'Ask me anything. When structured input helps, I will hand you a form instead of twenty questions.',
+            }}
+          />
+        </div>
       </div>
     </CopilotKit>
   )

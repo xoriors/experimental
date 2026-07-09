@@ -127,9 +127,12 @@ export default function MockDemo() {
     <div className="page">
       <main className="chat">
         <header className="chat-header">
-          <div>
-            <h1>Generative UI</h1>
-            <p>An agent that spawns forms in chat instead of asking for free text</p>
+          <div className="chat-header-identity">
+            <div className="agent-mark" aria-hidden="true" />
+            <div>
+              <h1>Generative UI</h1>
+              <p>An agent that spawns forms in chat instead of asking for free text</p>
+            </div>
           </div>
           <button className="ghost" onClick={start}>
             Replay demo
@@ -138,45 +141,63 @@ export default function MockDemo() {
 
         <section className="transcript">
           {messages.map((msg) => (
-            <article key={msg.id} className={`bubble from-${msg.from}`}>
-              {msg.kind === 'text' && <p>{msg.text}</p>}
+            <article
+              key={msg.id}
+              className={`msg from-${msg.from}${msg.kind === 'form' ? ' has-form' : ''}`}
+            >
+              {msg.from === 'agent' && <div className="agent-mark" aria-hidden="true" />}
+              <div className="msg-body">
+                {msg.kind === 'text' && (
+                  <div className="bubble">
+                    <p>{msg.text}</p>
+                  </div>
+                )}
 
-              {msg.kind === 'typing' && (
-                <span className="typing-dots" aria-label="Agent is typing">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              )}
+                {msg.kind === 'typing' && (
+                  <div className="bubble bubble-typing">
+                    <span className="typing-dots" aria-label="Agent is typing">
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  </div>
+                )}
 
-              {msg.kind === 'form' && (
-                <>
-                  <AdHocForm
-                    spec={msg.spec}
-                    streaming={msg.streaming}
-                    onSubmit={(values) => handleSubmit(msg.formId, values)}
-                  />
-                  <details className="spec-viewer">
-                    <summary>View the spec behind this form</summary>
-                    <pre>{JSON.stringify(msg.spec, null, 2)}</pre>
-                  </details>
-                </>
-              )}
+                {msg.kind === 'form' && (
+                  <div className="form-slot">
+                    <AdHocForm
+                      spec={msg.spec}
+                      streaming={msg.streaming}
+                      onSubmit={(values) => handleSubmit(msg.formId, values)}
+                    />
+                    <details className="spec-viewer">
+                      <summary>View the spec behind this form</summary>
+                      <div className="spec-terminal">
+                        <div className="spec-terminal-bar" aria-hidden="true">
+                          <span className="term-dots" />
+                          <span className="term-title">FormSpec · JSON</span>
+                        </div>
+                        <pre>{JSON.stringify(msg.spec, null, 2)}</pre>
+                      </div>
+                    </details>
+                  </div>
+                )}
 
-              {msg.kind === 'values' && (
-                <div className="values-receipt">
-                  <p>Submitted:</p>
-                  <ul>
-                    {Object.entries(msg.values)
-                      .filter(([, v]) => v !== '' && v !== false)
-                      .map(([key, v]) => (
-                        <li key={key}>
-                          <span className="value-key">{key}</span> {String(v)}
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              )}
+                {msg.kind === 'values' && (
+                  <div className="bubble values-receipt">
+                    <p>Submitted</p>
+                    <ul>
+                      {Object.entries(msg.values)
+                        .filter(([, v]) => v !== '' && v !== false)
+                        .map(([key, v]) => (
+                          <li key={key}>
+                            <span className="value-key">{key}</span> {String(v)}
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </article>
           ))}
         </section>

@@ -13,13 +13,23 @@ export default function App() {
 
   return (
     <>
-      <nav className="mode-bar">
-        <button className={mode === 'live' ? 'active' : ''} onClick={() => setMode('live')}>
-          Live (Gemini)
-        </button>
-        <button className={mode === 'mock' ? 'active' : ''} onClick={() => setMode('mock')}>
-          Mock demo
-        </button>
+      <nav className="mode-bar" aria-label="Demo mode">
+        <div className={`mode-track mode-${mode}`}>
+          <button
+            className={mode === 'live' ? 'active' : ''}
+            aria-pressed={mode === 'live'}
+            onClick={() => setMode('live')}
+          >
+            Live (Gemini)
+          </button>
+          <button
+            className={mode === 'mock' ? 'active' : ''}
+            aria-pressed={mode === 'mock'}
+            onClick={() => setMode('mock')}
+          >
+            Mock demo
+          </button>
+        </div>
       </nav>
       {mode === 'live' ? <LiveChat /> : <MockDemo />}
     </>

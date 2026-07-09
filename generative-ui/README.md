@@ -35,13 +35,25 @@ step wires it to a real LLM through the AG-UI protocol and CopilotKit.
 
 ```console
 pnpm install
-pnpm dev
+cp .env.example .env   # add your Gemini key (free at https://aistudio.google.com)
+pnpm dev:server        # terminal 1: CopilotKit runtime backed by Gemini
+pnpm dev               # terminal 2: the app
 ```
 
 Then open the printed local URL (default http://localhost:5173).
 
+Two modes, same rendering pipeline:
+
+- **Live (Gemini)**: chat freely; when the model wants structured input it
+  calls the `show_form` tool with a FormSpec JSON, which is validated and
+  drawn in the chat. Invalid specs are bounced back to the model with the
+  exact error so it can retry.
+- **Mock demo**: a scripted agent that streams the same kind of specs
+  offline, no key needed.
+
 ## Scripts
 
-- `pnpm dev` starts the dev server.
+- `pnpm dev` starts the frontend dev server.
+- `pnpm dev:server` starts the runtime (reads `GEMINI_API_KEY` from `.env`).
 - `pnpm build` type-checks and builds for production.
 - `pnpm check` type-checks only.

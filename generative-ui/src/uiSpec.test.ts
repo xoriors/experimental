@@ -106,6 +106,14 @@ describe('parseFormField', () => {
     ).toMatchObject({ id: 'd', min: '2026-07-08' })
   })
 
+  it('rejects out-of-range dates that match the shape', () => {
+    // Date.parse rejects impossible ranges like month 13 or day 45, which
+    // would otherwise make a bounded date field unsatisfiable.
+    expect(() =>
+      parseFormField({ id: 'd', type: 'date', label: 'D', min: '2026-13-45' }),
+    ).toThrow(/ISO date/)
+  })
+
   it('rejects a non boolean required flag', () => {
     expect(() =>
       parseFormField({ id: 't', type: 'text', label: 'T', required: 'yes' }),

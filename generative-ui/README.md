@@ -4,25 +4,86 @@ Proof of concept for generative UI in chat agents: an agent spawns temporary,
 interactive UI forms inside the chat to collect structured input from the user,
 instead of asking for it as free text. The collected values flow back to the agent.
 
-Built with React, Vite and TypeScript. The agent is currently mocked; the next
-step wires it to a real LLM through the AG-UI protocol and CopilotKit.
+Built with React, Vite and TypeScript. It runs in two modes over one rendering
+pipeline: **live**, where Gemini decides when to spawn a form through a
+CopilotKit tool call, and **mock**, a scripted agent that streams the same specs
+offline.
 
 ## How it works
 
-- `src/uiSpec.ts` defines the contract: a `FormSpec` JSON shape the agent uses
-  to describe a form. `parseFormField` validates each field line on its own
-  (specs stream JSONL style, one field at a time) and `parseFormSpec` validates
-  whole specs. Errors are precise enough to feed back to the agent for a retry.
-- `src/mockAgent.ts` simulates the agent as an event stream, the shape AG-UI
-  actually delivers: typing, text, then a form that arrives field by field.
-  Swapping it for a real LLM behind AG-UI only changes the event source.
-- `src/AdHocForm.tsx` renders a spec as a live form, growing while it streams.
-  Submitting freezes it into a read-only receipt, so the conversation moves
-  forward and the past stays immutable.
-- `src/App.tsx` drives a multi-turn conversation: a booking request produces a
-  form, the submitted values make the agent generate a second form (time slots
-  tailored to those values), and confirming closes the loop. Each form has a
-  "view spec" toggle showing the JSON behind it.
+The core idea is generative UI: instead of asking for structured data in prose
+("which city? what date? how many nights?"), the agent emits a *form*, you fill
+it in, and the answers travel back as one structured payload.
+
+### The pieces
+
+- `server/index.ts` — a local CopilotKit runtime backed by Gemini
+  (`gemini-2.5-flash`). Holds the API key so it never reaches the browser.
+- `src/LiveChat.tsx` — the live loop: the chat window plus the `show_form` tool
+  the model can call.
+- `src/uiSpec.ts` — the contract. The `FormSpec` type and `parseFormSpec`, which
+  validates untrusted JSON (from the model or the mock) one field at a time so a
+  streaming spec can be checked as each line arrives.
+- `src/AdHocForm.tsx` — renders a validated `FormSpec` as a live form and, once
+  submitted, freezes it into a read-only receipt so the past stays immutable.
+- `src/mockAgent.ts` + `src/MockDemo.tsx` — a scripted agent that drives the same
+  renderer offline (a booking request produces a form, the values generate a
+  second form of tailored time slots, confirming closes the loop). No key needed.
+- `src/App.tsx` — toggles between the live and mock modes.
+
+### The live flow
+
+```text
+  you type in the chat
+        │
+        ▼
+  CopilotChat ──POST──▶ /api/copilotkit ──Vite proxy──▶ runtime :4000
+  (browser :5173)                                            │
+                                                 GoogleGenerativeAIAdapter
+                                                             │
+                                                             ▼
+                                                     Gemini 2.5 Flash
+                                                             │
+             model decides structured input helps,          │
+             calls the show_form tool  ◀────────────────────┘
+        ┌──────────────┘
+        ▼  tool call streams back, field by field
+  parseFormSpec validates the JSON
+        │                     │
+   valid│                     │ invalid
+        ▼                     ▼
+  <AdHocForm>           error fed back to the model
+  renders in chat       ("fix it and call show_form again") ──▶ retries
+        │
+        │  you fill it in, click Submit
+        ▼
+  respond(JSON.stringify(values)) ──▶ tool result ──▶ Gemini continues
+```
+
+1. You type in the chat. `CopilotChat` posts to `/api/copilotkit`, which Vite
+   proxies to the local runtime; the runtime forwards to Gemini. The key stays
+   server-side.
+2. The model is told it can draw forms: `CHAT_INSTRUCTIONS` tells Gemini to call
+   `show_form` instead of asking in prose, and `SPEC_CONTRACT` documents the JSON
+   schema with an example.
+3. When structured input helps, Gemini calls `show_form` with a `spec` (a JSON
+   string). `parseFormSpec` validates it and `AdHocForm` draws it in the chat.
+4. You submit. `AdHocForm` checks required fields and date bounds, then hands the
+   values back through `respond(JSON.stringify(values))` — that string is the
+   tool's return value, so Gemini sees your answers and continues the turn.
+
+### Two ideas that make it work
+
+- **Streaming, field by field.** A tool call's JSON arrives incrementally, so
+  while it is incomplete `JSON.parse` fails and the UI shows typing dots. Once it
+  parses, the form renders and grows as more fields land, unlocking for
+  submission only when the call completes.
+- **The model can be wrong, and self-corrects.** `parseFormSpec` treats the
+  model's JSON as untrusted — `type` must be one of five, `select` needs options,
+  dates must be `YYYY-MM-DD`, ids must be unique. On failure the exact error is
+  fed back to the model and it retries. That same validation is what keeps
+  rendering safe: every field lands in escaped React JSX, never `innerHTML` or a
+  URL, so a malicious spec can't inject markup.
 
 ## Background
 

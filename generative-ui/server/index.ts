@@ -3,20 +3,17 @@
 // so the API key never reaches the browser.
 
 import { createServer } from 'node:http'
-import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import {
   CopilotRuntime,
   GoogleGenerativeAIAdapter,
   copilotRuntimeNodeHttpEndpoint,
 } from '@copilotkit/runtime'
 
-// Tiny .env loader, enough for one key and zero dependencies.
+// Node's built-in loader has correct dotenv semantics (quotes, export,
+// comments, no-override), unlike a hand-rolled trim.
 try {
-  const env = readFileSync(new URL('../.env', import.meta.url), 'utf8')
-  for (const line of env.split('\n')) {
-    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/)
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim()
-  }
+  process.loadEnvFile(fileURLToPath(new URL('../.env', import.meta.url)))
 } catch {
   // no .env file, rely on the environment
 }
@@ -42,7 +39,18 @@ const handler = copilotRuntimeNodeHttpEndpoint({
 
 const port = Number(process.env.PORT ?? 4000)
 createServer((req, res) => {
-  void handler(req, res)
+  // The handler can reject (e.g. a malformed Host header throws before its
+  // own try/catch); an unhandled rejection would crash the process. Awaiting
+  // inside try/catch handles both async rejections and synchronous throws.
+  void (async () => {
+    try {
+      await handler(req, res)
+    } catch (err) {
+      console.error('copilotkit request failed:', err)
+      if (!res.headersSent) res.statusCode = 500
+      res.end()
+    }
+  })()
 }).listen(port, () => {
   console.log(`copilotkit runtime listening on http://localhost:${port}/api/copilotkit`)
 })

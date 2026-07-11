@@ -58,6 +58,12 @@ export default function AdHocForm({ spec, streaming = false, onSubmit }: Props) 
         if (f.min && v < f.min) found[f.id] = `Pick ${f.min} or later`
         if (f.max && v > f.max) found[f.id] = `Pick ${f.max} or earlier`
       }
+      // noValidate turns off the browser's own min/max enforcement, so the
+      // spec's numeric bounds must be checked here too.
+      if (f.type === 'number' && typeof v === 'number') {
+        if (f.min !== undefined && v < f.min) found[f.id] = `Must be ${f.min} or more`
+        if (f.max !== undefined && v > f.max) found[f.id] = `Must be ${f.max} or less`
+      }
     }
     setErrors(found)
     return Object.keys(found).length === 0

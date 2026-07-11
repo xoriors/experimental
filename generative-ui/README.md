@@ -9,6 +9,29 @@ pipeline: **live**, where Gemini decides when to spawn a form through a
 CopilotKit tool call, and **mock**, a scripted agent that streams the same specs
 offline.
 
+## Demo
+
+![Generative UI: an agent drawing a form inside the chat](docs/demo.gif)
+
+The user asks to book a court; instead of asking for the details in prose, the
+agent *draws a form* in the chat. The user fills it, the values flow back, and
+the agent generates the next form (time slots tailored to those values) from
+them, until the booking is confirmed.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/01-streaming.png" alt="A form streams into the chat field by field"><br><sub><b>1. The form materializes</b> — fields stream in one by one, straight from the agent.</sub></td>
+<td width="50%"><img src="docs/02-filled.png" alt="The user fills in the form"><br><sub><b>2. It accepts input</b> — a real, validated form living inside the message.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/03-dialogue.png" alt="Submitted values become a receipt and the agent sends a tailored follow-up form"><br><sub><b>3. Forms become a dialogue</b> — submitted values flow back and drive the next form.</sub></td>
+<td width="50%"><img src="docs/04-done.png" alt="The agent confirms the booking in plain text"><br><sub><b>4. The loop closes</b> — the agent confirms in plain text.</sub></td>
+</tr>
+</table>
+
+<sub>Assets are generated from the offline Mock demo (no API key) by
+<a href="docs/record-demo.cjs">docs/record-demo.cjs</a>.</sub>
+
 ## How it works
 
 The core idea is generative UI: instead of asking for structured data in prose

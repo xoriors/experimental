@@ -28,11 +28,15 @@ Example: {"title":"Trip details","fields":[{"id":"when","type":"date",
 "label":"Departure","required":true,"min":"2026-07-08"},{"id":"city",
 "type":"select","label":"City","required":true,"options":["Rome","Lisbon"]}]}`
 
-function tryParse(raw: string): FormSpec | null {
+type ParseResult = { ok: true; spec: FormSpec } | { ok: false; error: string }
+
+// Parse once and keep the reason on failure, so the render decision and the
+// message sent back to the model come from a single source of truth.
+function parseSpec(raw: string): ParseResult {
   try {
-    return parseFormSpec(JSON.parse(raw))
-  } catch {
-    return null
+    return { ok: true, spec: parseFormSpec(JSON.parse(raw)) }
+  } catch (err) {
+    return { ok: false, error: err instanceof SpecError ? err.message : 'malformed JSON' }
   }
 }
 
@@ -51,22 +55,8 @@ function FormAction() {
       },
     ],
     renderAndWaitForResponse: ({ args, respond, status }) => {
-      const raw = typeof args.spec === 'string' ? args.spec : ''
-      const spec = raw ? tryParse(raw) : null
-
-      // While the tool call streams in, the JSON is incomplete. Show a
-      // lightweight placeholder until it parses.
-      if (!spec) {
-        if (status === 'complete' || status === 'executing') {
-          try {
-            if (raw) parseFormSpec(JSON.parse(raw))
-          } catch (err) {
-            const reason = err instanceof SpecError ? err.message : 'malformed JSON'
-            // Tell the model what was wrong so it can retry with a fixed spec.
-            respond?.(`error: invalid form spec (${reason}), fix it and call show_form again`)
-            return <p className="form-description">Form rejected: {reason}</p>
-          }
-        }
+      // Arguments are still streaming in: the JSON is incomplete, so wait.
+      if (status === 'inProgress') {
         return (
           <span className="typing-dots" aria-label="Receiving form">
             <span />
@@ -76,12 +66,22 @@ function FormAction() {
         )
       }
 
+      // Arguments are final (status 'executing' or 'complete'). respond is
+      // only live during 'executing', so every branch here must either call
+      // respond or render the form (which responds on submit) — the tool
+      // call must never be left unresolved, even if the model mistyped spec.
+      const raw = typeof args.spec === 'string' ? args.spec.trim() : ''
+      const result: ParseResult = raw
+        ? parseSpec(raw)
+        : { ok: false, error: 'spec must be a non-empty JSON string' }
+
+      if (!result.ok) {
+        respond?.(`error: invalid form spec (${result.error}), fix it and call show_form again`)
+        return <p className="form-description">Form rejected: {result.error}</p>
+      }
+
       return (
-        <AdHocForm
-          spec={spec}
-          streaming={status === 'inProgress'}
-          onSubmit={(values) => respond?.(JSON.stringify(values))}
-        />
+        <AdHocForm spec={result.spec} onSubmit={(values) => respond?.(JSON.stringify(values))} />
       )
     },
   })

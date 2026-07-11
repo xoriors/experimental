@@ -101,7 +101,13 @@ export function parseFormField(raw: unknown, i = 0): FormField {
     const isoDate = /^\d{4}-\d{2}-\d{2}$/
     for (const bound of ['min', 'max'] as const) {
       const v = f[bound]
-      if (v !== undefined && (typeof v !== 'string' || !isoDate.test(v))) {
+      // The shape check alone accepts impossible dates like 2026-13-45,
+      // which would make a bounded date field unsatisfiable. Date.parse
+      // rejects out-of-range ISO dates, so it closes that gap.
+      if (
+        v !== undefined &&
+        (typeof v !== 'string' || !isoDate.test(v) || Number.isNaN(Date.parse(v)))
+      ) {
         fail(`fields[${i}].${bound} must be an ISO date (YYYY-MM-DD) when present`)
       }
     }

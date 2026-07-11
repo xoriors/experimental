@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import AdHocForm from './AdHocForm'
-import { parseFormField, SpecError, type FormSpec, type FormValues } from './uiSpec'
+import { parseFormField, SpecError, type FormField, type FormSpec, type FormValues } from './uiSpec'
 import { closingTurn, followUpTurn, openingTurn, type AgentEvent } from './mockAgent'
 
 // The chat consumes an agent event stream and renders it as it arrives:
@@ -30,25 +30,28 @@ export default function MockDemo() {
   const bookingRef = useRef<FormValues | null>(null)
 
   function push(msg: NewMessage) {
-    setMessages((prev) => [
-      ...withoutTrailingTyping(prev),
-      { ...msg, id: idRef.current++ } as ChatMessage,
-    ])
+    // Read the id outside the updater: React may re-run updaters, and a
+    // mutation inside would hand a committed message a different id.
+    const id = idRef.current++
+    setMessages((prev) => [...withoutTrailingTyping(prev), { ...msg, id } as ChatMessage])
   }
 
-  function appendFieldToLastForm(field: FormSpec['fields'][number]) {
+  // Target forms by their id, not by "last message": an interleaved bubble
+  // (like a rejected field line) must not displace the form being streamed,
+  // and this leaves room for more than one form at a time.
+  function appendFieldToForm(formId: string, field: FormField) {
     setMessages((prev) =>
-      prev.map((m, i) =>
-        i === prev.length - 1 && m.kind === 'form'
+      prev.map((m) =>
+        m.kind === 'form' && m.formId === formId
           ? { ...m, spec: { ...m.spec, fields: [...m.spec.fields, field] } }
           : m,
       ),
     )
   }
 
-  function closeLastForm() {
+  function closeForm(formId: string) {
     setMessages((prev) =>
-      prev.map((m, i) => (i === prev.length - 1 && m.kind === 'form' ? { ...m, streaming: false } : m)),
+      prev.map((m) => (m.kind === 'form' && m.formId === formId ? { ...m, streaming: false } : m)),
     )
   }
 
@@ -56,7 +59,9 @@ export default function MockDemo() {
   // cancels stale loops so they stop touching state.
   async function play(turn: AsyncGenerator<AgentEvent>) {
     const run = runRef.current
+    let formId = ''
     let fieldIndex = 0
+    let seen = new Set<string>()
     for await (const event of turn) {
       if (runRef.current !== run) return
       switch (event.type) {
@@ -67,11 +72,13 @@ export default function MockDemo() {
           push({ from: 'agent', kind: 'text', text: event.text })
           break
         case 'form-start':
+          formId = event.formId
           fieldIndex = 0
+          seen = new Set()
           push({
             from: 'agent',
             kind: 'form',
-            formId: event.formId,
+            formId,
             streaming: true,
             spec: {
               title: event.title,
@@ -83,7 +90,12 @@ export default function MockDemo() {
           break
         case 'form-field':
           try {
-            appendFieldToLastForm(parseFormField(event.field, fieldIndex++))
+            const field = parseFormField(event.field, fieldIndex++)
+            // The whole-spec parser dedupes ids; the streaming path must do
+            // the same, or two lines with one id would share input state.
+            if (seen.has(field.id)) throw new SpecError(`duplicate field id "${field.id}"`)
+            seen.add(field.id)
+            appendFieldToForm(formId, field)
           } catch (err) {
             // In the real loop this message goes back to the agent so it
             // can fix its spec and retry. Here we surface it in the chat.
@@ -92,7 +104,7 @@ export default function MockDemo() {
           }
           break
         case 'form-end':
-          closeLastForm()
+          closeForm(formId)
           break
       }
     }
@@ -110,6 +122,11 @@ export default function MockDemo() {
 
   useEffect(() => {
     start()
+    // Bump runRef on unmount so the in-flight play() loop stops calling
+    // setMessages (e.g. when toggling to Live mid-stream).
+    return () => {
+      runRef.current++
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

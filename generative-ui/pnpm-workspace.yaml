@@ -2,3 +2,15 @@ allowBuilds:
   # scarf is download analytics, it does not need to run anything
   '@scarf/scarf': false
   esbuild: true
+overrides:
+  # Security overrides for transitive deps (pnpm audit), all via @copilotkit/*
+  # or vite. Same-major bumps except uuid/@hono-node-server (verified by build).
+  fast-uri: '>=3.1.5' # high: host confusion
+  ip-address: '>=10.3.1' # high: leading-zero octet decode
+  postcss: '>=8.5.23' # high: path traversal in prev source map
+  '@hono/node-server': '>=2.0.5' # moderate: path traversal
+  hono: '>=4.12.34' # moderate
+  prismjs: '>=1.30.0' # moderate: DOM clobbering
+  uuid: '>=11.1.1' # moderate: buffer bounds
+  dompurify: '>=3.4.12' # low
+  body-parser: '>=1.20.6' # low

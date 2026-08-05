@@ -15,7 +15,7 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@sveltejs/adapter-vercel": "^6.3.4",
-    "@sveltejs/kit": "^2.8.0",
+    "@sveltejs/kit": "^2.70.2",
     "@sveltejs/vite-plugin-svelte": "^5.1.1",
     "@types/geojson": "^7946.0.16",
     "@types/google.maps": "^3.58.1",

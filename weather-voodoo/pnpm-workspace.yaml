@@ -4,3 +4,9 @@ onlyBuiltDependencies:
   - esbuild
 overrides:
   vite: ^6.4.3
+  # Security overrides for transitive deps (pnpm audit). Scoped where old
+  # majors are NOT vulnerable, blanket where the whole range is.
+  tar: '>=7.5.21' # critical GHSA: decompression DoS; via adapter-vercel -> @vercel/nft
+  postcss: '>=8.5.23' # high: path traversal in previous source map; via vite
+  'brace-expansion@>=4.0.0': '>=5.0.9' # high: DoS; 1.x/2.x (minimatch) not affected
+  cookie: '>=0.7.0 <1.0.0' # low: out-of-bounds chars; via @sveltejs/kit (1.x breaks kit's imports)

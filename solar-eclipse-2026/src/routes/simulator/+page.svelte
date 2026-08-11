@@ -18,8 +18,8 @@
 
 	// Start on the centre line in Castile, which is both a realistic destination
 	// and the clearest demonstration of a low-Sun totality.
-	let lat = $state(41.99);
-	let lon = $state(-4.53);
+	let lat = $state(42.0096);
+	let lon = $state(-4.5288);
 	let elevation = $state(740);
 	let label = $state('Palencia, Spain');
 	let timeZone = $state('Europe/Madrid');

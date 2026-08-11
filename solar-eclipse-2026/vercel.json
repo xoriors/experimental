@@ -1,0 +1,14 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"framework": "sveltekit",
+	"buildCommand": "pnpm build",
+	"installCommand": "pnpm install",
+	"headers": [
+		{
+			"source": "/_app/immutable/(.*)",
+			"headers": [
+				{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+			]
+		}
+	]
+}

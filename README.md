@@ -10,6 +10,7 @@ stable release.
 # Projects
 
 - [`weather-voodoo/`](./weather-voodoo/) — SvelteKit webapp for fused hour-by-hour weather forecasts along a route or at a fixed location, with trip-window scoring, activity recommendations, and shareable URLs. [Live](https://weather-voodoo.vercel.app) · [Docs](./weather-voodoo/README.md)
+- [`solar-eclipse-2026/`](./solar-eclipse-2026/) — Interactive guide and physically-accurate simulator for the total solar eclipse of 12 August 2026, with contact times computed in-browser from NASA's Besselian elements for any point on Earth. [Docs](./solar-eclipse-2026/README.md)
 - [`llm-git-conflict-resolve/`](./llm-git-conflict-resolve/) — Use an LLM to resolve git merge conflicts
 - [`llm-linter/`](./llm-linter/) — LLM-driven code linting
 - [`llm-password-reset/`](./llm-password-reset/) — LLM password-reset experiment

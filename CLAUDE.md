@@ -14,6 +14,19 @@ SvelteKit PWA with hour-by-hour fused weather forecasts for routes, waypoint tri
 
 **It has its own `weather-voodoo/CLAUDE.md`** — commands, architecture, deploy pitfalls, and the mandatory i18n workflow live there. Read it before making any change in that directory.
 
+### solar-eclipse-2026 — deployable app
+
+SvelteKit site about the 12 August 2026 total solar eclipse, with an interactive sky simulator and a
+map of the path of totality. Deploys to Vercel as fully prerendered static output.
+
+Everything is computed at runtime from NASA's Besselian elements — there are no lookup tables — so
+the maths in `src/lib/eclipse/` is load-bearing for every number on every page. `pnpm test` checks it
+against published predictions (greatest eclipse, path width, gamma, and per-city durations); **run it
+before touching anything in that directory.** Two conventions there are easy to get wrong and are
+documented in the README: the ephemeris-meridian correction to `mu`, and the fact that NASA's quoted
+"eclipse magnitude" for a central eclipse is the Moon/Sun diameter ratio rather than the standard
+magnitude formula.
+
 ### llm-git-conflict-resolve — working prototype
 
 LLM-assisted git merge-conflict resolution driven by semantic intent (commit messages + three-way diff) rather than textual diffs. Python 3 stdlib only.

@@ -71,10 +71,11 @@ needs the Maps JavaScript API and a billable key, so the overview map is drawn f
 tiles, where markers are ours to place; the Google panel carries a single pin and needs no key. The
 elevation model knows about hills, not about trees or buildings, and the page says so.
 
-Overpass is reached through `/api/viewing-spots` rather than from the browser, for three reasons:
-Overpass sends no `Access-Control-Allow-Origin` header, so a direct call fails as a CORS error; the
-server can identify itself as Overpass's usage policy asks; and the answer is cached at the edge for
-a day, so a free shared service is not queried once per visitor. The query is built server-side, so
+Overpass is reached through `/api/viewing-spots` in preference to the browser, for three reasons:
+most instances — including the canonical overpass-api.de — send no `Access-Control-Allow-Origin`
+header, so a direct call to them fails as a CORS error; the server can identify itself as Overpass's
+usage policy asks; and the answer is cached at the edge for a day, so a free shared service is not
+queried once per visitor. The query is built server-side, so
 the route cannot be used as an open proxy for arbitrary Overpass QL. It also checks that the
 instance which replied is a real full-planet one: a regional mirror answers 200 with an empty list
 for anywhere outside its own country, which would otherwise be shown as "no viewing spots found".
@@ -99,6 +100,17 @@ arrives — which is how a small query earns a gateway 504. The endpoint is buil
 - The query itself is written to be cheap, since its cost is what the user actually feels: `nwr`
   rather than paired node/way clauses, every venue clause led by the tag Overpass can index, named
   summits only, and per-category radius caps — nobody drives an hour to a car park.
+
+There is a limit to what that buys, though, and measurement found it: from Vercel every mirror times
+out, while the same query from an ordinary connection comes back in a second. Rationing by IP is not
+something you can retry your way out of when the address is shared with the rest of the platform. So
+the page runs both routes and takes whichever answers first — the endpoint immediately, and, if it
+has not answered within three seconds, a direct call from the browser to OSM France, which alone
+among the full-planet instances sends `Access-Control-Allow-Origin: *`. The endpoint keeps its head
+start because it caches and identifies itself properly, so a healthy one means the browser never
+makes a second request; when it cannot get through, the visitor's own connection has its own
+allowance and a shorter path. If both fail, the endpoint's account of it is the one shown, because
+it can name the mirror and the status where the browser only learns that it did not work.
 
 ## Accuracy
 
@@ -153,7 +165,7 @@ horizon**, and places where the Sun sets partway through are flagged as such.
 ```sh
 pnpm install
 pnpm dev        # dev server
-pnpm test       # 125 tests, mostly against published eclipse predictions
+pnpm test       # 126 tests, mostly against published eclipse predictions
 pnpm check      # svelte-check
 pnpm build      # production build
 pnpm preview    # serve the production build

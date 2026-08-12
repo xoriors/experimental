@@ -1,20 +1,48 @@
 /**
  * Candidate places to watch from, taken from OpenStreetMap via Overpass.
  *
- * Deliberately restricted to things you can drive to and stand at: marked
- * viewpoints, car parks, picnic sites, lay-bys and rest areas, plus hilltops
- * and towers, which often have a road to them but sometimes do not — those are
- * labelled so the difference is clear.
+ * Deliberately restricted to places you can drive to and either stand at or
+ * settle into for an hour: marked viewpoints, car parks, picnic sites, lay-bys
+ * and rest areas, terraces with outdoor seating, hotels, huts, campsites and
+ * parks, plus hilltops and towers, which often have a road to them but
+ * sometimes do not — those are labelled so the difference is clear.
  */
 
 import type { Point } from '../eclipse/horizon';
+import { buildQuery, clampRadius } from './overpass-query';
+import { looksHealthy } from './overpass-health';
 
 /**
- * Our own endpoint rather than Overpass directly: Overpass sends no CORS
- * headers, so a browser call to it fails before the response can be read.
- * The server side builds the query and talks to Overpass on our behalf.
+ * Our own endpoint first: it builds the query, identifies itself as Overpass's
+ * usage policy asks, falls between mirrors, and lets the edge cache answer for
+ * everybody else searching the same town.
  */
 const ENDPOINT = '/api/viewing-spots';
+
+/**
+ * And a way round it, because the proxy has a weakness the browser does not.
+ * Overpass rations by IP; a serverless function leaves through an address
+ * shared with every other application on the platform, and from Vercel every
+ * mirror currently times out. A visitor's own connection has its own allowance
+ * and a shorter path, so when the endpoint cannot get an answer, the browser
+ * asks directly.
+ *
+ * Only OSM France is reachable this way: alone among the full-planet instances
+ * it sends `Access-Control-Allow-Origin: *`, which is an explicit invitation to
+ * browser callers. overpass-api.de sends no CORS headers at all, which is what
+ * made the proxy necessary in the first place.
+ */
+const DIRECT_ENDPOINT = 'https://overpass.openstreetmap.fr/api/interpreter';
+
+/**
+ * How long the endpoint gets to itself before the browser also tries. Long
+ * enough that a healthy endpoint — answering from the edge cache in
+ * milliseconds — never causes a second request to a free service, short enough
+ * that a visitor is not watching a spinner while the proxy works through three
+ * mirrors that will not answer.
+ */
+const HEAD_START_MS = 3000;
+
 /**
  * Longer than the endpoint's own budget for talking to Overpass, deliberately.
  * If this fires first, a perfectly good explanation from the server — which
@@ -22,6 +50,7 @@ const ENDPOINT = '/api/viewing-spots';
  * nothing, which is precisely the failure this number used to cause.
  */
 const TIMEOUT_MS = 40000;
+const DIRECT_TIMEOUT_MS = 25000;
 
 export class OverpassError extends Error {}
 
@@ -134,37 +163,41 @@ export interface SpotSearch {
 	reduced: boolean;
 }
 
-/**
- * Places within `radiusM` of a point. `radiusM` is capped because Overpass is a
- * shared free service and a hundred-kilometre query over a city is expensive.
- */
-export async function findSpots(
-	centre: Point,
-	radiusM: number,
-	signal?: AbortSignal
-): Promise<SpotSearch> {
-	const radius = Math.min(Math.max(Math.round(radiusM), 2000), 80000);
-	const url = `${ENDPOINT}?lat=${centre.lat.toFixed(5)}&lon=${centre.lon.toFixed(5)}&radius=${radius}`;
-
+/** A fetch with its own deadline, cancellable by the caller as well. */
+async function fetchWithin(
+	url: string,
+	timeoutMs: number,
+	signal: AbortSignal | undefined,
+	failed: (timedOut: boolean) => string
+): Promise<Response> {
 	const timeout = new AbortController();
-	const timer = setTimeout(() => timeout.abort(), TIMEOUT_MS);
+	const timer = setTimeout(() => timeout.abort(), timeoutMs);
 	const onAbort = () => timeout.abort();
 	signal?.addEventListener('abort', onAbort);
 
-	let response: Response;
 	try {
-		response = await fetch(url, { signal: timeout.signal });
+		return await fetch(url, { signal: timeout.signal });
 	} catch (error) {
 		if (signal?.aborted) throw error;
-		throw new OverpassError(
-			timeout.signal.aborted
-				? 'Looking for nearby viewing spots took too long and was given up on.'
-				: 'Could not reach OpenStreetMap to look for viewing spots.'
-		);
+		throw new OverpassError(failed(timeout.signal.aborted));
 	} finally {
 		clearTimeout(timer);
 		signal?.removeEventListener('abort', onAbort);
 	}
+}
+
+/** The endpoint on our own origin, which caches and falls between mirrors. */
+async function viaProxy(
+	centre: Point,
+	radius: number,
+	signal?: AbortSignal
+): Promise<SpotSearch> {
+	const url = `${ENDPOINT}?lat=${centre.lat.toFixed(5)}&lon=${centre.lon.toFixed(5)}&radius=${radius}`;
+	const response = await fetchWithin(url, TIMEOUT_MS, signal, (timedOut) =>
+		timedOut
+			? 'Looking for nearby viewing spots took too long and was given up on.'
+			: 'Could not reach OpenStreetMap to look for viewing spots.'
+	);
 
 	if (!response.ok) {
 		// The endpoint puts a readable explanation in the body. If it did not, the
@@ -185,6 +218,83 @@ export async function findSpots(
 		spots: parse(body.elements ?? []),
 		reduced: response.headers.get('x-overpass-tier') === 'lean'
 	};
+}
+
+/**
+ * Straight from the browser to OSM France. A GET with no custom headers is a
+ * "simple" cross-origin request, so it goes without a preflight — one round
+ * trip rather than two, from a visitor who is probably nearer to it than our
+ * function is.
+ */
+async function viaDirect(
+	centre: Point,
+	radius: number,
+	signal?: AbortSignal
+): Promise<SpotSearch> {
+	// Rounded exactly as the endpoint rounds it, so the two routes cannot
+	// disagree about what was asked.
+	const query = buildQuery(Number(centre.lat.toFixed(2)), Number(centre.lon.toFixed(2)), radius);
+	const response = await fetchWithin(
+		`${DIRECT_ENDPOINT}?data=${encodeURIComponent(query)}`,
+		DIRECT_TIMEOUT_MS,
+		signal,
+		() => 'Could not reach OpenStreetMap to look for viewing spots.'
+	);
+	if (!response.ok) {
+		throw new OverpassError(`OpenStreetMap replied ${response.status} to the direct request.`);
+	}
+
+	const body = (await response.json()) as { elements?: RawElement[] };
+	const health = looksHealthy(body);
+	if (!health.ok) throw new OverpassError(`OpenStreetMap could not answer: ${health.reason}.`);
+
+	return { spots: parse(body.elements ?? []), reduced: false };
+}
+
+function headStart(signal?: AbortSignal): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(resolve, HEAD_START_MS);
+		signal?.addEventListener('abort', () => {
+			clearTimeout(timer);
+			reject(new DOMException('Aborted', 'AbortError'));
+		});
+	});
+}
+
+/**
+ * Places within `radiusM` of a point. `radiusM` is capped because Overpass is a
+ * shared free service and a hundred-kilometre query over a city is expensive.
+ *
+ * Two routes to the same answer, and whichever arrives first wins. The proxy is
+ * preferred and gets a head start, because it caches and behaves itself; the
+ * direct call exists because the proxy's address is shared with the rest of the
+ * platform and Overpass rations by address, which is a problem no amount of
+ * retrying from the same place can solve.
+ */
+export async function findSpots(
+	centre: Point,
+	radiusM: number,
+	signal?: AbortSignal
+): Promise<SpotSearch> {
+	const radius = clampRadius(radiusM);
+
+	// Kept aside because it is the more informative of the two: it can name the
+	// mirror and the status, where the browser only learns that it did not work.
+	let proxyFailure: Error | undefined;
+
+	try {
+		return await Promise.any([
+			viaProxy(centre, radius, signal).catch((error: Error) => {
+				proxyFailure = error;
+				throw error;
+			}),
+			headStart(signal).then(() => viaDirect(centre, radius, signal))
+		]);
+	} catch (caught) {
+		if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+		if (proxyFailure) throw proxyFailure;
+		throw caught instanceof AggregateError ? caught.errors[0] : caught;
+	}
 }
 
 function parse(elements: RawElement[]): Spot[] {

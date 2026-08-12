@@ -149,17 +149,52 @@ describe('finding somewhere to watch from', () => {
 						status: 503
 					});
 				}
+				if (String(url).includes('overpass')) return new Response('busy', { status: 504 });
 				return new Response(
 					JSON.stringify({ elevation: [220, ...SAMPLE_DISTANCES_M.map(() => 150)] })
 				);
 			})
 		);
 		const result = await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
+		// The endpoint's account of the failure is the one worth keeping — the
+		// browser's direct attempt can only report that it did not work either.
 		expect(result.spotsUnavailable).toMatch(/Overpass replied 504/);
 		expect(result.spots).toHaveLength(0);
 		expect(result.origin).not.toBeNull();
 		expect(result.origin!.horizon.angle).toBeLessThan(0);
 	});
+
+	it('asks Overpass from the browser when our own endpoint cannot reach it', async () => {
+		// Overpass rations by IP, and every application on the hosting platform
+		// shares one. The visitor's own connection has its own allowance, and OSM
+		// France allows cross-origin calls, so a dead endpoint need not mean a
+		// dead feature.
+		const fetchMock = vi.fn(async (url: string) => {
+			if (String(url).includes('/api/viewing-spots')) {
+				return new Response(JSON.stringify({ message: 'Overpass is not answering.' }), {
+					status: 503
+				});
+			}
+			if (String(url).includes('overpass.openstreetmap.fr')) {
+				return new Response(JSON.stringify(OVERPASS));
+			}
+			const params = new URL(String(url), 'http://localhost').searchParams;
+			const lats = params.get('latitude')!.split(',').map(Number);
+			return new Response(JSON.stringify({ elevation: lats.map(() => 200) }));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const result = await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
+
+		expect(result.spotsUnavailable).toBeUndefined();
+		expect(result.found).toBe(4);
+		const direct = fetchMock.mock.calls
+			.map(([u]) => String(u))
+			.find((u) => u.includes('overpass.openstreetmap.fr'));
+		expect(direct).toBeDefined();
+		// A plain GET, so the browser sends it without a preflight round trip.
+		expect(direct).toContain('?data=');
+	}, 10000);
 
 	it('gives up only when the terrain data is unavailable too', async () => {
 		vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('offline'); }));
@@ -212,12 +247,16 @@ describe('finding somewhere to watch from', () => {
 		}
 	});
 
-	it('asks its own origin for spots rather than Overpass, which blocks browsers', async () => {
+	it('prefers its own endpoint and does not trouble Overpass twice for one answer', async () => {
+		// The endpoint caches at the edge and identifies itself as Overpass's usage
+		// policy asks, so while it works nothing else should be asking.
 		const fetchMock = mockFetch(() => 200);
 		vi.stubGlobal('fetch', fetchMock);
 		await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
 		const urls = fetchMock.mock.calls.map(([u]) => String(u));
 		expect(urls.some((u) => u.startsWith('/api/viewing-spots?'))).toBe(true);
+		expect(urls.some((u) => u.includes('overpass'))).toBe(false);
+		// overpass-api.de sends no CORS headers, so it is never called from here.
 		expect(urls.some((u) => u.includes('overpass-api.de'))).toBe(false);
 	});
 });

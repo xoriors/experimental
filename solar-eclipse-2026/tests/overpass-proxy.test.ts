@@ -1,18 +1,40 @@
 import { describe, expect, it } from 'vitest';
 import { looksHealthy } from '../src/lib/data/overpass-health';
 
+/** Midday on the day the eclipse crosses Europe. */
+const NOW = Date.parse('2026-08-12T12:00:00Z');
+
 describe('deciding whether an Overpass mirror actually answered', () => {
-	it('accepts a normal reply', () => {
+	it('accepts a normal reply and says how far behind the mirror is', () => {
 		expect(
-			looksHealthy({ elements: [{}], osm3s: { timestamp_osm_base: '2026-08-12T10:44:41Z' } })
-		).toEqual({ ok: true });
+			looksHealthy({ elements: [{}], osm3s: { timestamp_osm_base: '2026-08-12T10:44:41Z' } }, NOW)
+		).toEqual({ ok: true, ageDays: 0 });
 	});
 
 	it('accepts an genuinely empty area', () => {
 		// Middle of an ocean: no spots, but a healthy database behind it.
 		expect(
-			looksHealthy({ elements: [], osm3s: { timestamp_osm_base: '2026-05-06T03:25:00Z' } })
-		).toEqual({ ok: true });
+			looksHealthy({ elements: [], osm3s: { timestamp_osm_base: '2026-05-06T03:25:00Z' } }, NOW)
+		).toEqual({ ok: true, ageDays: 98 });
+	});
+
+	it('tolerates a mirror some months behind, because hilltops do not move', () => {
+		// kumi.systems was 98 days behind when this was written. Refusing it would
+		// throw away a working fallback over data this site does not depend on.
+		const verdict = looksHealthy(
+			{ elements: [{}], osm3s: { timestamp_osm_base: '2026-05-06T03:25:00Z' } },
+			NOW
+		);
+		expect(verdict.ok).toBe(true);
+	});
+
+	it('refuses a copy nobody has updated in years', () => {
+		const verdict = looksHealthy(
+			{ elements: [{}], osm3s: { timestamp_osm_base: '2022-01-04T00:00:00Z' } },
+			NOW
+		);
+		expect(verdict.ok).toBe(false);
+		expect(verdict.ok === false && verdict.reason).toMatch(/years out of date/);
 	});
 
 	it('rejects a regional mirror pretending to cover the planet', () => {
@@ -39,11 +61,14 @@ describe('deciding whether an Overpass mirror actually answered', () => {
 
 	it('ignores a remark that is not about failure', () => {
 		expect(
-			looksHealthy({
-				elements: [{}],
-				remark: 'improvised note',
-				osm3s: { timestamp_osm_base: '2026-08-12T10:44:41Z' }
-			})
-		).toEqual({ ok: true });
+			looksHealthy(
+				{
+					elements: [{}],
+					remark: 'improvised note',
+					osm3s: { timestamp_osm_base: '2026-08-12T10:44:41Z' }
+				},
+				NOW
+			)
+		).toEqual({ ok: true, ageDays: 0 });
 	});
 });

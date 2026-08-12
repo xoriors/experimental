@@ -35,15 +35,28 @@ export const config = { maxDuration: 30 };
  * anywhere outside their own country, which is indistinguishable from "there
  * is nothing here" unless you check — see `looksHealthy`.
  *
- * kumi.systems goes first. overpass-api.de rate-limits per IP, and a serverless
- * function leaves through an address shared with every other application on the
- * platform, so its allowance is often already spent by somebody else before our
- * visitor arrives — which is how a query this small earns a 504.
+ * Order is by what each one measurably does, not by reputation:
+ *
+ * - OSM France answers a query in the Carpathians in about a second from a
+ *   database minutes old, and is run by a different organisation from the
+ *   others, which is the only kind of redundancy worth having.
+ * - overpass-api.de is the canonical instance and its data is current, but it
+ *   rations per IP — and a serverless function leaves through an address shared
+ *   with every other application on the platform, so its allowance is often
+ *   spent by somebody else before our visitor arrives. That is how a query this
+ *   small earned the 504 that started all this.
+ * - kumi.systems last: it answers, but erratically, and its database was three
+ *   months behind when this was written. Fine as a fallback for car parks and
+ *   hilltops, which do not move.
+ *
+ * overpass.private.coffee is deliberately absent: it resolves to the same
+ * machine as kumi.systems, so listing both would look like redundancy and
+ * provide none.
  */
 const ENDPOINTS = [
-	'https://overpass.kumi.systems/api/interpreter',
+	'https://overpass.openstreetmap.fr/api/interpreter',
 	'https://overpass-api.de/api/interpreter',
-	'https://overpass.private.coffee/api/interpreter'
+	'https://overpass.kumi.systems/api/interpreter'
 ];
 
 /** Every mirror gets a go at the real query; the best two also get the cheap one. */
@@ -134,12 +147,21 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 
 			return json(body, {
 				headers: {
-					// Viewing spots barely change, so let the edge answer most hits.
-					'cache-control': 'public, max-age=600, s-maxage=86400, stale-while-revalidate=604800',
+					// Viewing spots barely change, so let the edge answer most hits —
+					// but a reduced answer must not be cached for a day, or one busy
+					// minute leaves everyone searching that town a short list until
+					// tomorrow.
+					'cache-control':
+						tier === 'full'
+							? 'public, max-age=600, s-maxage=86400, stale-while-revalidate=604800'
+							: 'public, max-age=60, s-maxage=300',
 					'x-upstream': host,
 					// Tells the page whether it is looking at the full search or the
 					// cut-down one, so it can say so rather than quietly show less.
-					'x-overpass-tier': tier
+					'x-overpass-tier': tier,
+					// How far behind that mirror's copy of OpenStreetMap is, so a mirror
+					// quietly drifting out of date is visible without guesswork.
+					'x-osm-age-days': String(health.ageDays ?? '')
 				}
 			});
 		} catch {

@@ -83,9 +83,13 @@ Overpass rations by IP, and a serverless function leaves through an address shar
 application on the platform, so its allowance is regularly spent by somebody else before our visitor
 arrives — which is how a small query earns a gateway 504. The endpoint is built around that:
 
-- Three full-planet mirrors are tried in turn, the most generously provisioned first, each with an
-  eight-second slice of a 24-second budget. A mirror that has not answered in eight seconds is
-  queueing, not thinking, and the next one is a better use of the time.
+- Three full-planet mirrors are tried in turn, each with an eight-second slice of a 24-second
+  budget. A mirror that has not answered in eight seconds is queueing, not thinking, and the next
+  one is a better use of the time. They are ordered by what they measurably do: OSM France first
+  (a query in the Carpathians in about a second, from a database minutes old), then the canonical
+  overpass-api.de, then kumi.systems, which answers erratically and was three months behind when
+  this was written. A mirror more than a year out of date is refused outright, and how far behind
+  the answering one was comes back in a header.
 - If all three refuse the full query, the two best are asked a deliberately cheaper one — fewer
   categories, a shorter drive. The page is told, via a response header, and says the list is reduced
   rather than presenting a thin result as the whole picture.
@@ -149,7 +153,7 @@ horizon**, and places where the Sun sets partway through are flagged as such.
 ```sh
 pnpm install
 pnpm dev        # dev server
-pnpm test       # 123 tests, mostly against published eclipse predictions
+pnpm test       # 125 tests, mostly against published eclipse predictions
 pnpm check      # svelte-check
 pnpm build      # production build
 pnpm preview    # serve the production build
@@ -183,7 +187,7 @@ Or import `xoriors/experimental` in the Vercel dashboard and set **Root Director
 - Coastlines: Natural Earth via `world-atlas`
 - Place search: [Open-Meteo geocoding](https://open-meteo.com/en/docs/geocoding-api), built on GeoNames (CC BY 4.0)
 - Time zones from coordinates: `tz-lookup`
-- Viewing spots: OpenStreetMap contributors via [Overpass](https://overpass-api.de/) (ODbL), proxied through `/api/viewing-spots`
+- Viewing spots: OpenStreetMap contributors via [Overpass](https://overpass-api.de/) (ODbL), proxied through `/api/viewing-spots`; public instances run by OSM France, the Overpass project and Kumi Systems
 - Spot map tiles: OpenStreetMap (ODbL); the Google Maps panel uses the keyless embed
 - Ground elevation: [Open-Meteo elevation](https://open-meteo.com/en/docs/elevation-api), Copernicus DEM
 - Cloud climatology: long-run August averages; see the caveat on `/where` — they are not a forecast

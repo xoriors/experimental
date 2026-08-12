@@ -12,10 +12,17 @@ async function call(fetchMock: typeof fetch, params = 'lat=47.66&lon=23.58&radiu
 	} as any) as Promise<Response>;
 }
 
+/**
+ * The timestamp is generated rather than written down: the endpoint refuses a
+ * mirror whose database is years old, so a fixed date here would quietly turn
+ * into a failing test one day for no reason anybody would enjoy tracking down.
+ */
 const GOOD = {
 	elements: [{ type: 'node', id: 1, lat: 47.6, lon: 23.5, tags: { tourism: 'viewpoint' } }],
-	osm3s: { timestamp_osm_base: '2026-08-12T10:44:41Z' }
+	osm3s: { timestamp_osm_base: new Date(Date.now() - 3600_000).toISOString() }
 };
+
+const FIRST = 'overpass.openstreetmap.fr';
 
 /** The Overpass QL a recorded upstream call carried. */
 function queryOf(recorded: [string, RequestInit]): string {
@@ -36,7 +43,7 @@ afterEach(() => vi.useRealTimers());
 describe('the viewing-spots endpoint', () => {
 	it('moves to the next mirror when one is too busy, and says which answered', async () => {
 		const upstream = vi.fn(async (url: string) =>
-			new URL(url).host.includes('kumi')
+			new URL(url).host === FIRST
 				? new Response('rate limited', { status: 429 })
 				: new Response(JSON.stringify(GOOD))
 		);
@@ -68,20 +75,24 @@ describe('the viewing-spots endpoint', () => {
 		expect(tiers).toEqual(['full', 'full', 'full', 'lean']);
 		// And the page is told, so it can admit the list is not the whole picture.
 		expect(response.headers.get('x-overpass-tier')).toBe('lean');
+		// A short list must not sit at the edge for a day: one busy minute would
+		// otherwise leave everyone searching that town with it until tomorrow.
+		expect(response.headers.get('cache-control')).not.toContain('86400');
+		expect(response.headers.get('cache-control')).toContain('s-maxage=300');
 	});
 
 	it('names what each mirror actually said instead of shrugging', async () => {
 		// The old failure message named nothing at all, which made a rate limit
 		// indistinguishable from being offline.
 		const upstream = vi.fn(async (url: string) =>
-			new URL(url).host.includes('kumi')
+			new URL(url).host === FIRST
 				? new Response('busy', { status: 504 })
 				: new Response('nope', { status: 429 })
 		);
 
 		const failure = await call(upstream as unknown as typeof fetch).catch((e) => e);
 		expect(failure.status).toBe(503);
-		expect(failure.body.message).toContain('overpass.kumi.systems replied 504');
+		expect(failure.body.message).toContain('overpass.openstreetmap.fr replied 504');
 		expect(failure.body.message).toContain('overpass-api.de replied 429');
 	});
 
@@ -89,7 +100,7 @@ describe('the viewing-spots endpoint', () => {
 		// overpass.osm.ch and friends return 200 and an empty list for anywhere
 		// outside their country, which would read as "nothing here".
 		const upstream = vi.fn(async (url: string) =>
-			new URL(url).host.includes('kumi')
+			new URL(url).host === FIRST
 				? new Response(JSON.stringify({ elements: [], osm3s: { timestamp_osm_base: '116339' } }))
 				: new Response(JSON.stringify(GOOD))
 		);
@@ -122,9 +133,9 @@ describe('the viewing-spots endpoint', () => {
 		// whole request past what the browser is prepared to wait for.
 		expect(upstream).toHaveBeenCalledTimes(3);
 		expect(hosts(upstream)).toEqual([
-			'overpass.kumi.systems',
+			'overpass.openstreetmap.fr',
 			'overpass-api.de',
-			'overpass.private.coffee'
+			'overpass.kumi.systems'
 		]);
 	});
 

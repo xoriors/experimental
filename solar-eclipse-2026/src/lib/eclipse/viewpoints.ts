@@ -93,6 +93,11 @@ export interface ViewpointSearch {
 	 * the starting point is still computed, because that only needs terrain.
 	 */
 	spotsUnavailable?: string;
+	/**
+	 * True when Overpass was too busy for the full search and a reduced one was
+	 * used instead — fewer categories over a shorter drive.
+	 */
+	reduced?: boolean;
 }
 
 export interface ProgressReport {
@@ -118,9 +123,12 @@ export async function findViewpoints(
 	// not cost the user the one answer they most want, which is whether the view
 	// works from where they already are — and that needs only terrain.
 	let found: Spot[] = [];
+	let reduced = false;
 	let spotsUnavailable: string | undefined;
 	try {
-		found = await findSpots(origin, radiusM, signal);
+		const search = await findSpots(origin, radiusM, signal);
+		found = search.spots;
+		reduced = search.reduced;
 	} catch (caught) {
 		if (caught instanceof DOMException && caught.name === 'AbortError') throw caught;
 		spotsUnavailable =
@@ -193,7 +201,7 @@ export async function findViewpoints(
 		return a.distanceM - b.distanceM;
 	});
 
-	return { origin: originScored ?? null, spots: rest, found: found.length, spotsUnavailable };
+	return { origin: originScored ?? null, spots: rest, found: found.length, spotsUnavailable, reduced };
 }
 
 /* ------------------------------------------------------------------ *

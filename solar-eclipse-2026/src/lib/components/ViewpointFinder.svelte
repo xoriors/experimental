@@ -43,6 +43,8 @@
 	let busy = $state(false);
 	let progress = $state('');
 	let error = $state('');
+	/** Not a failure, but something the list is not saying for itself. */
+	let notice = $state('');
 	let origin = $state<ScoredSpot | null>(null);
 	let spots = $state<ScoredSpot[]>([]);
 	let searched = $state(false);
@@ -70,6 +72,7 @@
 		searched = false;
 		selectedId = null;
 		error = '';
+		notice = '';
 	}
 
 	async function run() {
@@ -77,6 +80,7 @@
 		controller = new AbortController();
 		busy = true;
 		error = '';
+		notice = '';
 		progress = '';
 		try {
 			const result = await findViewpoints({ lat, lon }, radiusKm * 1000, {
@@ -88,6 +92,9 @@
 			searched = true;
 			// Preselect the best-placed spot so the map has something to show.
 			selectedId = result.spots[0]?.spot.id ?? result.origin?.spot.id ?? null;
+			notice = result.reduced
+				? 'OpenStreetMap was busy, so this is a reduced search: viewpoints, summits, terraces and car parks within about 25 km. Try again in a minute for the full list.'
+				: '';
 			if (result.spotsUnavailable) {
 				error = `${result.spotsUnavailable} Your own position is still checked below.`;
 			} else if (!result.found) {
@@ -151,6 +158,7 @@
 		</div>
 		{#if progress}<p class="progress">{progress}</p>{/if}
 		{#if error}<p class="failed">{error}</p>{/if}
+		{#if notice}<p class="notice">{notice}</p>{/if}
 	</div>
 </div>
 
@@ -349,6 +357,12 @@
 		margin: 0.6rem 0 0;
 		font-size: 0.88rem;
 		color: var(--danger);
+	}
+
+	.notice {
+		margin: 0.6rem 0 0;
+		font-size: 0.88rem;
+		color: var(--text-dim);
 	}
 
 	.origin {

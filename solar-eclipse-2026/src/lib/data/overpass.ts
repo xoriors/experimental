@@ -15,7 +15,13 @@ import type { Point } from '../eclipse/horizon';
  * The server side builds the query and talks to Overpass on our behalf.
  */
 const ENDPOINT = '/api/viewing-spots';
-const TIMEOUT_MS = 30000;
+/**
+ * Longer than the endpoint's own budget for talking to Overpass, deliberately.
+ * If this fires first, a perfectly good explanation from the server — which
+ * mirror said what — is discarded in favour of a generic line that names
+ * nothing, which is precisely the failure this number used to cause.
+ */
+const TIMEOUT_MS = 40000;
 
 export class OverpassError extends Error {}
 
@@ -118,6 +124,16 @@ function classify(tags: Record<string, string>): { kind: SpotKind; detail?: stri
 	return null;
 }
 
+export interface SpotSearch {
+	spots: Spot[];
+	/**
+	 * True when every mirror refused the full query and the endpoint fell back
+	 * to its cheaper one: fewer categories, shorter radius. The page says so
+	 * rather than presenting a thin list as the whole picture.
+	 */
+	reduced: boolean;
+}
+
 /**
  * Places within `radiusM` of a point. `radiusM` is capped because Overpass is a
  * shared free service and a hundred-kilometre query over a city is expensive.
@@ -126,7 +142,7 @@ export async function findSpots(
 	centre: Point,
 	radiusM: number,
 	signal?: AbortSignal
-): Promise<Spot[]> {
+): Promise<SpotSearch> {
 	const radius = Math.min(Math.max(Math.round(radiusM), 2000), 80000);
 	const url = `${ENDPOINT}?lat=${centre.lat.toFixed(5)}&lon=${centre.lon.toFixed(5)}&radius=${radius}`;
 
@@ -140,27 +156,35 @@ export async function findSpots(
 		response = await fetch(url, { signal: timeout.signal });
 	} catch (error) {
 		if (signal?.aborted) throw error;
-		throw new OverpassError('Could not reach OpenStreetMap to look for viewing spots.');
+		throw new OverpassError(
+			timeout.signal.aborted
+				? 'Looking for nearby viewing spots took too long and was given up on.'
+				: 'Could not reach OpenStreetMap to look for viewing spots.'
+		);
 	} finally {
 		clearTimeout(timer);
 		signal?.removeEventListener('abort', onAbort);
 	}
 
 	if (!response.ok) {
-		// The endpoint puts a readable explanation in the body; fall back to a
-		// generic line if it did not.
-		let message = 'Could not reach OpenStreetMap to look for viewing spots.';
+		// The endpoint puts a readable explanation in the body. If it did not, the
+		// failure happened above it — name the status rather than blaming
+		// OpenStreetMap for something the hosting platform did.
+		let message = `The viewing-spot search failed (HTTP ${response.status}).`;
 		try {
 			const body = (await response.json()) as { message?: string };
 			if (body?.message) message = body.message;
 		} catch {
-			/* keep the generic message */
+			/* keep the status-based message */
 		}
 		throw new OverpassError(message);
 	}
 
 	const body = (await response.json()) as { elements?: RawElement[] };
-	return parse(body.elements ?? []);
+	return {
+		spots: parse(body.elements ?? []),
+		reduced: response.headers.get('x-overpass-tier') === 'lean'
+	};
 }
 
 function parse(elements: RawElement[]): Spot[] {

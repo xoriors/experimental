@@ -79,6 +79,23 @@ the route cannot be used as an open proxy for arbitrary Overpass QL. It also che
 instance which replied is a real full-planet one: a regional mirror answers 200 with an empty list
 for anywhere outside its own country, which would otherwise be shown as "no viewing spots found".
 
+Overpass rations by IP, and a serverless function leaves through an address shared with every other
+application on the platform, so its allowance is regularly spent by somebody else before our visitor
+arrives — which is how a small query earns a gateway 504. The endpoint is built around that:
+
+- Three full-planet mirrors are tried in turn, the most generously provisioned first, each with an
+  eight-second slice of a 24-second budget. A mirror that has not answered in eight seconds is
+  queueing, not thinking, and the next one is a better use of the time.
+- If all three refuse the full query, the two best are asked a deliberately cheaper one — fewer
+  categories, a shorter drive. The page is told, via a response header, and says the list is reduced
+  rather than presenting a thin result as the whole picture.
+- The whole budget sits inside both the function's `maxDuration` and the browser's patience, so the
+  page always receives the endpoint's own account of what happened — "overpass-api.de replied 429;
+  kumi.systems ran out of time" — instead of a generic failure that names nobody.
+- The query itself is written to be cheap, since its cost is what the user actually feels: `nwr`
+  rather than paired node/way clauses, every venue clause led by the tag Overpass can index, named
+  summits only, and per-category radius caps — nobody drives an hour to a car park.
+
 ## Accuracy
 
 Elements are NASA/GSFC's for this eclipse, from the
@@ -132,7 +149,7 @@ horizon**, and places where the Sun sets partway through are flagged as such.
 ```sh
 pnpm install
 pnpm dev        # dev server
-pnpm test       # 107 tests, mostly against published eclipse predictions
+pnpm test       # 123 tests, mostly against published eclipse predictions
 pnpm check      # svelte-check
 pnpm build      # production build
 pnpm preview    # serve the production build

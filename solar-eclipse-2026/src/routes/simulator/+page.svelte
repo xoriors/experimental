@@ -163,6 +163,34 @@
 		</div>
 	</div>
 
+	<div class="view-bar card">
+		<h2 class="view-title">View</h2>
+		<div class="view-zoom">
+			<label for="fov-slider">
+				Field of view
+				<b>{fieldOfView < 5 ? fieldOfView.toFixed(1) : fieldOfView.toFixed(0)}° tall</b>
+			</label>
+			<input id="fov-slider" type="range" min="0.6" max="90" step="0.2" bind:value={fieldOfView} />
+		</div>
+		<div class="zoom-presets">
+			<button onclick={() => (fieldOfView = 60)}>Landscape</button>
+			<button onclick={() => (fieldOfView = 12)}>Normal</button>
+			<button onclick={() => (fieldOfView = 2.5)}>Telephoto</button>
+			<button onclick={() => (fieldOfView = 0.8)}>Corona detail</button>
+		</div>
+		<div class="view-toggles">
+			<label class="check"><input type="checkbox" bind:checked={showLandscape} /> Horizon</label>
+			<label class="check"><input type="checkbox" bind:checked={showLabels} /> Labels</label>
+			<label class="check">
+				<input type="checkbox" bind:checked={applyRefraction} /> Refraction
+			</label>
+		</div>
+		<p class="hint">
+			Zoom right in around second and third contact to catch Baily's beads — the last points of
+			sunlight shining through valleys on the Moon's edge.
+		</p>
+	</div>
+
 	<div class="scrub card">
 		<div class="transport">
 			<button class="primary" onclick={() => (playing = !playing)}>
@@ -199,13 +227,27 @@
 		</div>
 	</div>
 
-	<div class="panels">
-		<div class="card">
-			<h2>Your position</h2>
-			<LocationPicker {lat} {lon} {elevation} {label} onchange={pickPlace} />
-			<p class="coords">{formatCoordinate(lat, lon)} · {Math.round(elevation)} m</p>
-		</div>
+	<div class="card position-card">
+		<h2>Your position</h2>
+		<LocationPicker {lat} {lon} {elevation} {label} onchange={pickPlace} />
+		<p class="coords">{formatCoordinate(lat, lon)} · {Math.round(elevation)} m</p>
+	</div>
 
+	<h2>Where the shadow is</h2>
+	<p class="map-hint">
+		Click anywhere to move your viewpoint there. The dark outline is the umbra at the instant shown
+		in the sky view above; the shaded band is the path of totality and the purple wash is how much of
+		the Sun is covered elsewhere.
+	</p>
+	<EclipseMap
+		{observer}
+		{t}
+		onpick={pickFromMap}
+		markers={PATH_PLACES.map((p) => ({ lat: p.lat, lon: p.lon, name: p.name }))}
+		height={480}
+	/>
+
+	<div class="panels">
 		<div class="card">
 			<h2>What happens here</h2>
 			{#if !local.hasEclipse}
@@ -288,43 +330,7 @@
 			{/if}
 		</div>
 
-		<div class="card">
-			<h2>View</h2>
-			<label class="control">
-				<span>Field of view: {fieldOfView < 5 ? fieldOfView.toFixed(1) : fieldOfView.toFixed(0)}° tall</span>
-				<input type="range" min="0.6" max="90" step="0.2" bind:value={fieldOfView} />
-			</label>
-			<div class="zoom-presets">
-				<button onclick={() => (fieldOfView = 60)}>Landscape</button>
-				<button onclick={() => (fieldOfView = 12)}>Normal</button>
-				<button onclick={() => (fieldOfView = 2.5)}>Telephoto</button>
-				<button onclick={() => (fieldOfView = 0.8)}>Corona detail</button>
-			</div>
-			<label class="check"><input type="checkbox" bind:checked={showLandscape} /> Show horizon</label>
-			<label class="check"><input type="checkbox" bind:checked={showLabels} /> Label bright objects</label>
-			<label class="check">
-				<input type="checkbox" bind:checked={applyRefraction} /> Apply atmospheric refraction
-			</label>
-			<p class="hint">
-				Zoom right in around second and third contact to catch Baily's beads — the last points of
-				sunlight shining through valleys on the Moon's edge.
-			</p>
-		</div>
 	</div>
-
-	<h2>Where the shadow is</h2>
-	<p class="map-hint">
-		Click anywhere to move your viewpoint there. The dark outline is the umbra at the instant shown
-		above; the shaded band is the path of totality and the purple wash is how much of the Sun is
-		covered elsewhere.
-	</p>
-	<EclipseMap
-		{observer}
-		{t}
-		onpick={pickFromMap}
-		markers={PATH_PLACES.map((p) => ({ lat: p.lat, lon: p.lon, name: p.name }))}
-		height={480}
-	/>
 </div>
 
 <style>
@@ -404,7 +410,7 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 		gap: 1rem;
-		margin-bottom: 2rem;
+		margin: 1.5rem 0 2rem;
 	}
 
 	.panels h2 {
@@ -469,19 +475,54 @@
 		margin: 0.5rem 0 0;
 	}
 
-	.control {
+	/* Zoom and display controls sit directly under the canvas they act on, so
+	   they are laid out as one compact bar rather than a tall card. */
+	.view-bar {
 		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-		font-size: 0.88rem;
-		margin-bottom: 0.6rem;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.7rem 1.4rem;
+		padding: 0.7rem 1rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.view-title {
+		margin: 0;
+		font-size: 0.76rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.09em;
+		color: var(--text-faint);
+	}
+
+	.view-zoom {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		flex: 1 1 240px;
+		min-width: 200px;
+	}
+
+	.view-zoom label {
+		font-size: 0.84rem;
+		color: var(--text-dim);
+		white-space: nowrap;
+	}
+
+	.view-zoom label b {
+		color: var(--text);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.view-zoom input[type='range'] {
+		flex: 1;
+		min-width: 100px;
 	}
 
 	.zoom-presets {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.3rem;
-		margin-bottom: 0.75rem;
 	}
 
 	.zoom-presets button {
@@ -489,18 +530,35 @@
 		padding: 0.25rem 0.55rem;
 	}
 
+	.view-toggles {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem 1rem;
+	}
+
 	.check {
 		display: flex;
 		align-items: center;
-		gap: 0.45rem;
-		font-size: 0.88rem;
-		margin-bottom: 0.35rem;
+		gap: 0.4rem;
+		font-size: 0.86rem;
+		color: var(--text-dim);
+		white-space: nowrap;
 	}
 
 	.hint {
-		font-size: 0.82rem;
+		flex-basis: 100%;
+		font-size: 0.8rem;
 		color: var(--text-faint);
-		margin: 0.6rem 0 0;
+		margin: 0;
+	}
+
+	.position-card {
+		margin-bottom: 1.5rem;
+	}
+
+	.position-card h2 {
+		margin-top: 0;
+		font-size: 1.05rem;
 	}
 
 	.warn {

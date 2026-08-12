@@ -13,7 +13,7 @@ the city tables, the map and the simulator can never drift out of step with one 
 | Page | What it does |
 | --- | --- |
 | `/` | Live countdown, headline figures, and a narrative timeline of the shadow's 96-minute run across the Earth |
-| `/simulator` | The main event: a computed sky view for any point on Earth at any instant, plus a map of the shadow |
+| `/simulator` | The main event: a computed sky view for any point on Earth at any instant, plus a map of the shadow. Search any town worldwide, click the map, or use your location |
 | `/where` | City-by-city local times, totality durations, Sun altitude and August cloud climatology |
 | `/safety` | How to watch without damaging your eyes |
 | `/guide` | What totality actually looks like, planning, photography, FAQ, later eclipses |
@@ -79,6 +79,10 @@ The residual disagreement with NASA's published path coordinates is a few kilome
 the inherent uncertainty of the limits: mountains on the Moon's edge move the true boundary by a
 kilometre or two anyway. The simulator says so when your position is that close to a limit.
 
+Because of that, place search covers the whole world rather than a curated list, and every result
+carries its own verdict as you type — searching "Romania" makes it immediately clear that Baia Mare
+gets a third of the Sun covered while Bucharest and Constanta get nothing.
+
 A third subtlety matters for readers east of the path. This eclipse happens around sunset over
 Europe, and further east it finishes after the Sun has gone: Bucharest reaches 90% obscuration
 geometrically, but all of that is below the horizon and an observer there sees a 0.4% nibble before
@@ -90,15 +94,17 @@ horizon**, and places where the Sun sets partway through are flagged as such.
 ```sh
 pnpm install
 pnpm dev        # dev server
-pnpm test       # 64 tests, mostly against published eclipse predictions
+pnpm test       # 76 tests, mostly against published eclipse predictions
 pnpm check      # svelte-check
 pnpm build      # production build
 pnpm preview    # serve the production build
 ```
 
 Stack: SvelteKit 2 + Svelte 5 (runes), TypeScript, canvas 2D for both the sky and the map. No API
-keys and no runtime services — the only network fetch is a lazily-loaded Natural Earth coastline file
-(~230 KB gzipped) for the map.
+keys. Two network fetches, both optional: a lazily-loaded Natural Earth coastline file (~230 KB
+gzipped) for the map, and Open-Meteo's keyless geocoding endpoint for place search. If the geocoder
+is unreachable the search degrades to the built-in list and says so, and coordinates can always be
+typed in directly.
 
 ## Deploying to Vercel
 
@@ -119,5 +125,7 @@ Or import `xoriors/experimental` in the Vercel dashboard and set **Root Director
 - Besselian elements and reference circumstances: NASA/GSFC, Espenak & Meeus
 - Planetary positions: JPL approximate Keplerian elements (Standish), valid 1800–2050
 - Coastlines: Natural Earth via `world-atlas`
+- Place search: [Open-Meteo geocoding](https://open-meteo.com/en/docs/geocoding-api), built on GeoNames (CC BY 4.0)
+- Time zones from coordinates: `tz-lookup`
 - Cloud climatology: long-run August averages; see the caveat on `/where` — they are not a forecast
 - Eye-safety guidance follows the AAS solar eclipse task force, NASA and the Royal Astronomical Society

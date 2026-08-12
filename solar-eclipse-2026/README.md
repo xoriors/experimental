@@ -71,11 +71,11 @@ needs the Maps JavaScript API and a billable key, so the overview map is drawn f
 tiles, where markers are ours to place; the Google panel carries a single pin and needs no key. The
 elevation model knows about hills, not about trees or buildings, and the page says so.
 
-Overpass is reached through `/api/viewing-spots` in preference to the browser, for three reasons:
-most instances — including the canonical overpass-api.de — send no `Access-Control-Allow-Origin`
-header, so a direct call to them fails as a CORS error; the server can identify itself as Overpass's
-usage policy asks; and the answer is cached at the edge for a day, so a free shared service is not
-queried once per visitor. The query is built server-side, so
+Overpass is reached through `/api/viewing-spots` rather than from the browser, for three reasons:
+no full-planet instance will serve a browser at all (see below — one of them looks as though it
+will); the server can identify itself as Overpass's usage policy asks; and the answer is cached at
+the edge for a day, so a free shared service is not queried once per visitor. The query is built
+server-side, so
 the route cannot be used as an open proxy for arbitrary Overpass QL. It also checks that the
 instance which replied is a real full-planet one: a regional mirror answers 200 with an empty list
 for anywhere outside its own country, which would otherwise be shown as "no viewing spots found".
@@ -129,15 +129,20 @@ minute does not leave a town short-listed until tomorrow.
 a 30-second client, so a perfectly good "overpass-api.de replied 504" was thrown away and replaced
 by a generic line that named nobody.
 
-**And the browser can go where the server cannot.** Overpass rations by IP, and a serverless function
-leaves through an address shared with every other application on the platform. So the page runs both
-routes and takes whichever answers first: the endpoint immediately, and — if it has not answered
-within three seconds — a direct call from the browser to OSM France, which alone among the
-full-planet instances sends `Access-Control-Allow-Origin: *`. The endpoint keeps its head start
-because it caches and identifies itself properly, so while it works nothing else asks; when it cannot
-get through, the visitor's own connection has its own allowance and a shorter path. If both fail, the
-endpoint's account is the one shown, because it can name the mirror and the status where the browser
-only learns that it did not work.
+**The browser cannot help, and CORS headers are not the test of that.** While the query was still
+failing it looked as though the visitor's own connection might be the way round a shared server
+address, and OSM France appeared to allow it: it sends `Access-Control-Allow-Origin: *` and answers
+a preflight cheerfully. It then refuses the request itself —
+
+```
+403 Forbidden: This service is only available to white-listed usages
+```
+
+— on the strength of the User-Agent alone, which a browser cannot change. The permissive CORS
+headers are real and mean nothing here. So there is no browser route to any full-planet instance:
+overpass-api.de sends no CORS headers at all, and OSM France sends them and blocks you anyway.
+Everything goes through the endpoint, which is the only place a request can carry a User-Agent that
+identifies the project.
 
 ## Accuracy
 

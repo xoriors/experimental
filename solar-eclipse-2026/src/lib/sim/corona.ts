@@ -61,16 +61,24 @@ export interface CoronaImage {
 }
 
 /**
- * Draw the corona into an offscreen canvas. `size` is the pixel size of the
- * square image; `extent` is how many solar radii the half-width covers.
+ * The corona's pixels, and nothing to do with the DOM.
+ *
+ * Separated out because this is the single most expensive thing the site does:
+ * 768² pixels, each summed over thirteen streamers and seventy threads, is some
+ * fifty million exponentials — very nearly three seconds, and it was being done
+ * on the main thread the moment the simulator mounted. That is what made the
+ * page appear to hang on arrival. A worker computes it now and hands these bytes
+ * back; `renderCorona` remains for browsers where that is not possible.
+ *
+ * `size` is the pixel size of the square image; `extent` is how many solar radii
+ * the half-width covers.
  */
-export function renderCorona(size = 768, extent = 4, seed = 20260812): CoronaImage {
-	const canvas = document.createElement('canvas');
-	canvas.width = size;
-	canvas.height = size;
-	const ctx = canvas.getContext('2d')!;
-	const image = ctx.createImageData(size, size);
-	const data = image.data;
+export function coronaPixels(
+	size = 768,
+	extent = 4,
+	seed = 20260812
+): Uint8ClampedArray<ArrayBuffer> {
+	const data = new Uint8ClampedArray(size * size * 4);
 
 	const random = mulberry32(seed);
 	const streamers = makeStreamers(random);
@@ -144,8 +152,26 @@ export function renderCorona(size = 768, extent = 4, seed = 20260812): CoronaIma
 		}
 	}
 
-	ctx.putImageData(image, 0, 0);
+	return data;
+}
+
+/** Wrap computed pixels in a canvas the renderer can blit. */
+export function coronaFromPixels(
+	pixels: Uint8ClampedArray<ArrayBuffer>,
+	size: number,
+	extent: number
+): CoronaImage {
+	const canvas = document.createElement('canvas');
+	canvas.width = size;
+	canvas.height = size;
+	const ctx = canvas.getContext('2d')!;
+	ctx.putImageData(new ImageData(pixels, size, size), 0, 0);
 	return { canvas, extent };
+}
+
+/** Compute and wrap in one go, on whichever thread calls it. */
+export function renderCorona(size = 768, extent = 4, seed = 20260812): CoronaImage {
+	return coronaFromPixels(coronaPixels(size, extent, seed), size, extent);
 }
 
 export interface Prominence {

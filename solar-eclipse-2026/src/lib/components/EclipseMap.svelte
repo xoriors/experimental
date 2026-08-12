@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { feature } from 'topojson-client';
 	import type { Observer } from '$lib/eclipse/besselian';
 	import {
 		computeObscurationGrid,
 		samplePath,
-		sampleGrid,
 		umbraAt,
 		type LngLat,
 		type ObscurationGrid,
 		type PathSample
 	} from '$lib/map/eclipse-path';
+	import type { MapWorkMessage, MapWorkRequest } from '$lib/map/eclipse-path.worker';
 
 	interface Props {
 		observer: Observer;
@@ -35,11 +35,63 @@
 	let land = $state<Array<Array<LngLat>>>([]);
 	let path = $state<PathSample[]>([]);
 	let grid = $state<ObscurationGrid | null>(null);
-	let loading = $state(true);
+
+	// Each piece of the map arrives separately, so the page can say which one it
+	// is still waiting for instead of showing one indeterminate spinner for
+	// everything.
+	let trackReady = $state(false);
+	let shadingReady = $state(false);
+	let landReady = $state(false);
+	let sharpened = $state(false);
+
+	const stage = $derived(
+		!trackReady
+			? 'Solving the shadow track…'
+			: !shadingReady
+				? 'Working out how deep the eclipse gets…'
+				: !landReady
+					? 'Loading coastlines…'
+					: 'Sharpening the shading…'
+	);
+	/** Weighted by how long each step actually takes, so the bar does not stall. */
+	const progress = $derived(
+		(trackReady ? 0.2 : 0) +
+			(shadingReady ? 0.3 : 0) +
+			(landReady ? 0.2 : 0) +
+			(sharpened ? 0.3 : 0)
+	);
+	const busy = $derived(!(trackReady && shadingReady && landReady && sharpened));
 
 	let dragging = false;
 	let moved = false;
 	let dragStart = { x: 0, y: 0, lon: 0, lat: 0 };
+
+	const BOUNDS = { lonMin: -80, lonMax: 55, latMin: 18, latMax: 86 };
+
+	/**
+	 * Fallback for the rare browser with no workers, or one that refuses to build
+	 * this one. Deliberately coarser than the worker's version: on the main
+	 * thread the accurate grid would freeze the page for seconds, and a slightly
+	 * softer heatmap is a far smaller loss than that. Each step is queued rather
+	 * than run straight through, so the map paints before the arithmetic starts.
+	 */
+	function computeOnMainThread() {
+		setTimeout(() => {
+			path = samplePath(60);
+			trackReady = true;
+			setTimeout(() => {
+				grid = computeObscurationGrid(
+					BOUNDS.lonMin,
+					BOUNDS.lonMax,
+					BOUNDS.latMin,
+					BOUNDS.latMax,
+					2
+				);
+				shadingReady = true;
+				sharpened = true;
+			}, 0);
+		}, 0);
+	}
 
 	onMount(() => {
 		const resize = new ResizeObserver((entries) => {
@@ -47,10 +99,39 @@
 		});
 		resize.observe(wrapper);
 
-		// The path and the obscuration grid are pure computation; the coastlines
-		// are a chunky download, so both are deferred off the critical path.
-		path = samplePath(30);
-		grid = computeObscurationGrid(-80, 55, 18, 86, 0.75);
+		// The track and the obscuration grid are seconds of pure arithmetic, which
+		// on this thread would freeze the page rather than merely delay it. The
+		// coastlines are a chunky download and can proceed alongside.
+		let worker: Worker | undefined;
+		try {
+			worker = new Worker(new URL('../map/eclipse-path.worker.ts', import.meta.url), {
+				type: 'module'
+			});
+			worker.onmessage = (event: MessageEvent<MapWorkMessage>) => {
+				const message = event.data;
+				if (message.kind === 'path') {
+					path = message.path;
+					trackReady = true;
+					return;
+				}
+				grid = message.grid;
+				shadingReady = true;
+				if (message.final) sharpened = true;
+			};
+			worker.onerror = () => {
+				worker?.terminate();
+				worker = undefined;
+				if (!trackReady) computeOnMainThread();
+			};
+			worker.postMessage({
+				pathStepSeconds: 30,
+				...BOUNDS,
+				coarseStep: 2,
+				fineStep: 0.75
+			} satisfies MapWorkRequest);
+		} catch {
+			computeOnMainThread();
+		}
 
 		import('world-atlas/countries-50m.json')
 			.then((topology) => {
@@ -69,13 +150,19 @@
 					}
 				}
 				land = rings;
-				loading = false;
+				landReady = true;
 			})
 			.catch(() => {
-				loading = false;
+				// The map is still readable without coastlines — the track, the
+				// graticule and the shading are all computed — so this is not worth
+				// holding the overlay open for.
+				landReady = true;
 			});
 
-		return () => resize.disconnect();
+		return () => {
+			resize.disconnect();
+			worker?.terminate();
+		};
 	});
 
 	const mapHeight = $derived(height);
@@ -153,32 +240,73 @@
 		ctx.stroke();
 	}
 
-	$effect(() => {
-		if (!canvas) return;
-		const ratio = Math.min(2, globalThis.devicePixelRatio || 1);
-		canvas.width = Math.round(width * ratio);
-		canvas.height = Math.round(mapHeight * ratio);
-		const ctx = canvas.getContext('2d');
-		if (!ctx) return;
-		ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+	/**
+	 * The obscuration field, rendered once into a bitmap the size of the grid.
+	 *
+	 * It used to be painted as one small rectangle per three screen pixels — about
+	 * 46,000 `fillRect` calls — and repainted on every animation frame, which is
+	 * most of why the simulator stuttered as soon as it was played. The projection
+	 * is equirectangular and therefore linear in both axes, so a grid cell is
+	 * always an axis-aligned rectangle on screen: the whole field can be one
+	 * `drawImage`, and the smoothing the browser applies while scaling it is the
+	 * same bilinear interpolation `sampleGrid` was doing by hand.
+	 */
+	const shading = $derived.by(() => {
+		if (!grid || typeof document === 'undefined') return null;
+		const buffer = document.createElement('canvas');
+		buffer.width = grid.cols;
+		buffer.height = grid.rows;
+		const ctx = buffer.getContext('2d');
+		if (!ctx) return null;
+		const image = ctx.createImageData(grid.cols, grid.rows);
+		for (let i = 0; i < grid.values.length; i++) {
+			const value = grid.values[i];
+			if (value < 0.05) continue;
+			const alpha = 0.06 + 0.42 * Math.pow(value, 2.4);
+			image.data[i * 4] = 124;
+			image.data[i * 4 + 1] = 92;
+			image.data[i * 4 + 2] = 255;
+			image.data[i * 4 + 3] = Math.round(alpha * 255);
+		}
+		ctx.putImageData(image, 0, 0);
+		return buffer;
+	});
 
+	/**
+	 * Everything that does not move with the clock, kept in its own buffer.
+	 *
+	 * Only the umbra, the markers and the observer change as time runs, and they
+	 * are a few dozen operations; the shading, coastlines and swath are thousands
+	 * and were being redrawn alongside them sixty times a second.
+	 */
+	let base: HTMLCanvasElement | undefined;
+	/**
+	 * Bumped when the buffer has been redrawn, so the overlay knows to composite
+	 * again. Incremented through `untrack` deliberately: `baseVersion++` reads the
+	 * counter as well as writing it, which makes the effect depend on something it
+	 * assigns and spins until Svelte gives up with effect_update_depth_exceeded.
+	 */
+	let baseVersion = $state(0);
+
+	function drawBase(ctx: CanvasRenderingContext2D) {
 		ctx.fillStyle = '#080a12';
 		ctx.fillRect(0, 0, width, mapHeight);
 
 		// Shade how deep the partial eclipse gets, so the map is useful to
 		// everyone in Europe rather than only to people inside the narrow band.
-		if (grid) {
-			const step = 3;
-			for (let y = 0; y < mapHeight; y += step) {
-				for (let x = 0; x < width; x += step) {
-					const [lon, lat] = toGeo(x + step / 2, y + step / 2);
-					if (lat > 90 || lat < -90) continue;
-					const value = sampleGrid(grid, lon, lat);
-					if (value < 0.05) continue;
-					const alpha = 0.06 + 0.42 * Math.pow(value, 2.4);
-					ctx.fillStyle = `rgba(124, 92, 255, ${alpha})`;
-					ctx.fillRect(x, y, step, step);
-				}
+		if (grid && shading) {
+			// Positioned by unwrapped longitude so the rectangle stays coherent;
+			// drawn again a world to each side so it survives the seam when the map
+			// is panned right round.
+			const left = width / 2 + wrapTo180(grid.lonMin - centreLon) * scale;
+			const top = mapHeight / 2 - (grid.latMax - centreLat) * scale;
+			const spanX = (grid.lonMax - grid.lonMin) * scale;
+			const spanY = (grid.latMax - grid.latMin) * scale;
+			const world = 360 * scale;
+			ctx.imageSmoothingEnabled = true;
+			for (const offset of [-world, 0, world]) {
+				if (left + offset > width || left + offset + spanX < 0) continue;
+				ctx.drawImage(shading, left + offset, top, spanX, spanY);
 			}
 		}
 
@@ -259,9 +387,43 @@
 			ctx.setLineDash([]);
 		}
 
-		// The umbra where it is right now.
+	}
+
+	$effect(() => {
+		// Rebuilt only when the view or the data behind it changes — not with time.
+		void [width, mapHeight, centreLon, centreLat, degreesAcross, land, path, grid, shading];
+		if (typeof document === 'undefined') return;
+		const ratio = Math.min(2, globalThis.devicePixelRatio || 1);
+		base ??= document.createElement('canvas');
+		base.width = Math.round(width * ratio);
+		base.height = Math.round(mapHeight * ratio);
+		const ctx = base.getContext('2d');
+		if (!ctx) return;
+		ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+		drawBase(ctx);
+		baseVersion = untrack(() => baseVersion) + 1;
+	});
+
+	$effect(() => {
+		if (!canvas) return;
+		void [baseVersion, t, markers, observer];
+		const ratio = Math.min(2, globalThis.devicePixelRatio || 1);
+		canvas.width = Math.round(width * ratio);
+		canvas.height = Math.round(mapHeight * ratio);
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+		ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+		if (base) ctx.drawImage(base, 0, 0, width, mapHeight);
+		else {
+			ctx.fillStyle = '#080a12';
+			ctx.fillRect(0, 0, width, mapHeight);
+		}
+
+		// The umbra where it is right now. Its outline is resolved to suit the
+		// zoom, because this is the one thing here recomputed every frame.
 		if (t !== null) {
-			const ring = umbraAt(t);
+			const ring = umbraAt(t, degreesAcross > 40 ? 48 : degreesAcross > 8 ? 80 : 160);
 			if (ring) {
 				ctx.beginPath();
 				ring.forEach(([lon, lat], index) => {
@@ -393,8 +555,14 @@
 		<button onclick={resetView}>Reset</button>
 	</div>
 
-	{#if loading}
-		<div class="loading">Loading coastlines…</div>
+	{#if busy}
+		<!-- Deliberately not a blocking veil: the track and the graticule are
+		     already drawn and the map already pans and zooms, so the overlay says
+		     what is still coming and otherwise keeps out of the way. -->
+		<div class="loading" role="status" aria-live="polite">
+			<span class="stage">{stage}</span>
+			<span class="bar"><span class="fill" style="width: {Math.round(progress * 100)}%"></span></span>
+		</div>
 	{/if}
 
 	<div class="legend">
@@ -438,11 +606,32 @@
 		position: absolute;
 		top: 0.6rem;
 		left: 0.6rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		min-width: 11rem;
 		font-size: 0.8rem;
-		color: var(--text-faint);
+		color: var(--text-dim);
 		background: rgba(13, 15, 26, 0.9);
-		padding: 0.2rem 0.5rem;
+		padding: 0.35rem 0.55rem 0.45rem;
 		border-radius: 6px;
+		/* The map underneath is already usable; the overlay must not intercept a
+		   drag or a scroll while the shading finishes. */
+		pointer-events: none;
+	}
+
+	.loading .bar {
+		height: 3px;
+		border-radius: 999px;
+		background: rgba(120, 130, 160, 0.25);
+		overflow: hidden;
+	}
+
+	.loading .fill {
+		display: block;
+		height: 100%;
+		background: var(--total);
+		transition: width 0.3s ease-out;
 	}
 
 	.legend {

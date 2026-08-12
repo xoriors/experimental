@@ -235,6 +235,23 @@ function contactInfo(t: number, obs: Observer): ContactInfo {
 	};
 }
 
+/**
+ * Just the depth of the eclipse at its maximum, and how high the Sun is then.
+ *
+ * `localCircumstances` answers the same question, but on the way it solves four
+ * contacts and scans the whole eclipse in 240 steps to find what is visible
+ * above the horizon. For one place that is a fraction of a millisecond and worth
+ * it; for the map's shading grid it is sixteen thousand places, which turned
+ * into two seconds of frozen page. Everything here comes from the geometry at
+ * one instant.
+ */
+export function maximumDepth(obs: Observer): { obscuration: number; altitude: number } {
+	const t = timeOfMaximum(obs);
+	if (!Number.isFinite(t)) return { obscuration: 0, altitude: -90 };
+	const g = shadowGeometry(t, obs);
+	return { obscuration: obscuration(g), altitude: sunPosition(g, obs).altitude };
+}
+
 /** Everything an observer at `obs` needs to know about their own eclipse. */
 export function localCircumstances(obs: Observer): LocalCircumstances {
 	const tMax = timeOfMaximum(obs);

@@ -41,6 +41,35 @@ The sky view is drawn from geometry rather than from an animation:
   fall-off is the empirical Baumbach profile and its streamer structure is shaped for solar maximum,
   which is roughly where the Sun will be.
 
+### Keeping it responsive
+
+Two things here are expensive enough to matter, and both used to run on the main thread the instant
+the page mounted. That is not a slow page but a frozen one: it cannot answer a scroll, and it cannot
+paint the spinner that would have explained itself.
+
+| Work | Was | Now |
+| --- | --- | --- |
+| Corona texture — 768², 83 layers summed per pixel | 2.9 s, blocking | worker; page unaffected |
+| Obscuration grid — 16,652 points | 2.0 s, blocking | 30 ms, in a worker |
+| Path of totality — 184 samples | 0.2 s, blocking | worker |
+
+The grid was the interesting one. It solved four contact times and scanned the whole eclipse in 240
+steps at every point in order to read off two numbers; `maximumDepth` takes both from the geometry at
+a single instant and agrees with the thorough version to twelve decimal places — a sixty-fold saving
+for no loss at all. The workers post each result as it lands, so the map draws the track first and
+fills the shading in behind it, with a progress bar naming whatever is still outstanding.
+
+The map is also two layers now. Everything that does not move with the clock — shading, coastlines,
+graticule, swath, centre line — is drawn once into a buffer and composited; only the umbra, the
+markers and the crosshair are redrawn per frame. Previously the whole map was rebuilt sixty times a
+second during playback, including some 46,000 `fillRect` calls for the shading; that shading is now a
+single `drawImage` of a bitmap the size of the grid, since the projection is linear and the browser's
+own smoothing is the bilinear interpolation the old code did by hand.
+
+Measured in Chromium on the built site: first paint 140 ms, map complete 1.4 s, 60 fps during
+playback, no task longer than 442 ms. Under a fourfold CPU throttle — roughly a mid-range phone —
+the page is interactive throughout and the map completes in 4.6 s.
+
 ## Finding somewhere to stand
 
 Choosing the right town is only half of it. With the Sun a couple of degrees up, a low ridge or a
@@ -197,7 +226,7 @@ horizon**, and places where the Sun sets partway through are flagged as such.
 ```sh
 pnpm install
 pnpm dev        # dev server
-pnpm test       # 130 tests, mostly against published eclipse predictions
+pnpm test       # 143 tests, mostly against published eclipse predictions
 pnpm check      # svelte-check
 pnpm build      # production build
 pnpm preview    # serve the production build

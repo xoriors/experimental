@@ -11,7 +11,7 @@ import {
 	tToUtc,
 	type SurfacePoint
 } from '../eclipse/besselian';
-import { haversineKm, localCircumstances, timeOfMaximum } from '../eclipse/local';
+import { haversineKm, localCircumstances, maximumDepth } from '../eclipse/local';
 
 export type LngLat = [number, number];
 
@@ -166,9 +166,16 @@ export function pathPolygon(samples: PathSample[]): LngLat[] {
 	return [...north, ...south];
 }
 
-/** The umbra's outline on the ground at a given instant. */
-export function umbraAt(t: number): LngLat[] | null {
-	return umbraOutline(t, 160);
+/**
+ * The umbra's outline on the ground at a given instant.
+ *
+ * `steps` is worth choosing to suit the zoom. The shadow is about 300 km across,
+ * which on a map of the whole track is some twenty pixels wide: at 160 points
+ * that is eight points per pixel, recomputed every animation frame, for an
+ * ellipse nobody can see the sides of.
+ */
+export function umbraAt(t: number, steps = 160): LngLat[] | null {
+	return umbraOutline(t, steps);
 }
 
 export interface ObscurationGrid {
@@ -204,14 +211,12 @@ export function computeObscurationGrid(
 		const lat = latMax - row * step;
 		for (let col = 0; col < cols; col++) {
 			const lon = lonMin + col * step;
-			const observer = { lat, lon };
-			const t = timeOfMaximum(observer);
-			const local = localCircumstances(observer);
+			const deepest = maximumDepth({ lat, lon });
 			// An eclipse below the horizon is no eclipse at all, but fade the
 			// cut-off over a couple of degrees rather than stepping to zero: the
 			// Sun sets gradually and a hard edge on the map looks like an error.
-			const visible = Math.max(0, Math.min(1, (local.max.altitude + 0.6) / 2.5));
-			values[row * cols + col] = Number.isFinite(t) ? local.maxObscuration * visible : 0;
+			const visible = Math.max(0, Math.min(1, (deepest.altitude + 0.6) / 2.5));
+			values[row * cols + col] = deepest.obscuration * visible;
 		}
 	}
 

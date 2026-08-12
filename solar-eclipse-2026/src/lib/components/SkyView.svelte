@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import type { Observer } from '$lib/eclipse/besselian';
 	import { renderScene, type Scene } from '$lib/sim/render';
-	import { renderCorona, type CoronaImage } from '$lib/sim/corona';
+	import { coronaFromPixels, renderCorona, type CoronaImage } from '$lib/sim/corona';
+	import type { CoronaWorkMessage, CoronaWorkRequest } from '$lib/sim/corona.worker';
 
 	interface Props {
 		observer: Observer;
@@ -35,8 +36,30 @@
 	let dragStart = { x: 0, y: 0, alt: 0, az: 0 };
 
 	onMount(() => {
-		// The corona is expensive to generate and never changes, so build it once.
-		corona = renderCorona(768, 4);
+		// Built once, because it never changes — but off this thread, because it is
+		// three seconds of arithmetic and doing it here meant the page arrived
+		// frozen. Until it lands the sky draws without it, which is exactly right
+		// outside totality and no worse than a blank page inside it.
+		let worker: Worker | undefined;
+		try {
+			worker = new Worker(new URL('../sim/corona.worker.ts', import.meta.url), {
+				type: 'module'
+			});
+			worker.onmessage = (event: MessageEvent<CoronaWorkMessage>) => {
+				const { pixels, size, extent } = event.data;
+				corona = coronaFromPixels(pixels, size, extent);
+				worker?.terminate();
+				worker = undefined;
+			};
+			worker.onerror = () => {
+				worker?.terminate();
+				worker = undefined;
+				if (!corona) corona = renderCorona(768, 4);
+			};
+			worker.postMessage({ size: 768, extent: 4, seed: 20260812 } satisfies CoronaWorkRequest);
+		} catch {
+			corona = renderCorona(768, 4);
+		}
 
 		const observerResize = new ResizeObserver((entries) => {
 			for (const entry of entries) {
@@ -45,7 +68,10 @@
 			}
 		});
 		observerResize.observe(wrapper);
-		return () => observerResize.disconnect();
+		return () => {
+			observerResize.disconnect();
+			worker?.terminate();
+		};
 	});
 
 	$effect(() => {

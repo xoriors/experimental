@@ -14,7 +14,7 @@ the city tables, the map and the simulator can never drift out of step with one 
 | --- | --- |
 | `/` | Live countdown, headline figures, and a narrative timeline of the shadow's 96-minute run across the Earth |
 | `/simulator` | The main event: a computed sky view for any point on Earth at any instant, plus a map of the shadow. Search any town worldwide, click the map, or use your location |
-| `/where` | City-by-city local times, totality durations, Sun altitude and August cloud climatology |
+| `/where` | City-by-city local times, totality durations, Sun altitude and August cloud climatology, plus a viewpoint finder that checks the terrain towards the setting Sun |
 | `/safety` | How to watch without damaging your eyes |
 | `/guide` | What totality actually looks like, planning, photography, FAQ, later eclipses |
 
@@ -40,6 +40,23 @@ The sky view is drawn from geometry rather than from an animation:
 - The corona is the one deliberately artistic element — it cannot be predicted in advance. Its radial
   fall-off is the empirical Baumbach profile and its streamer structure is shaped for solar maximum,
   which is roughly where the Sun will be.
+
+## Finding somewhere to stand
+
+Choosing the right town is only half of it. With the Sun a couple of degrees up, a low ridge or a
+line of poplars to the west removes the entire event, so `/where` includes a viewpoint finder:
+
+1. OpenStreetMap (via Overpass) supplies places nearby you can actually drive to — marked
+   viewpoints, car parks, picnic sites, lay-bys — plus summits, which are flagged because they may
+   need a walk.
+2. For each one, the ground is sampled along the exact bearing the Sun will be on at that spot's
+   best visible moment, out to 34 km, using Open-Meteo's Copernicus DEM.
+3. The skyline angle is compared with the Sun's altitude, allowing for Earth curvature and standard
+   refraction, and each place is graded from "clear view" to "terrain in the way".
+
+Each result links to Google Maps for driving directions, and to Street View **already facing the
+direction the Sun will set** — which is the fastest way to spot the hedge that a 90 m elevation
+model cannot see. The model knows about hills, not about trees or buildings, and the page says so.
 
 ## Accuracy
 
@@ -94,17 +111,17 @@ horizon**, and places where the Sun sets partway through are flagged as such.
 ```sh
 pnpm install
 pnpm dev        # dev server
-pnpm test       # 76 tests, mostly against published eclipse predictions
+pnpm test       # 97 tests, mostly against published eclipse predictions
 pnpm check      # svelte-check
 pnpm build      # production build
 pnpm preview    # serve the production build
 ```
 
 Stack: SvelteKit 2 + Svelte 5 (runes), TypeScript, canvas 2D for both the sky and the map. No API
-keys. Two network fetches, both optional: a lazily-loaded Natural Earth coastline file (~230 KB
-gzipped) for the map, and Open-Meteo's keyless geocoding endpoint for place search. If the geocoder
-is unreachable the search degrades to the built-in list and says so, and coordinates can always be
-typed in directly.
+keys anywhere. Network use is optional and degrades cleanly: a lazily-loaded Natural Earth coastline
+file (~230 KB gzipped) for the map, Open-Meteo's keyless geocoding endpoint for place search, and —
+only when you press the button — Overpass and Open-Meteo's elevation endpoint for the viewpoint
+finder. Every one of them reports a readable error and leaves the rest of the site working.
 
 ## Deploying to Vercel
 
@@ -127,5 +144,7 @@ Or import `xoriors/experimental` in the Vercel dashboard and set **Root Director
 - Coastlines: Natural Earth via `world-atlas`
 - Place search: [Open-Meteo geocoding](https://open-meteo.com/en/docs/geocoding-api), built on GeoNames (CC BY 4.0)
 - Time zones from coordinates: `tz-lookup`
+- Viewing spots: OpenStreetMap contributors via [Overpass](https://overpass-api.de/) (ODbL)
+- Ground elevation: [Open-Meteo elevation](https://open-meteo.com/en/docs/elevation-api), Copernicus DEM
 - Cloud climatology: long-run August averages; see the caveat on `/where` — they are not a forecast
 - Eye-safety guidance follows the AAS solar eclipse task force, NASA and the Royal Astronomical Society

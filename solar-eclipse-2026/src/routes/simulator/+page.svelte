@@ -252,6 +252,15 @@
 		<h2>Your position</h2>
 		<LocationPicker {lat} {lon} {elevation} {label} onchange={pickPlace} />
 		<p class="coords">{formatCoordinate(lat, lon)} · {Math.round(elevation)} m</p>
+		<p class="find-spot">
+			<a
+				href="/where?lat={lat.toFixed(4)}&lon={lon.toFixed(4)}&place={encodeURIComponent(
+					label
+				)}#viewpoints"
+			>
+				Find a spot near here with a clear western horizon →
+			</a>
+		</p>
 	</div>
 
 	<h2>Where the shadow is</h2>
@@ -477,6 +486,11 @@
 	.panels h2 {
 		margin-top: 0;
 		font-size: 1.05rem;
+	}
+
+	.find-spot {
+		margin: 0.5rem 0 0;
+		font-size: 0.9rem;
 	}
 
 	.coords {

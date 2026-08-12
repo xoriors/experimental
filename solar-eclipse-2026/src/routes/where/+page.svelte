@@ -2,6 +2,7 @@
 	import { PARTIAL_PLACES, PATH_PLACES } from '$lib/data/places';
 	import { localCircumstances } from '$lib/eclipse/local';
 	import { compass, formatClock, formatDegrees, formatDuration, formatPercent } from '$lib/format';
+	import ViewpointFinder from '$lib/components/ViewpointFinder.svelte';
 
 	type Sort = 'duration' | 'cloud' | 'altitude' | 'name';
 	let sort = $state<Sort>('duration');
@@ -135,6 +136,17 @@
 			</tbody>
 		</table>
 	</div>
+
+	<h2 id="viewpoints">Find a spot with a clear western horizon</h2>
+	<p class="prose">
+		Everything above is about which town to be in. This is about where to stand once you are there —
+		which matters enormously when the Sun is a couple of degrees up, because a low ridge or a line of
+		trees to the west takes the whole event away. Pick a starting point and this looks for places
+		nearby that you can drive to, then checks the terrain between each one and the point on the
+		horizon where the Sun will actually be.
+	</p>
+
+	<ViewpointFinder />
 
 	<h2>How to read the Sun's height</h2>
 	<div class="prose">

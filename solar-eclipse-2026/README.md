@@ -46,17 +46,30 @@ The sky view is drawn from geometry rather than from an animation:
 Choosing the right town is only half of it. With the Sun a couple of degrees up, a low ridge or a
 line of poplars to the west removes the entire event, so `/where` includes a viewpoint finder:
 
-1. OpenStreetMap (via Overpass) supplies places nearby you can actually drive to — marked
-   viewpoints, car parks, picnic sites, lay-bys — plus summits, which are flagged because they may
-   need a walk.
+1. OpenStreetMap (via Overpass) supplies places nearby you can actually drive to. Two sorts: places
+   to stand — marked viewpoints, car parks, lay-bys, summits (flagged, since they may need a walk) —
+   and places to **settle in for an hour**: terraces with outdoor seating, beer gardens, hotels,
+   guest houses, huts, campsites, parks. Terraces are required to have `outdoor_seating=yes`,
+   because an indoor table facing east is no use at all.
 2. For each one, the ground is sampled along the exact bearing the Sun will be on at that spot's
    best visible moment, out to 34 km, using Open-Meteo's Copernicus DEM.
 3. The skyline angle is compared with the Sun's altitude, allowing for Earth curvature and standard
    refraction, and each place is graded from "clear view" to "terrain in the way".
 
-Each result links to Google Maps for driving directions, and to Street View **already facing the
-direction the Sun will set** — which is the fastest way to spot the hedge that a 90 m elevation
-model cannot see. The model knows about hills, not about trees or buildings, and the page says so.
+Candidates are shortlisted by quota rather than by a plain ranking, so a town with three hundred
+terraces still leaves room for the hilltop that might actually have the view.
+
+Results are shown two ways at once: a list, and a map with every candidate plotted and coloured by
+verdict, with a dashed ray from the selected spot showing exactly which way to look. Selecting a spot
+also loads it into a **Google Maps panel in the page**, on satellite by default — which is the
+fastest way to see the belt of trees or the barn that a 90 m elevation model cannot possibly know
+about. Alongside it are links to driving directions and to Street View **already facing the
+direction the Sun will set**.
+
+The two maps come from different places on purpose. Plotting our own markers on a Google basemap
+needs the Maps JavaScript API and a billable key, so the overview map is drawn from OpenStreetMap
+tiles, where markers are ours to place; the Google panel carries a single pin and needs no key. The
+elevation model knows about hills, not about trees or buildings, and the page says so.
 
 Overpass is reached through `/api/viewing-spots` rather than from the browser, for three reasons:
 Overpass sends no `Access-Control-Allow-Origin` header, so a direct call fails as a CORS error; the
@@ -119,7 +132,7 @@ horizon**, and places where the Sun sets partway through are flagged as such.
 ```sh
 pnpm install
 pnpm dev        # dev server
-pnpm test       # 105 tests, mostly against published eclipse predictions
+pnpm test       # 107 tests, mostly against published eclipse predictions
 pnpm check      # svelte-check
 pnpm build      # production build
 pnpm preview    # serve the production build
@@ -154,6 +167,7 @@ Or import `xoriors/experimental` in the Vercel dashboard and set **Root Director
 - Place search: [Open-Meteo geocoding](https://open-meteo.com/en/docs/geocoding-api), built on GeoNames (CC BY 4.0)
 - Time zones from coordinates: `tz-lookup`
 - Viewing spots: OpenStreetMap contributors via [Overpass](https://overpass-api.de/) (ODbL), proxied through `/api/viewing-spots`
+- Spot map tiles: OpenStreetMap (ODbL); the Google Maps panel uses the keyless embed
 - Ground elevation: [Open-Meteo elevation](https://open-meteo.com/en/docs/elevation-api), Copernicus DEM
 - Cloud climatology: long-run August averages; see the caveat on `/where` — they are not a forecast
 - Eye-safety guidance follows the AAS solar eclipse task force, NASA and the Royal Astronomical Society

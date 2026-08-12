@@ -5,11 +5,13 @@
 	import { compassPoint } from '$lib/eclipse/horizon';
 	import {
 		findViewpoints,
+		googleEmbedUrl,
 		mapsDirectionsUrl,
 		mapsPlaceUrl,
 		streetViewUrl,
 		type ScoredSpot
 	} from '$lib/eclipse/viewpoints';
+	import SpotMap from './SpotMap.svelte';
 	import { labelForKind } from '$lib/data/overpass';
 	import { timeZoneFor } from '$lib/data/timezone';
 	import { formatClock, formatDegrees, formatPercent } from '$lib/format';
@@ -44,7 +46,14 @@
 	let origin = $state<ScoredSpot | null>(null);
 	let spots = $state<ScoredSpot[]>([]);
 	let searched = $state(false);
+	let selectedId = $state<string | null>(null);
+	let mapMode = $state<'satellite' | 'map'>('satellite');
 	let controller: AbortController | null = null;
+
+	const shown = $derived(origin ? [origin, ...spots] : spots);
+	const selected = $derived(
+		shown.find((s) => s.spot.id === selectedId) ?? shown[0] ?? null
+	);
 
 	const timeZone = $derived(timeZoneFor(lat, lon));
 	const local = $derived(localCircumstances({ lat, lon }));
@@ -59,6 +68,7 @@
 		spots = [];
 		origin = null;
 		searched = false;
+		selectedId = null;
 		error = '';
 	}
 
@@ -76,6 +86,8 @@
 			origin = result.origin;
 			spots = result.spots;
 			searched = true;
+			// Preselect the best-placed spot so the map has something to show.
+			selectedId = result.spots[0]?.spot.id ?? result.origin?.spot.id ?? null;
 			if (result.spotsUnavailable) {
 				error = `${result.spotsUnavailable} Your own position is still checked below.`;
 			} else if (!result.found) {
@@ -175,56 +187,112 @@
 	<p class="results-note">
 		Ranked by how far the Sun clears the skyline in the direction it will actually be. Heights come
 		from a 90 m elevation model, which knows about hills but not about trees, hedges or buildings —
-		so open the Street View link and look before committing.
+		so check the satellite view and the Street View link before committing.
 	</p>
 
-	<ul class="spots">
-		{#each spots as item (item.spot.id)}
-			<li class="card">
-				<div class="row-main">
-					<div class="who">
-						<strong>{item.spot.name}</strong>
-						<span class="kind">{labelForKind(item.spot.kind)}</span>
-						{#if !item.spot.drivable}
-							<span class="kind walk" title="This is a summit — check whether a road goes up">
-								may need a walk
-							</span>
-						{/if}
-					</div>
-					<span class="verdict verdict-{item.verdict.quality}">{item.verdict.label}</span>
-				</div>
-
-				<p class="detail">
-					{km(item.distanceM)}
-					{compassPoint(item.bearingDeg)} of {label} · ground {Math.round(item.elevationM)} m ·
-					skyline {formatDegrees(item.horizon.angle, 1)} vs Sun at
-					{formatDegrees(item.sunAltitudeDeg, 1)}
-					{#if item.isTotal}
-						· <span class="total">totality</span>
-					{:else if item.obscuration > 0}
-						· {formatPercent(item.obscuration, 0)} covered
-					{/if}
-				</p>
-
-				<div class="links">
-					<a href={mapsDirectionsUrl(item.spot)} target="_blank" rel="noreferrer noopener">
-						Directions
-					</a>
-					<a
-						href={streetViewUrl(item.spot, item.sunAzimuthDeg)}
-						target="_blank"
-						rel="noreferrer noopener"
-						title="Street View looking towards where the Sun will set"
+	<div class="results-layout">
+		<ul class="spots">
+			{#each shown as item (item.spot.id)}
+				<li>
+					<button
+						class="spot"
+						class:chosen={selected?.spot.id === item.spot.id}
+						onclick={() => (selectedId = item.spot.id)}
 					>
-						Look towards the Sun
-					</a>
-					<a href={mapsPlaceUrl(item.spot)} target="_blank" rel="noreferrer noopener">
-						Open in Maps
-					</a>
+						<span class="row-main">
+							<span class="who">
+								<strong>{item.spot.name}</strong>
+								<span class="kind">{item.spot.detail ?? labelForKind(item.spot.kind)}</span>
+								{#if item.spot.canLinger}
+									<span class="kind stay" title="Somewhere you can settle in for an hour">
+										stay a while
+									</span>
+								{/if}
+								{#if !item.spot.drivable}
+									<span class="kind walk" title="A summit — check whether a road goes up">
+										may need a walk
+									</span>
+								{/if}
+							</span>
+							<span class="verdict verdict-{item.verdict.quality}">{item.verdict.label}</span>
+						</span>
+						<span class="detail">
+							{item.spot.id === 'origin' ? 'your starting point' : km(item.distanceM) + ' ' + compassPoint(item.bearingDeg)}
+							· ground {Math.round(item.elevationM)} m · skyline
+							{formatDegrees(item.horizon.angle, 1)} vs Sun at
+							{formatDegrees(item.sunAltitudeDeg, 1)}
+							{#if item.isTotal}
+								· <span class="total">totality</span>
+							{:else if item.obscuration > 0}
+								· {formatPercent(item.obscuration, 0)} covered
+							{/if}
+						</span>
+					</button>
+				</li>
+			{/each}
+		</ul>
+
+		<div class="map-column">
+			<SpotMap
+				{origin}
+				{spots}
+				{selected}
+				onselect={(spot) => (selectedId = spot.spot.id)}
+				height={360}
+			/>
+
+			{#if selected}
+				<div class="card panel">
+					<div class="panel-head">
+						<div>
+							<strong>{selected.spot.name}</strong>
+							<span class="detail">
+								looking {compassPoint(selected.sunAzimuthDeg)} ·
+								{formatDegrees(selected.sunAzimuthDeg, 0)}
+							</span>
+						</div>
+						<div class="mode">
+							<button class:active={mapMode === 'satellite'} onclick={() => (mapMode = 'satellite')}>
+								Satellite
+							</button>
+							<button class:active={mapMode === 'map'} onclick={() => (mapMode = 'map')}>
+								Map
+							</button>
+						</div>
+					</div>
+
+					<iframe
+						title="Google Maps view of {selected.spot.name}"
+						src={googleEmbedUrl(selected.spot, mapMode)}
+						loading="lazy"
+						referrerpolicy="no-referrer-when-downgrade"
+					></iframe>
+
+					<p class="detail">
+						On satellite, look {compassPoint(selected.sunAzimuthDeg)} from the pin: open ground or
+						water means a clean horizon, a belt of trees or a ridge means trouble.
+					</p>
+
+					<div class="links">
+						<a href={mapsDirectionsUrl(selected.spot)} target="_blank" rel="noreferrer noopener">
+							Directions
+						</a>
+						<a
+							href={streetViewUrl(selected.spot, selected.sunAzimuthDeg)}
+							target="_blank"
+							rel="noreferrer noopener"
+							title="Street View looking towards where the Sun will set"
+						>
+							Look towards the Sun
+						</a>
+						<a href={mapsPlaceUrl(selected.spot)} target="_blank" rel="noreferrer noopener">
+							Open in Maps
+						</a>
+					</div>
 				</div>
-			</li>
-		{/each}
-	</ul>
+			{/if}
+		</div>
+	</div>
 {:else if searched && !error && !busy}
 	<p class="results-note">
 		Nothing suitable was mapped within {radiusKm} km. Try a wider radius, or pick a spot yourself on
@@ -379,16 +447,103 @@
 		max-width: 72ch;
 	}
 
+	.results-layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+		gap: 1rem;
+		align-items: start;
+		margin-top: 1rem;
+	}
+
+	@media (max-width: 900px) {
+		.results-layout {
+			grid-template-columns: 1fr;
+		}
+	}
+
 	.spots {
 		list-style: none;
 		padding: 0;
-		margin: 1rem 0 0;
+		margin: 0;
 		display: grid;
-		gap: 0.75rem;
+		gap: 0.5rem;
+		max-height: 760px;
+		overflow-y: auto;
 	}
 
 	.spots li {
 		margin: 0;
+	}
+
+	.spot {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		width: 100%;
+		text-align: left;
+		background: var(--bg-card);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 0.7rem 0.85rem;
+	}
+
+	.spot:hover {
+		border-color: var(--border-strong);
+	}
+
+	.spot.chosen {
+		border-color: var(--sun);
+		background: rgba(255, 181, 69, 0.07);
+	}
+
+	.map-column {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		position: sticky;
+		top: 76px;
+	}
+
+	.panel {
+		padding: 0.85rem;
+	}
+
+	.panel-head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-bottom: 0.6rem;
+	}
+
+	.panel-head .detail {
+		display: block;
+		margin: 0;
+	}
+
+	.mode {
+		display: flex;
+		gap: 0.25rem;
+		flex: none;
+	}
+
+	.mode button {
+		font-size: 0.78rem;
+		padding: 0.2rem 0.5rem;
+	}
+
+	.panel iframe {
+		display: block;
+		width: 100%;
+		height: 300px;
+		border: 1px solid var(--border);
+		border-radius: 9px;
+		background: var(--bg-raised);
+	}
+
+	.kind.stay {
+		color: #7ee2a8;
+		border-color: #2f6b45;
 	}
 
 	.credit {

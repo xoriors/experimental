@@ -40,26 +40,47 @@ export interface ScoredSpot {
 }
 
 /** How many spots to evaluate. Each costs fifteen elevation samples. */
-const MAX_SPOTS = 20;
+const MAX_SPOTS = 26;
 
-const KIND_PRIORITY: Record<SpotKind, number> = {
-	viewpoint: 0,
-	rest: 1,
-	picnic: 1,
-	parking: 2,
-	peak: 3,
-	tower: 3
-};
+/**
+ * How many of each sort to carry through to the terrain check. A quota rather
+ * than a plain ranking, so a town with three hundred terraces still leaves room
+ * for the hilltop that might actually have the view — and so somewhere to sit
+ * for an hour always appears alongside the roadside pull-ins.
+ */
+const QUOTAS: Array<{ kinds: SpotKind[]; take: number }> = [
+	{ kinds: ['viewpoint'], take: 7 },
+	{ kinds: ['terrace', 'stay'], take: 7 },
+	{ kinds: ['picnic', 'rest', 'park'], take: 5 },
+	{ kinds: ['peak', 'tower'], take: 4 },
+	{ kinds: ['parking'], take: 4 }
+];
 
-/** Keep a manageable, varied shortlist: viewpoints first, then roadside spots. */
 function shortlist(spots: Spot[], origin: Point): Spot[] {
-	return [...spots]
-		.sort((a, b) => {
-			const priority = KIND_PRIORITY[a.kind] - KIND_PRIORITY[b.kind];
-			if (priority !== 0) return priority;
-			return distanceM(origin, a) - distanceM(origin, b);
-		})
-		.slice(0, MAX_SPOTS);
+	const byDistance = [...spots].sort((a, b) => distanceM(origin, a) - distanceM(origin, b));
+	const picked: Spot[] = [];
+	const taken = new Set<string>();
+
+	for (const quota of QUOTAS) {
+		let count = 0;
+		for (const spot of byDistance) {
+			if (count >= quota.take || picked.length >= MAX_SPOTS) break;
+			if (taken.has(spot.id) || !quota.kinds.includes(spot.kind)) continue;
+			picked.push(spot);
+			taken.add(spot.id);
+			count++;
+		}
+	}
+
+	// Any room left over goes to whatever is nearest, whatever its sort.
+	for (const spot of byDistance) {
+		if (picked.length >= MAX_SPOTS) break;
+		if (taken.has(spot.id)) continue;
+		picked.push(spot);
+		taken.add(spot.id);
+	}
+
+	return picked;
 }
 
 export interface ViewpointSearch {
@@ -114,7 +135,8 @@ export async function findViewpoints(
 		kind: 'viewpoint',
 		lat: origin.lat,
 		lon: origin.lon,
-		drivable: true
+		drivable: true,
+		canLinger: true
 	};
 	const all = [originSpot, ...candidates];
 
@@ -185,6 +207,20 @@ export function mapsPlaceUrl(point: Point): string {
 
 export function mapsDirectionsUrl(point: Point): string {
 	return `https://www.google.com/maps/dir/?api=1&destination=${point.lat.toFixed(6)},${point.lon.toFixed(6)}&travelmode=driving`;
+}
+
+/**
+ * A Google map of one point, embeddable in the page without an API key.
+ *
+ * Satellite is the useful default here: it shows the belt of trees or the barn
+ * west of a spot that a 90 m elevation model cannot possibly know about. Note
+ * that this embed carries a single pin — plotting our whole list on a Google
+ * basemap would need the JavaScript API and a billable key, which is why the
+ * overview map beside it is drawn from OpenStreetMap tiles instead.
+ */
+export function googleEmbedUrl(point: Point, mode: 'satellite' | 'map' = 'satellite'): string {
+	const t = mode === 'satellite' ? 'k' : 'm';
+	return `https://maps.google.com/maps?q=${point.lat.toFixed(6)},${point.lon.toFixed(6)}&z=16&t=${t}&output=embed`;
 }
 
 /**

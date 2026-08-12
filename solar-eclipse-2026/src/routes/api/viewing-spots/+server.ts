@@ -38,20 +38,33 @@ const MAX_RADIUS_M = 80000;
 const UPSTREAM_TIMEOUT_MS = 25000;
 
 function buildQuery(lat: number, lon: number, radiusM: number): string {
-	const parkingRadius = Math.min(radiusM, 30000);
-	const around = `${radiusM},${lat},${lon}`;
-	const parkingAround = `${parkingRadius},${lat},${lon}`;
+	const at = `${lat},${lon}`;
+	const wide = `${radiusM},${at}`;
+	// Places to sit are far more numerous than viewpoints, so they get a tighter
+	// radius and must clear a bar: somewhere with outdoor seating, or a named
+	// hotel, hut, campsite or park. An indoor table with no window west is no
+	// use for watching a sunset.
+	const venues = `${Math.min(radiusM, 35000)},${at}`;
+	const parking = `${Math.min(radiusM, 30000)},${at}`;
+
 	return `[out:json][timeout:25];
 (
-  node["tourism"="viewpoint"](around:${around});
-  node["tourism"="picnic_site"](around:${around});
-  node["highway"~"^(rest_area|services)$"](around:${around});
-  node["natural"="peak"](around:${around});
-  node["amenity"="parking"]["name"](around:${parkingAround});
-  way["tourism"="viewpoint"](around:${around});
-  way["amenity"="parking"]["name"](around:${parkingAround});
+  node["tourism"="viewpoint"](around:${wide});
+  way["tourism"="viewpoint"](around:${wide});
+  node["tourism"="picnic_site"](around:${wide});
+  node["highway"~"^(rest_area|services)$"](around:${wide});
+  node["natural"="peak"](around:${wide});
+  node["amenity"~"^(restaurant|cafe|bar|pub)$"]["outdoor_seating"="yes"](around:${venues});
+  way["amenity"~"^(restaurant|cafe|bar|pub)$"]["outdoor_seating"="yes"](around:${venues});
+  node["amenity"="biergarten"](around:${venues});
+  node["tourism"~"^(hotel|guest_house|chalet|alpine_hut|wilderness_hut|camp_site|caravan_site)$"]["name"](around:${venues});
+  way["tourism"~"^(hotel|guest_house|chalet|alpine_hut|wilderness_hut|camp_site|caravan_site)$"]["name"](around:${venues});
+  node["leisure"~"^(park|garden)$"]["name"](around:${venues});
+  way["leisure"~"^(park|garden)$"]["name"](around:${venues});
+  node["amenity"="parking"]["name"](around:${parking});
+  way["amenity"="parking"]["name"](around:${parking});
 );
-out center tags 120;`;
+out center tags 250;`;
 }
 
 export const GET: RequestHandler = async ({ url, fetch }) => {

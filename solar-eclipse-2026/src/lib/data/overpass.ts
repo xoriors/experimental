@@ -19,7 +19,16 @@ const TIMEOUT_MS = 30000;
 
 export class OverpassError extends Error {}
 
-export type SpotKind = 'viewpoint' | 'parking' | 'picnic' | 'rest' | 'peak' | 'tower';
+export type SpotKind =
+	| 'viewpoint'
+	| 'parking'
+	| 'picnic'
+	| 'rest'
+	| 'peak'
+	| 'tower'
+	| 'terrace'
+	| 'stay'
+	| 'park';
 
 export interface Spot extends Point {
 	id: string;
@@ -29,6 +38,13 @@ export interface Spot extends Point {
 	taggedElevationM?: number;
 	/** True for kinds that are normally reachable by car. */
 	drivable: boolean;
+	/**
+	 * True where you can reasonably settle in for an hour rather than stand at
+	 * the roadside: a terrace, a hotel, a campsite, a park.
+	 */
+	canLinger: boolean;
+	/** The OSM value behind the kind, e.g. "restaurant", so the card can say so. */
+	detail?: string;
 }
 
 const KIND_LABELS: Record<SpotKind, string> = {
@@ -37,8 +53,21 @@ const KIND_LABELS: Record<SpotKind, string> = {
 	picnic: 'Picnic site',
 	rest: 'Rest area',
 	peak: 'Summit',
-	tower: 'Tower'
+	tower: 'Tower',
+	terrace: 'Terrace',
+	stay: 'Place to stay',
+	park: 'Park'
 };
+
+/** Kinds you can sit at for an hour without being in the way. */
+const LINGER_KINDS: ReadonlySet<SpotKind> = new Set<SpotKind>([
+	'terrace',
+	'stay',
+	'park',
+	'picnic',
+	'rest',
+	'viewpoint'
+]);
 
 export function labelForKind(kind: SpotKind): string {
 	return KIND_LABELS[kind];
@@ -53,13 +82,39 @@ interface RawElement {
 	tags?: Record<string, string>;
 }
 
-function classify(tags: Record<string, string>): SpotKind | null {
-	if (tags.tourism === 'viewpoint') return 'viewpoint';
-	if (tags.tourism === 'picnic_site' || tags.leisure === 'picnic_table') return 'picnic';
-	if (tags.highway === 'rest_area' || tags.highway === 'services') return 'rest';
-	if (tags.amenity === 'parking') return 'parking';
-	if (tags.natural === 'peak') return 'peak';
-	if (tags.man_made === 'tower' && tags.tourism === 'attraction') return 'tower';
+const STAY_TOURISM = new Set([
+	'hotel',
+	'guest_house',
+	'chalet',
+	'alpine_hut',
+	'wilderness_hut',
+	'camp_site',
+	'caravan_site'
+]);
+
+function classify(tags: Record<string, string>): { kind: SpotKind; detail?: string } | null {
+	if (tags.tourism === 'viewpoint') return { kind: 'viewpoint' };
+	if (tags.tourism === 'picnic_site' || tags.leisure === 'picnic_table') return { kind: 'picnic' };
+	if (tags.highway === 'rest_area' || tags.highway === 'services') return { kind: 'rest' };
+	if (tags.natural === 'peak') return { kind: 'peak' };
+	if (tags.man_made === 'tower' && tags.tourism === 'attraction') return { kind: 'tower' };
+
+	if (tags.amenity === 'biergarten') return { kind: 'terrace', detail: 'beer garden' };
+	if (
+		tags.outdoor_seating === 'yes' &&
+		['restaurant', 'cafe', 'bar', 'pub'].includes(tags.amenity ?? '')
+	) {
+		return { kind: 'terrace', detail: tags.amenity };
+	}
+
+	if (STAY_TOURISM.has(tags.tourism ?? '')) {
+		return { kind: 'stay', detail: tags.tourism?.replace(/_/g, ' ') };
+	}
+	if (tags.leisure === 'park' || tags.leisure === 'garden') {
+		return { kind: 'park', detail: tags.leisure };
+	}
+
+	if (tags.amenity === 'parking') return { kind: 'parking' };
 	return null;
 }
 
@@ -112,8 +167,9 @@ function parse(elements: RawElement[]): Spot[] {
 	const spots: Spot[] = [];
 	for (const element of elements) {
 		const tags = element.tags ?? {};
-		const kind = classify(tags);
-		if (!kind) continue;
+		const classified = classify(tags);
+		if (!classified) continue;
+		const { kind, detail } = classified;
 		const lat = element.lat ?? element.center?.lat;
 		const lon = element.lon ?? element.center?.lon;
 		if (lat === undefined || lon === undefined) continue;
@@ -127,7 +183,9 @@ function parse(elements: RawElement[]): Spot[] {
 			lon,
 			taggedElevationM: Number.isFinite(tagged) ? tagged : undefined,
 			// Summits and towers may well need a walk; the rest are roadside.
-			drivable: kind !== 'peak' && kind !== 'tower'
+			drivable: kind !== 'peak' && kind !== 'tower',
+			canLinger: LINGER_KINDS.has(kind),
+			detail
 		});
 	}
 	return spots;

@@ -13,25 +13,56 @@ const OVERPASS = {
 	]
 };
 
-/** Heights keyed by how the fixture wants each spot to behave. */
-const GROUND: Record<string, number> = {
-	origin: 220,
-	'Dealul Crucii': 506,
-	'Valley car park': 210,
-	Igniș: 1302,
-	'Ridge lookout': 400
-};
+/**
+ * Ground height and westward skyline for each fixture site, keyed by position.
+ * Resolving by coordinate rather than by request order keeps these tests honest
+ * when the shortlist decides to return the spots in a different sequence.
+ */
+const SITES = [
+	{ name: 'origin', lat: 47.6573, lon: 23.5681, ground: 220, ridge: 600 },
+	{ name: 'Dealul Crucii', lat: 47.6748, lon: 23.5913, ground: 506, ridge: 600 },
+	{ name: 'Valley car park', lat: 47.66, lon: 23.55, ground: 210, ridge: 600 },
+	{ name: 'Igniș', lat: 47.7315, lon: 23.6729, ground: 1302, ridge: 600 },
+	{ name: 'Ridge lookout', lat: 47.64, lon: 23.6, ground: 400, ridge: 600 }
+];
 
-function mockFetch(elevationFor: (index: number) => number[]) {
-	let elevationCall = 0;
+function nearestSite(lat: number, lon: number) {
+	let best = SITES[0];
+	let bestDistance = Infinity;
+	for (const site of SITES) {
+		const d = Math.hypot((site.lat - lat) * 111, (site.lon - lon) * 75);
+		if (d < bestDistance) {
+			bestDistance = d;
+			best = site;
+		}
+	}
+	return best;
+}
+
+/**
+ * Stands in for both services. Elevation replies are assembled from whichever
+ * site each requested coordinate belongs to: the first of every group of
+ * `stride` coordinates is a spot itself, the rest are its skyline samples.
+ */
+function mockFetch(skyline: (site: (typeof SITES)[number], sampleIndex: number) => number) {
 	return vi.fn(async (url: string) => {
-		// Viewing spots now come from our own endpoint, which talks to Overpass
-		// server-side because Overpass sends no CORS headers.
 		if (String(url).includes('/api/viewing-spots')) {
 			return new Response(JSON.stringify(OVERPASS));
 		}
-		const values = elevationFor(elevationCall++);
-		return new Response(JSON.stringify({ elevation: values }));
+		const params = new URL(String(url), 'http://localhost').searchParams;
+		const lats = params.get('latitude')!.split(',').map(Number);
+		const lons = params.get('longitude')!.split(',').map(Number);
+		const stride = 1 + SAMPLE_DISTANCES_M.length;
+
+		let current = SITES[0];
+		const elevation = lats.map((lat, i) => {
+			if (i % stride === 0) {
+				current = nearestSite(lat, lons[i]);
+				return current.ground;
+			}
+			return skyline(current, (i % stride) - 1);
+		});
+		return new Response(JSON.stringify({ elevation }));
 	});
 }
 
@@ -39,23 +70,12 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('finding somewhere to watch from', () => {
 	const stride = 1 + SAMPLE_DISTANCES_M.length;
-
-	/** Build the elevation reply: each spot's own height, then its skyline. */
-	function buildElevations(names: string[], skyline: (name: string) => number[]): number[] {
-		const out: number[] = [];
-		for (const name of names) {
-			out.push(GROUND[name]);
-			out.push(...skyline(name));
-		}
-		return out;
-	}
+	/** A ridge at 600 m sits west of everything within 5.5 km. */
+	const ridgeWest = (site: (typeof SITES)[number], sampleIndex: number) =>
+		SAMPLE_DISTANCES_M[sampleIndex] <= 5500 ? site.ridge : 300;
 
 	it('ranks a hilltop above a valley floor and reports the reason', async () => {
-		const order = ['origin', 'Dealul Crucii', 'Ridge lookout', 'Valley car park', 'Igniș'];
-		// A ridge at 600 m sits west of everything.
-		const skyline = () => SAMPLE_DISTANCES_M.map((d) => (d <= 5500 ? 600 : 300));
-		vi.stubGlobal('fetch', mockFetch(() => buildElevations(order, skyline)));
-
+		vi.stubGlobal('fetch', mockFetch(ridgeWest));
 		const result = await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
 
 		expect(result.found).toBe(4); // the bench is not a viewing spot
@@ -69,8 +89,7 @@ describe('finding somewhere to watch from', () => {
 	});
 
 	it('labels summits as possibly needing a walk but car parks as drivable', async () => {
-		const order = ['origin', 'Dealul Crucii', 'Ridge lookout', 'Valley car park', 'Igniș'];
-		vi.stubGlobal('fetch', mockFetch(() => buildElevations(order, () => SAMPLE_DISTANCES_M.map(() => 200))));
+		vi.stubGlobal('fetch', mockFetch(() => 200));
 		const result = await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
 		const byName = Object.fromEntries(result.spots.map((s) => [s.spot.name, s]));
 		expect(byName['Igniș'].spot.drivable).toBe(false);
@@ -78,9 +97,17 @@ describe('finding somewhere to watch from', () => {
 		expect(byName['Dealul Crucii'].spot.drivable).toBe(true);
 	});
 
+	it('marks which spots you can settle in at for an hour', async () => {
+		vi.stubGlobal('fetch', mockFetch(() => 200));
+		const result = await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
+		const byName = Object.fromEntries(result.spots.map((s) => [s.spot.name, s]));
+		// A viewpoint you can sit at; a car park you cannot really linger in.
+		expect(byName['Dealul Crucii'].spot.canLinger).toBe(true);
+		expect(byName['Valley car park'].spot.canLinger).toBe(false);
+	});
+
 	it('always evaluates the starting point so you know whether to move at all', async () => {
-		const order = ['origin', 'Dealul Crucii', 'Ridge lookout', 'Valley car park', 'Igniș'];
-		vi.stubGlobal('fetch', mockFetch(() => buildElevations(order, () => SAMPLE_DISTANCES_M.map(() => 100))));
+		vi.stubGlobal('fetch', mockFetch(() => 100));
 		const result = await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
 		expect(result.origin).not.toBeNull();
 		expect(result.origin!.spot.id).toBe('origin');
@@ -90,8 +117,7 @@ describe('finding somewhere to watch from', () => {
 	});
 
 	it('reports each spot in the direction the Sun will actually be', async () => {
-		const order = ['origin', 'Dealul Crucii', 'Ridge lookout', 'Valley car park', 'Igniș'];
-		vi.stubGlobal('fetch', mockFetch(() => buildElevations(order, () => SAMPLE_DISTANCES_M.map(() => 200))));
+		vi.stubGlobal('fetch', mockFetch(() => 200));
 		const result = await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
 		for (const spot of result.spots) {
 			// Over Romania the Sun sets well north of west.
@@ -101,13 +127,14 @@ describe('finding somewhere to watch from', () => {
 	});
 
 	it('asks the elevation service for exactly one skyline per spot', async () => {
-		const order = ['origin', 'Dealul Crucii', 'Ridge lookout', 'Valley car park', 'Igniș'];
-		const fetchMock = mockFetch(() => buildElevations(order, () => SAMPLE_DISTANCES_M.map(() => 200)));
+		const fetchMock = mockFetch(() => 200);
 		vi.stubGlobal('fetch', fetchMock);
-		await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
+		const result = await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
 		const elevationUrl = fetchMock.mock.calls.find(([u]) => String(u).includes('elevation'))![0];
-		const latitudes = new URL(String(elevationUrl)).searchParams.get('latitude')!.split(',');
-		expect(latitudes).toHaveLength(order.length * stride);
+		const latitudes = new URL(String(elevationUrl), 'http://localhost').searchParams
+			.get('latitude')!
+			.split(',');
+		expect(latitudes).toHaveLength((result.spots.length + 1) * stride);
 	});
 
 	it('still judges the starting point when the spot list is unavailable', async () => {
@@ -131,7 +158,6 @@ describe('finding somewhere to watch from', () => {
 		expect(result.spotsUnavailable).toMatch(/Overpass replied 504/);
 		expect(result.spots).toHaveLength(0);
 		expect(result.origin).not.toBeNull();
-		// Ground falls away west, so the starting point itself is fine.
 		expect(result.origin!.horizon.angle).toBeLessThan(0);
 	});
 
@@ -142,9 +168,52 @@ describe('finding somewhere to watch from', () => {
 		);
 	});
 
+	it('keeps spots aligned with their heights when the lookup spans batches', async () => {
+		// The elevation service takes a hundred coordinates per call, and each spot
+		// costs fifteen, so any search past six spots is split. If the pieces were
+		// reassembled even one place out, every spot would be judged against its
+		// neighbour's hillside.
+		const many = {
+			elements: Array.from({ length: 12 }, (_, i) => ({
+				type: 'node',
+				id: 100 + i,
+				lat: 47.6 + i * 0.01,
+				lon: 23.5 + i * 0.01,
+				tags: { tourism: 'viewpoint', name: `Spot ${i}` }
+			}))
+		};
+		// Height is a function of the coordinate alone, exactly as the real service
+		// behaves. That makes the check independent of how the request happens to
+		// be chopped into batches — which is the point.
+		const heightFor = (lat: number, lon: number) =>
+			200 + Math.round((lat - 47) * 10000) + Math.round((lon - 23) * 100);
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (url: string) => {
+				if (String(url).includes('/api/viewing-spots')) {
+					return new Response(JSON.stringify(many));
+				}
+				const params = new URL(String(url), 'http://localhost').searchParams;
+				const lats = params.get('latitude')!.split(',').map(Number);
+				const lons = params.get('longitude')!.split(',').map(Number);
+				return new Response(
+					JSON.stringify({ elevation: lats.map((lat, i) => heightFor(lat, lons[i])) })
+				);
+			})
+		);
+
+		const result = await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
+		expect(result.spots.length).toBeGreaterThan(6); // enough to span batches
+
+		for (const scored of result.spots) {
+			expect(Math.round(scored.elevationM), scored.spot.name).toBe(
+				heightFor(scored.spot.lat, scored.spot.lon)
+			);
+		}
+	});
+
 	it('asks its own origin for spots rather than Overpass, which blocks browsers', async () => {
-		const order = ['origin', 'Dealul Crucii', 'Ridge lookout', 'Valley car park', 'Igniș'];
-		const fetchMock = mockFetch(() => buildElevations(order, () => SAMPLE_DISTANCES_M.map(() => 200)));
+		const fetchMock = mockFetch(() => 200);
 		vi.stubGlobal('fetch', fetchMock);
 		await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
 		const urls = fetchMock.mock.calls.map(([u]) => String(u));

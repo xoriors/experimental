@@ -58,6 +58,14 @@ Each result links to Google Maps for driving directions, and to Street View **al
 direction the Sun will set** — which is the fastest way to spot the hedge that a 90 m elevation
 model cannot see. The model knows about hills, not about trees or buildings, and the page says so.
 
+Overpass is reached through `/api/viewing-spots` rather than from the browser, for three reasons:
+Overpass sends no `Access-Control-Allow-Origin` header, so a direct call fails as a CORS error; the
+server can identify itself as Overpass's usage policy asks; and the answer is cached at the edge for
+a day, so a free shared service is not queried once per visitor. The query is built server-side, so
+the route cannot be used as an open proxy for arbitrary Overpass QL. It also checks that the
+instance which replied is a real full-planet one: a regional mirror answers 200 with an empty list
+for anywhere outside its own country, which would otherwise be shown as "no viewing spots found".
+
 ## Accuracy
 
 Elements are NASA/GSFC's for this eclipse, from the
@@ -111,7 +119,7 @@ horizon**, and places where the Sun sets partway through are flagged as such.
 ```sh
 pnpm install
 pnpm dev        # dev server
-pnpm test       # 97 tests, mostly against published eclipse predictions
+pnpm test       # 105 tests, mostly against published eclipse predictions
 pnpm check      # svelte-check
 pnpm build      # production build
 pnpm preview    # serve the production build
@@ -125,8 +133,9 @@ finder. Every one of them reports a readable error and leaves the rest of the si
 
 ## Deploying to Vercel
 
-The project uses `@sveltejs/adapter-vercel` and every page is prerendered, so it deploys as static
-assets. From this directory:
+The project uses `@sveltejs/adapter-vercel`. Every page is prerendered to static HTML; the only
+server-side code is the `/api/viewing-spots` route, which becomes a single function. From this
+directory:
 
 ```sh
 npx vercel link      # once, to create/attach the project
@@ -144,7 +153,7 @@ Or import `xoriors/experimental` in the Vercel dashboard and set **Root Director
 - Coastlines: Natural Earth via `world-atlas`
 - Place search: [Open-Meteo geocoding](https://open-meteo.com/en/docs/geocoding-api), built on GeoNames (CC BY 4.0)
 - Time zones from coordinates: `tz-lookup`
-- Viewing spots: OpenStreetMap contributors via [Overpass](https://overpass-api.de/) (ODbL)
+- Viewing spots: OpenStreetMap contributors via [Overpass](https://overpass-api.de/) (ODbL), proxied through `/api/viewing-spots`
 - Ground elevation: [Open-Meteo elevation](https://open-meteo.com/en/docs/elevation-api), Copernicus DEM
 - Cloud climatology: long-run August averages; see the caveat on `/where` — they are not a forecast
 - Eye-safety guidance follows the AAS solar eclipse task force, NASA and the Royal Astronomical Society

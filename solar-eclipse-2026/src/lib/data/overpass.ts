@@ -9,10 +9,12 @@
 
 import type { Point } from '../eclipse/horizon';
 
-const ENDPOINTS = [
-	'https://overpass-api.de/api/interpreter',
-	'https://overpass.kumi.systems/api/interpreter'
-];
+/**
+ * Our own endpoint rather than Overpass directly: Overpass sends no CORS
+ * headers, so a browser call to it fails before the response can be read.
+ * The server side builds the query and talks to Overpass on our behalf.
+ */
+const ENDPOINT = '/api/viewing-spots';
 const TIMEOUT_MS = 30000;
 
 export class OverpassError extends Error {}
@@ -71,51 +73,39 @@ export async function findSpots(
 	signal?: AbortSignal
 ): Promise<Spot[]> {
 	const radius = Math.min(Math.max(Math.round(radiusM), 2000), 80000);
-	const parkingRadius = Math.min(radius, 30000);
-	const around = `${radius},${centre.lat.toFixed(5)},${centre.lon.toFixed(5)}`;
-	const parkingAround = `${parkingRadius},${centre.lat.toFixed(5)},${centre.lon.toFixed(5)}`;
+	const url = `${ENDPOINT}?lat=${centre.lat.toFixed(5)}&lon=${centre.lon.toFixed(5)}&radius=${radius}`;
 
-	// Car parks are numerous, so they get a tighter radius and only named ones
-	// beyond the immediate area; viewpoints and summits are rare enough to take
-	// the full radius.
-	const query = `[out:json][timeout:25];
-(
-  node["tourism"="viewpoint"](around:${around});
-  node["tourism"="picnic_site"](around:${around});
-  node["highway"~"^(rest_area|services)$"](around:${around});
-  node["natural"="peak"](around:${around});
-  node["amenity"="parking"]["name"](around:${parkingAround});
-  way["tourism"="viewpoint"](around:${around});
-  way["amenity"="parking"]["name"](around:${parkingAround});
-);
-out center tags 120;`;
+	const timeout = new AbortController();
+	const timer = setTimeout(() => timeout.abort(), TIMEOUT_MS);
+	const onAbort = () => timeout.abort();
+	signal?.addEventListener('abort', onAbort);
 
-	let lastError: unknown;
-	for (const endpoint of ENDPOINTS) {
-		const timeout = new AbortController();
-		const timer = setTimeout(() => timeout.abort(), TIMEOUT_MS);
-		const onAbort = () => timeout.abort();
-		signal?.addEventListener('abort', onAbort);
-		try {
-			const response = await fetch(endpoint, {
-				method: 'POST',
-				body: new URLSearchParams({ data: query }),
-				signal: timeout.signal
-			});
-			if (!response.ok) throw new OverpassError(`Map data lookup failed (${response.status}).`);
-			const body = (await response.json()) as { elements?: RawElement[] };
-			return parse(body.elements ?? []);
-		} catch (error) {
-			if (signal?.aborted) throw error;
-			lastError = error;
-		} finally {
-			clearTimeout(timer);
-			signal?.removeEventListener('abort', onAbort);
-		}
+	let response: Response;
+	try {
+		response = await fetch(url, { signal: timeout.signal });
+	} catch (error) {
+		if (signal?.aborted) throw error;
+		throw new OverpassError('Could not reach OpenStreetMap to look for viewing spots.');
+	} finally {
+		clearTimeout(timer);
+		signal?.removeEventListener('abort', onAbort);
 	}
-	throw lastError instanceof OverpassError
-		? lastError
-		: new OverpassError('Could not reach OpenStreetMap to look for viewing spots.');
+
+	if (!response.ok) {
+		// The endpoint puts a readable explanation in the body; fall back to a
+		// generic line if it did not.
+		let message = 'Could not reach OpenStreetMap to look for viewing spots.';
+		try {
+			const body = (await response.json()) as { message?: string };
+			if (body?.message) message = body.message;
+		} catch {
+			/* keep the generic message */
+		}
+		throw new OverpassError(message);
+	}
+
+	const body = (await response.json()) as { elements?: RawElement[] };
+	return parse(body.elements ?? []);
 }
 
 function parse(elements: RawElement[]): Spot[] {

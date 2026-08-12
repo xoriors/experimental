@@ -76,7 +76,9 @@
 			origin = result.origin;
 			spots = result.spots;
 			searched = true;
-			if (!result.found) {
+			if (result.spotsUnavailable) {
+				error = `${result.spotsUnavailable} Your own position is still checked below.`;
+			} else if (!result.found) {
 				error = `OpenStreetMap has no mapped viewpoints, car parks or picnic sites within ${radiusKm} km. Try a wider radius.`;
 			}
 		} catch (caught) {

@@ -24,9 +24,10 @@ const GROUND: Record<string, number> = {
 
 function mockFetch(elevationFor: (index: number) => number[]) {
 	let elevationCall = 0;
-	return vi.fn(async (url: string, init?: RequestInit) => {
-		if (String(url).includes('overpass')) {
-			expect(init?.method).toBe('POST');
+	return vi.fn(async (url: string) => {
+		// Viewing spots now come from our own endpoint, which talks to Overpass
+		// server-side because Overpass sends no CORS headers.
+		if (String(url).includes('/api/viewing-spots')) {
 			return new Response(JSON.stringify(OVERPASS));
 		}
 		const values = elevationFor(elevationCall++);
@@ -109,10 +110,45 @@ describe('finding somewhere to watch from', () => {
 		expect(latitudes).toHaveLength(order.length * stride);
 	});
 
-	it('surfaces a failure from the map data service rather than returning nothing', async () => {
+	it('still judges the starting point when the spot list is unavailable', async () => {
+		// Overpass is regularly overloaded. Losing the suggestions is tolerable;
+		// losing the answer to "can I see it from here" is not, and it only needs
+		// terrain, so the elevation lookup must still run.
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (url: string) => {
+				if (String(url).includes('/api/viewing-spots')) {
+					return new Response(JSON.stringify({ message: 'Overpass replied 504.' }), {
+						status: 503
+					});
+				}
+				return new Response(
+					JSON.stringify({ elevation: [220, ...SAMPLE_DISTANCES_M.map(() => 150)] })
+				);
+			})
+		);
+		const result = await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
+		expect(result.spotsUnavailable).toMatch(/Overpass replied 504/);
+		expect(result.spots).toHaveLength(0);
+		expect(result.origin).not.toBeNull();
+		// Ground falls away west, so the starting point itself is fine.
+		expect(result.origin!.horizon.angle).toBeLessThan(0);
+	});
+
+	it('gives up only when the terrain data is unavailable too', async () => {
 		vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('offline'); }));
 		await expect(findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000)).rejects.toThrow(
-			/OpenStreetMap/
+			/elevation/i
 		);
+	});
+
+	it('asks its own origin for spots rather than Overpass, which blocks browsers', async () => {
+		const order = ['origin', 'Dealul Crucii', 'Ridge lookout', 'Valley car park', 'Igniș'];
+		const fetchMock = mockFetch(() => buildElevations(order, () => SAMPLE_DISTANCES_M.map(() => 200)));
+		vi.stubGlobal('fetch', fetchMock);
+		await findViewpoints({ lat: 47.6573, lon: 23.5681 }, 30000);
+		const urls = fetchMock.mock.calls.map(([u]) => String(u));
+		expect(urls.some((u) => u.startsWith('/api/viewing-spots?'))).toBe(true);
+		expect(urls.some((u) => u.includes('overpass-api.de'))).toBe(false);
 	});
 });

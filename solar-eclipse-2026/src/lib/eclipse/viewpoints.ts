@@ -67,6 +67,11 @@ export interface ViewpointSearch {
 	spots: ScoredSpot[];
 	/** Number of candidates OpenStreetMap returned before shortlisting. */
 	found: number;
+	/**
+	 * Set when the list of nearby places could not be fetched. The verdict for
+	 * the starting point is still computed, because that only needs terrain.
+	 */
+	spotsUnavailable?: string;
 }
 
 export interface ProgressReport {
@@ -87,7 +92,19 @@ export async function findViewpoints(
 	const { signal, onProgress } = options;
 
 	onProgress?.({ stage: 'searching', message: 'Looking for places you can drive to…' });
-	const found = await findSpots(origin, radiusM, signal);
+
+	// Overpass is a free shared service and is regularly overloaded. That should
+	// not cost the user the one answer they most want, which is whether the view
+	// works from where they already are — and that needs only terrain.
+	let found: Spot[] = [];
+	let spotsUnavailable: string | undefined;
+	try {
+		found = await findSpots(origin, radiusM, signal);
+	} catch (caught) {
+		if (caught instanceof DOMException && caught.name === 'AbortError') throw caught;
+		spotsUnavailable =
+			caught instanceof Error ? caught.message : 'Could not list nearby places.';
+	}
 	const candidates = shortlist(found, origin);
 
 	// The starting point is worth judging too — you may not need to move at all.
@@ -154,7 +171,7 @@ export async function findViewpoints(
 		return a.distanceM - b.distanceM;
 	});
 
-	return { origin: originScored ?? null, spots: rest, found: found.length };
+	return { origin: originScored ?? null, spots: rest, found: found.length, spotsUnavailable };
 }
 
 /* ------------------------------------------------------------------ *

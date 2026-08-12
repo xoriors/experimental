@@ -4,7 +4,7 @@
 	import EclipseMap from '$lib/components/EclipseMap.svelte';
 	import LocationPicker from '$lib/components/LocationPicker.svelte';
 	import { tToUtc, utcToT, type Observer } from '$lib/eclipse/besselian';
-	import { localCircumstances, refraction, skyGeometry } from '$lib/eclipse/local';
+	import { localCircumstances, refraction, skyGeometry, sunIsUp } from '$lib/eclipse/local';
 	import { PATH_PLACES } from '$lib/data/places';
 	import {
 		compass,
@@ -75,7 +75,7 @@
 			: 'You are barely outside the path — close enough that the exact limit is uncertain by a kilometre or two. A short drive towards the centre line would settle it.';
 	});
 
-	const belowHorizon = $derived(geometry.altitude < -0.9);
+	const belowHorizon = $derived(!sunIsUp(geometry.altitude));
 
 	let lastFrame = 0;
 	onMount(() => {
@@ -157,8 +157,18 @@
 			{applyRefraction}
 		/>
 		<div class="stage-readout">
-			<span class="pill {local.isTotal ? 'pill-total' : local.hasEclipse ? 'pill-partial' : 'pill-none'}">
-				{#if geometry.obscuration >= 1}
+			<span
+				class="pill {!sunIsUp(geometry.altitude)
+					? 'pill-none'
+					: local.isTotal
+						? 'pill-total'
+						: local.hasEclipse
+							? 'pill-partial'
+							: 'pill-none'}"
+			>
+				{#if !sunIsUp(geometry.altitude)}
+					Sun below horizon
+				{:else if geometry.obscuration >= 1}
 					Totality
 				{:else if geometry.obscuration > 0}
 					{formatPercent(geometry.obscuration, 1)} covered
@@ -265,20 +275,33 @@
 				<p>No part of the Sun is covered from this position — you are off the eclipse entirely.</p>
 			{:else}
 				<p class="verdict">
-					{#if local.isTotal}
+					{#if local.belowHorizon}
+						<strong class="none">Not visible from here.</strong>
+						The whole eclipse happens after the Sun has set.
+					{:else if local.isTotal}
 						<strong class="total">Totality lasting {formatDuration(local.totalitySeconds)}.</strong>
 						The Sun is {formatDegrees(local.max.altitude)} above the horizon at mid-eclipse.
 					{:else}
-						<strong class="partial"
-							>Partial eclipse, {formatPercent(local.maxObscuration, 1)} of the Sun covered.</strong
-						>
+						<strong class="partial">
+							Partial eclipse, {formatPercent(local.visibleObscuration, 1)} of the Sun covered{
+								local.partlyBelowHorizon ? ' before it sets' : ''
+							}.
+						</strong>
 						Never safe to look at without a filter.
 					{/if}
 				</p>
 
 				{#if local.belowHorizon}
 					<div class="note note-danger">
-						The Sun is below the horizon here for the whole eclipse — nothing to see.
+						The Moon covers up to {formatPercent(local.maxObscuration, 1)} of the Sun at this
+						longitude, but all of that happens below your horizon. You would need to be
+						considerably further west to see any of it.
+					</div>
+				{:else if local.partlyBelowHorizon && local.maxObscuration - local.visibleObscuration > 0.01}
+					<div class="note">
+						The Sun sets partway through. It reaches {formatPercent(local.maxObscuration, 1)}
+						covered, but only {formatPercent(local.visibleObscuration, 1)} of that happens while
+						the Sun is still above your horizon — the rest is below it.
 					</div>
 				{/if}
 
@@ -298,11 +321,15 @@
 						</thead>
 						<tbody>
 							{#each contacts as contact (contact.key)}
-								<tr class:highlight={contact.key === 'C2' || contact.key === 'C3'}>
+								{@const set = !sunIsUp(contact.info!.altitude)}
+								<tr class:highlight={contact.key === 'C2' || contact.key === 'C3'} class:set>
 									<td>{contact.label}</td>
 									<td>{formatClock(contact.info!.time, timeZone, true)}</td>
 									<td>{formatUtc(contact.info!.time)}</td>
-									<td class="num">{formatDegrees(contact.info!.altitude)}</td>
+									<td class="num">
+										{formatDegrees(contact.info!.altitude)}
+										{#if set}<span title="Sun below the horizon">↓</span>{/if}
+									</td>
 								</tr>
 							{/each}
 						</tbody>
@@ -467,6 +494,19 @@
 	.verdict strong.partial {
 		color: var(--sun-bright);
 		display: block;
+	}
+
+	.verdict strong.none {
+		color: var(--text-faint);
+		display: block;
+	}
+
+	tr.set td {
+		color: var(--text-faint);
+	}
+
+	tr.set td span {
+		cursor: help;
 	}
 
 	.readout {

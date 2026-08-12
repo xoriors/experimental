@@ -26,8 +26,16 @@ export interface LocalCircumstances {
 	isTotal: boolean;
 	/** True when any part of the Sun is covered at some point. */
 	hasEclipse: boolean;
-	/** True when the Sun is below the horizon for the whole eclipse. */
+	/** True when the Sun never rises above the horizon during the eclipse. */
 	belowHorizon: boolean;
+	/** True when the Sun sets (or rises) partway through, hiding some of it. */
+	partlyBelowHorizon: boolean;
+	/** Greatest fraction of the Sun's area covered while it is actually visible. */
+	visibleObscuration: number;
+	/** Eclipse magnitude at that same moment. */
+	visibleMagnitude: number;
+	/** The deepest moment that can actually be seen, or null if none can. */
+	bestVisible: ContactInfo | null;
 	/** First contact: the Moon touches the Sun's edge. */
 	c1: ContactInfo | null;
 	/** Second contact: totality begins. */
@@ -247,15 +255,20 @@ export function localCircumstances(obs: Observer): LocalCircumstances {
 	const c3 = c3t !== null ? contactInfo(c3t, obs) : null;
 	const c4 = c4t !== null ? contactInfo(c4t, obs) : null;
 
-	// The Sun has to be up for any of this to be visible.
-	const altitudes = [c1, max, c4].filter(Boolean).map((c) => c!.altitude);
-	const belowHorizon = altitudes.length > 0 && altitudes.every((a) => a < -0.9);
+	// None of this counts unless the Sun is actually up. Over eastern Europe the
+	// eclipse happens around and after sunset, so the geometric maximum is often
+	// well below the horizon and nobody there sees anything like it.
+	const visible = visibleCircumstances(obs, c1t, c4t, tMax);
 
 	return {
 		observer: obs,
 		isTotal,
 		hasEclipse,
-		belowHorizon,
+		belowHorizon: hasEclipse && !visible.any,
+		partlyBelowHorizon: hasEclipse && visible.any && !visible.whole,
+		visibleObscuration: visible.obscuration,
+		visibleMagnitude: visible.magnitude,
+		bestVisible: visible.at !== null ? contactInfo(visible.at, obs) : null,
 		c1,
 		c2,
 		max,
@@ -266,6 +279,89 @@ export function localCircumstances(obs: Observer): LocalCircumstances {
 		maxMagnitude,
 		maxObscuration: obscuration(gMax),
 		diameterRatio: diameterRatio(gMax)
+	};
+}
+
+/**
+ * Geometric altitude of the Sun's centre at which its upper limb sits on the
+ * visible horizon: half a degree of semidiameter plus about 34' of refraction.
+ * This is the same threshold used to define sunrise and sunset.
+ */
+export const SUNSET_ALTITUDE = -0.833;
+
+/** True when any part of the Sun's disc is above the visible horizon. */
+export function sunIsUp(altitudeDeg: number): boolean {
+	return altitudeDeg > SUNSET_ALTITUDE;
+}
+
+/**
+ * How much of the eclipse actually happens with the Sun above the horizon, and
+ * the deepest point reached while it is. Scans the whole eclipse rather than
+ * sampling a few contacts, so a Sun that sets midway through is handled
+ * correctly whichever way it is moving.
+ */
+function visibleCircumstances(
+	obs: Observer,
+	c1t: number | null,
+	c4t: number | null,
+	tMax: number
+): { any: boolean; whole: boolean; obscuration: number; magnitude: number; at: number | null } {
+	if (c1t === null || c4t === null) {
+		const g = shadowGeometry(tMax, obs);
+		const up = sunIsUp(sunPosition(g, obs).altitude);
+		return { any: up, whole: up, obscuration: 0, magnitude: 0, at: null };
+	}
+
+	const steps = 240;
+	let best = -1;
+	let bestT: number | null = null;
+	let upCount = 0;
+
+	for (let i = 0; i <= steps; i++) {
+		const t = c1t + ((c4t - c1t) * i) / steps;
+		const g = shadowGeometry(t, obs);
+		if (!sunIsUp(sunPosition(g, obs).altitude)) continue;
+		upCount++;
+		const value = obscuration(g);
+		if (value > best) {
+			best = value;
+			bestT = t;
+		}
+	}
+
+	if (bestT === null) {
+		return { any: false, whole: false, obscuration: 0, magnitude: 0, at: null };
+	}
+
+	// Refine around the best sample: the peak is either the moment of maximum
+	// eclipse or the instant the Sun reaches the horizon, and both deserve
+	// better than one part in 240 of a two-hour window.
+	let peak = bestT;
+	const window = (c4t - c1t) / steps;
+	for (let pass = 0; pass < 40; pass++) {
+		const span = window / Math.pow(2, pass);
+		let improved = false;
+		for (const candidate of [peak - span, peak + span]) {
+			if (candidate < c1t || candidate > c4t) continue;
+			const g = shadowGeometry(candidate, obs);
+			if (!sunIsUp(sunPosition(g, obs).altitude)) continue;
+			const value = obscuration(g);
+			if (value > best) {
+				best = value;
+				peak = candidate;
+				improved = true;
+			}
+		}
+		if (!improved && span < 1e-7) break;
+	}
+
+	const g = shadowGeometry(peak, obs);
+	return {
+		any: true,
+		whole: upCount === steps + 1,
+		obscuration: best,
+		magnitude: magnitude(g),
+		at: peak
 	};
 }
 

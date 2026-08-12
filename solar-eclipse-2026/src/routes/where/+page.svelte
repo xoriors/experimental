@@ -36,7 +36,7 @@
 		PARTIAL_PLACES.map((place) => ({
 			place,
 			local: localCircumstances({ lat: place.lat, lon: place.lon, elevation: place.elevation })
-		})).sort((a, b) => b.local.maxObscuration - a.local.maxObscuration)
+		})).sort((a, b) => b.local.visibleObscuration - a.local.visibleObscuration)
 	);
 
 	const best = $derived([...pathRows].sort((a, b) => b.score - a.score).slice(0, 4));
@@ -183,21 +183,42 @@
 			</thead>
 			<tbody>
 				{#each partialRows as row (row.place.name)}
-					<tr>
-						<td><strong>{row.place.name}</strong> <small>{row.place.country}</small></td>
-						<td class="num">
-							{row.local.hasEclipse ? formatPercent(row.local.maxObscuration, 1) : '—'}
+					{@const best = row.local.bestVisible}
+					<tr class:unseen={!row.local.hasEclipse || row.local.belowHorizon}>
+						<td>
+							<strong>{row.place.name}</strong>
+							<small>{row.place.country}</small>
+							{#if row.local.partlyBelowHorizon && !row.local.belowHorizon}
+								<small class="flag" title="The Sun sets before the eclipse finishes">sets during</small>
+							{/if}
 						</td>
 						<td class="num">
-							{row.local.hasEclipse ? row.local.maxMagnitude.toFixed(3) : '—'}
+							{#if !row.local.hasEclipse || row.local.belowHorizon}
+								—
+							{:else}
+								{formatPercent(row.local.visibleObscuration, 1)}
+							{/if}
+						</td>
+						<td class="num">
+							{#if !row.local.hasEclipse || row.local.belowHorizon}
+								—
+							{:else}
+								{row.local.visibleMagnitude.toFixed(3)}
+							{/if}
 						</td>
 						<td>
-							{row.local.hasEclipse
-								? formatClock(row.local.max.time, row.place.timeZone, false) + ' local'
-								: 'not visible'}
+							{#if !row.local.hasEclipse}
+								not visible
+							{:else if row.local.belowHorizon}
+								below the horizon throughout
+							{:else if best}
+								{formatClock(best.time, row.place.timeZone, false)} local
+							{:else}
+								—
+							{/if}
 						</td>
-						<td class="num" class:low={row.local.max.altitude < 6}>
-							{row.local.hasEclipse ? formatDegrees(row.local.max.altitude) : '—'}
+						<td class="num" class:low={best !== null && best.altitude < 6}>
+							{best ? formatDegrees(best.altitude) : '—'}
 						</td>
 					</tr>
 				{/each}
@@ -206,9 +227,12 @@
 	</div>
 
 	<p class="footnote">
-		"Sun covered" is the fraction of the Sun's <em>area</em> hidden, which is what governs how much
-		the light drops. "Magnitude" is the fraction of its <em>diameter</em> covered — the figure usually
-		quoted, and always the larger of the two. Times are computed for the city centre; move a few
+		Figures are for the deepest moment that is <em>actually above the horizon</em>. This eclipse
+		happens around sunset over much of Europe, and further east it finishes after the Sun has gone:
+		Bucharest, for instance, reaches 90% on paper but sees barely a nibble before sunset, so the
+		geometric maximum would be badly misleading. "Sun covered" is the fraction of the Sun's
+		<em>area</em> hidden, which is what governs how much the light drops. "Magnitude" is the fraction
+		of its <em>diameter</em> covered — the figure usually quoted, and always the larger of the two. Times are computed for the city centre; move a few
 		kilometres and they shift by a few seconds.
 	</p>
 
@@ -283,6 +307,21 @@
 
 	td.low {
 		color: var(--sun);
+	}
+
+	tr.unseen td {
+		color: var(--text-faint);
+	}
+
+	small.flag {
+		display: inline-block;
+		margin-left: 0.35rem;
+		padding: 0.05rem 0.35rem;
+		border-radius: 999px;
+		border: 1px solid var(--border-strong);
+		font-size: 0.7rem;
+		color: var(--sun);
+		cursor: help;
 	}
 
 	.footnote {

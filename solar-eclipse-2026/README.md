@@ -79,12 +79,18 @@ The residual disagreement with NASA's published path coordinates is a few kilome
 the inherent uncertainty of the limits: mountains on the Moon's edge move the true boundary by a
 kilometre or two anyway. The simulator says so when your position is that close to a limit.
 
+A third subtlety matters for readers east of the path. This eclipse happens around sunset over
+Europe, and further east it finishes after the Sun has gone: Bucharest reaches 90% obscuration
+geometrically, but all of that is below the horizon and an observer there sees a 0.4% nibble before
+sunset. Every figure the site quotes is therefore the deepest point **that is actually above the
+horizon**, and places where the Sun sets partway through are flagged as such.
+
 ## Development
 
 ```sh
 pnpm install
 pnpm dev        # dev server
-pnpm test       # 47 tests, mostly against published eclipse predictions
+pnpm test       # 64 tests, mostly against published eclipse predictions
 pnpm check      # svelte-check
 pnpm build      # production build
 pnpm preview    # serve the production build

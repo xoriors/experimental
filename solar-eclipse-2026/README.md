@@ -80,37 +80,64 @@ the route cannot be used as an open proxy for arbitrary Overpass QL. It also che
 instance which replied is a real full-planet one: a regional mirror answers 200 with an empty list
 for anywhere outside its own country, which would otherwise be shown as "no viewing spots found".
 
-Overpass rations by IP, and a serverless function leaves through an address shared with every other
-application on the platform, so its allowance is regularly spent by somebody else before our visitor
-arrives — which is how a small query earns a gateway 504. The endpoint is built around that:
+### Getting an answer out of Overpass
 
-- Three full-planet mirrors are tried in turn, each with an eight-second slice of a 24-second
-  budget. A mirror that has not answered in eight seconds is queueing, not thinking, and the next
-  one is a better use of the time. They are ordered by what they measurably do: OSM France first
-  (a query in the Carpathians in about a second, from a database minutes old), then the canonical
-  overpass-api.de, then kumi.systems, which answers erratically and was three months behind when
-  this was written. A mirror more than a year out of date is refused outright, and how far behind
-  the answering one was comes back in a header.
-- If all three refuse the full query, the two best are asked a deliberately cheaper one — fewer
-  categories, a shorter drive. The page is told, via a response header, and says the list is reduced
-  rather than presenting a thin result as the whole picture.
-- The whole budget sits inside both the function's `maxDuration` and the browser's patience, so the
-  page always receives the endpoint's own account of what happened — "overpass-api.de replied 429;
-  kumi.systems ran out of time" — instead of a generic failure that names nobody.
-- The query itself is written to be cheap, since its cost is what the user actually feels: `nwr`
-  rather than paired node/way clauses, every venue clause led by the tag Overpass can index, named
-  summits only, and per-category radius caps — nobody drives an hour to a car park.
+Deployed, this feature failed for a week with "could not reach OpenStreetMap", and every layer of
+that sentence turned out to be wrong. The notes below are what each measurement actually showed,
+because the wrong diagnoses were all plausible.
 
-There is a limit to what that buys, though, and measurement found it: from Vercel every mirror times
-out, while the same query from an ordinary connection comes back in a second. Rationing by IP is not
-something you can retry your way out of when the address is shared with the rest of the platform. So
-the page runs both routes and takes whichever answers first — the endpoint immediately, and, if it
-has not answered within three seconds, a direct call from the browser to OSM France, which alone
-among the full-planet instances sends `Access-Control-Allow-Origin: *`. The endpoint keeps its head
-start because it caches and identifies itself properly, so a healthy one means the browser never
-makes a second request; when it cannot get through, the visitor's own connection has its own
-allowance and a shorter path. If both fail, the endpoint's account of it is the one shown, because
-it can name the mirror and the status where the browser only learns that it did not work.
+**The query was too expensive, and an expensive query fails like a busy service.** Overpass answers
+one it cannot finish with a gateway 504, which is indistinguishable from being overloaded. Running
+the deployed query by hand was what settled it:
+
+```
+runtime error: Query timed out in "query" at line 7 after 14 seconds.
+```
+
+Line 7 was a terrace clause using `(around:25000,lat,lon)`. That form reads naturally and is what
+the documentation shows first, but with a tag regex beside it the spatial test lands *after* the tag
+scan, so Overpass walks a great deal of Europe before discovering none of it is near Baia Mare. The
+same clauses bounded by a bounding box go through the spatial index: **188 places in three seconds,
+where the circle form returned nothing in fourteen.** Every clause is bounded by a box now, and the
+corners a box adds beyond the circle are trimmed by real distance on the client, which measures it
+anyway in order to sort the list. The rest of the query is cheap for smaller reasons: `nwr` rather
+than paired node/way clauses, named summits only, and per-category radius caps — nobody drives an
+hour to a car park.
+
+**Mirrors differ, and not in the ways their reputations suggest.** Three full-planet instances are
+tried in turn, ordered by what they measurably do: OSM France first (a query in the Carpathians in
+about a second, from a database minutes old), then the canonical overpass-api.de, then kumi.systems,
+which answers erratically and was three months behind when this was written. `overpass.private.coffee`
+is deliberately absent — it resolves to the same machine as kumi.systems, so listing both would look
+like redundancy and provide none. A mirror more than a year out of date is refused as abandoned, and
+how far behind the answering one was comes back in a header.
+
+**Which retry to try matters more than how many.** Attempts run against a 24-second budget, eight
+seconds for a full query and six for a cheap one, and they alternate tier before they alternate
+mirror: full at OSM France, then *cheap at OSM France*, then full at the next instance. Sixty
+kilometres around Bucharest costs 14 seconds as the full query and three as the cheap one — no
+mirror on earth does better at the first and all of them manage the second, so working through
+every instance with the query that cannot be answered merely spends the budget. Running out of time
+says something about the question; failing to connect says something about the mirror, and there a
+smaller query will not help, so that host's remaining attempts are dropped. When the cheap query is
+what succeeded, the page says the list is reduced rather than presenting a thin result as the whole
+picture, and that answer is cached at the edge for five minutes rather than a day, so one busy
+minute does not leave a town short-listed until tomorrow.
+
+**The failure has to survive the trip home.** The whole budget sits inside both the function's
+`maxDuration` and the browser's patience, because it did not before: two 25-second attempts outlived
+a 30-second client, so a perfectly good "overpass-api.de replied 504" was thrown away and replaced
+by a generic line that named nobody.
+
+**And the browser can go where the server cannot.** Overpass rations by IP, and a serverless function
+leaves through an address shared with every other application on the platform. So the page runs both
+routes and takes whichever answers first: the endpoint immediately, and — if it has not answered
+within three seconds — a direct call from the browser to OSM France, which alone among the
+full-planet instances sends `Access-Control-Allow-Origin: *`. The endpoint keeps its head start
+because it caches and identifies itself properly, so while it works nothing else asks; when it cannot
+get through, the visitor's own connection has its own allowance and a shorter path. If both fail, the
+endpoint's account is the one shown, because it can name the mirror and the status where the browser
+only learns that it did not work.
 
 ## Accuracy
 
@@ -165,7 +192,7 @@ horizon**, and places where the Sun sets partway through are flagged as such.
 ```sh
 pnpm install
 pnpm dev        # dev server
-pnpm test       # 126 tests, mostly against published eclipse predictions
+pnpm test       # 130 tests, mostly against published eclipse predictions
 pnpm check      # svelte-check
 pnpm build      # production build
 pnpm preview    # serve the production build

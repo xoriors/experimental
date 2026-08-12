@@ -79,11 +79,6 @@ export function clampRadius(radiusM: number): number {
 	return Math.min(Math.max(Math.round(radiusM), MIN_RADIUS_M), MAX_RADIUS_M);
 }
 
-/** How long Overpass itself is allowed to spend on a query of this tier. */
-export function tierTimeoutMs(tier: QueryTier): number {
-	return TIERS[tier].timeoutS * 1000;
-}
-
 export function buildQuery(
 	lat: number,
 	lon: number,

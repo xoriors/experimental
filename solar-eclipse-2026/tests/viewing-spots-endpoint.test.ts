@@ -56,10 +56,11 @@ describe('the viewing-spots endpoint', () => {
 		expect(await response.json()).toEqual(GOOD);
 	});
 
-	it('asks for less rather than nothing when every mirror refuses the full query', async () => {
-		// This is the case the deployed site was hitting: a 504 from an instance
-		// that is not broken, merely oversubscribed. A smaller question often
-		// still gets an answer.
+	it('asks the same mirror for less before asking another for the same', async () => {
+		// Sixty kilometres around a capital costs 14 seconds as the full query and
+		// three as the cheap one. No mirror does better at the first and all of
+		// them manage the second, so trying every instance in turn with the query
+		// that cannot be answered just spends the budget.
 		const upstream = vi.fn(async (_url: string, init: RequestInit) => {
 			const query = String((init.body as URLSearchParams).get('data'));
 			return query.includes('biergarten')
@@ -70,9 +71,9 @@ describe('the viewing-spots endpoint', () => {
 		const response = await call(upstream as unknown as typeof fetch);
 
 		expect(response.status).toBe(200);
-		// Three full attempts refused, then the cheap one succeeds.
 		const tiers = upstream.mock.calls.map((c) => tierOf(c as [string, RequestInit]));
-		expect(tiers).toEqual(['full', 'full', 'full', 'lean']);
+		expect(tiers).toEqual(['full', 'lean']);
+		expect(hosts(upstream)).toEqual([FIRST, FIRST]);
 		// And the page is told, so it can admit the list is not the whole picture.
 		expect(response.headers.get('x-overpass-tier')).toBe('lean');
 		// A short list must not sit at the edge for a day: one busy minute would
@@ -129,9 +130,24 @@ describe('the viewing-spots endpoint', () => {
 
 		expect(failure.status).toBe(503);
 		expect(failure.body.message).toMatch(/ran out of time/);
-		// Three eight-second attempts fill the budget; a fourth would push the
-		// whole request past what the browser is prepared to wait for.
-		expect(upstream).toHaveBeenCalledTimes(3);
+		// 8 s for the full query, 6 s for the cheap one, 8 s for the next mirror:
+		// 22 of a 24-second budget. A fourth attempt would push the whole request
+		// past what the browser is prepared to wait for.
+		expect(hosts(upstream)).toEqual([FIRST, FIRST, 'overpass-api.de']);
+	});
+
+	it('does not ask a mirror for less when it could not be reached at all', async () => {
+		// Running out of time says something about the question; failing to
+		// connect says something about the mirror, and a smaller query will not
+		// mend it. The slot is worth more to somebody who might answer.
+		const upstream = vi.fn(async () => {
+			throw new TypeError('network error');
+		});
+
+		const failure = await call(upstream as unknown as typeof fetch).catch((e) => e);
+
+		expect(failure.status).toBe(503);
+		expect(failure.body.message).toMatch(/was unreachable/);
 		expect(hosts(upstream)).toEqual([
 			'overpass.openstreetmap.fr',
 			'overpass-api.de',

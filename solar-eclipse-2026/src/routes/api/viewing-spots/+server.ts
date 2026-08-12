@@ -59,21 +59,30 @@ const ENDPOINTS = [
 	'https://overpass.kumi.systems/api/interpreter'
 ];
 
-/** Every mirror gets a go at the real query; the best two also get the cheap one. */
-const PLAN: Array<{ endpoint: string; tier: QueryTier }> = [
-	...ENDPOINTS.map((endpoint) => ({ endpoint, tier: 'full' as QueryTier })),
-	...ENDPOINTS.slice(0, 2).map((endpoint) => ({ endpoint, tier: 'lean' as QueryTier }))
-];
+/**
+ * Interleaved rather than all the full attempts first, because the two ways a
+ * query fails want different answers and only one of them is "try elsewhere".
+ * Sixty kilometres around Bucharest costs 14 seconds as the full query and
+ * three as the cheap one — no mirror on earth will do better at the first, and
+ * every one of them manages the second. Asking the same instance for less is
+ * therefore a better second move than asking a different instance for the same.
+ */
+const PLAN: Array<{ endpoint: string; tier: QueryTier }> = ENDPOINTS.flatMap((endpoint) => [
+	{ endpoint, tier: 'full' as QueryTier },
+	{ endpoint, tier: 'lean' as QueryTier }
+]);
 
 const USER_AGENT =
 	'solar-eclipse-2026/1.0 (eclipse viewing-spot finder; https://github.com/xoriors/experimental)';
 
 /**
- * A mirror that has not answered in eight seconds is not thinking, it is
- * queueing behind somebody else's rate limit, and the next mirror is a better
- * use of the time than waiting it out.
+ * Eight seconds is comfortably more than the three the full query takes where
+ * it works at all, so a mirror still silent at that point is either queueing or
+ * being asked for more than it can manage — and in both cases the next attempt
+ * is a better use of the time than waiting this one out. The cheap query gets
+ * less, because it has less to do.
  */
-const ATTEMPT_TIMEOUT_MS = 8000;
+const ATTEMPT_TIMEOUT_MS: Record<QueryTier, number> = { full: 8000, lean: 6000 };
 const TOTAL_BUDGET_MS = 24000;
 const MIN_ATTEMPT_MS = 3000;
 
@@ -108,16 +117,24 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 
 	const deadline = Date.now() + TOTAL_BUDGET_MS;
 	const notes: string[] = [];
+	/**
+	 * Hosts that could not be spoken to at all. Being asked for less does not
+	 * help a mirror that is down, so its cheap attempt is dropped and the slot
+	 * goes to somebody who might answer.
+	 */
+	const unreachable = new Set<string>();
 
 	for (const { endpoint, tier } of PLAN) {
 		const remaining = deadline - Date.now();
 		if (remaining < MIN_ATTEMPT_MS) break;
 
 		const host = new URL(endpoint).host;
+		if (unreachable.has(host)) continue;
+
 		const controller = new AbortController();
 		const timer = setTimeout(
 			() => controller.abort(),
-			Math.min(ATTEMPT_TIMEOUT_MS, remaining)
+			Math.min(ATTEMPT_TIMEOUT_MS[tier], remaining)
 		);
 		try {
 			const response = await fetch(endpoint, {
@@ -165,7 +182,15 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 				}
 			});
 		} catch {
-			notes.push(`${host} ${controller.signal.aborted ? 'ran out of time' : 'was unreachable'}`);
+			// Running out of time says something about the question, so the same
+			// mirror is still worth asking something smaller. Failing to connect
+			// says something about the mirror, and nothing smaller will fix it.
+			if (controller.signal.aborted) {
+				notes.push(`${host} ran out of time`);
+			} else {
+				unreachable.add(host);
+				notes.push(`${host} was unreachable`);
+			}
 		} finally {
 			clearTimeout(timer);
 		}

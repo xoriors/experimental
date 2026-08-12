@@ -13,8 +13,10 @@
 		formatDegrees,
 		formatDuration,
 		formatPercent,
-		formatUtc
+		formatUtc,
+		zoneAbbreviation
 	} from '$lib/format';
+	import { describeTimeZone, timeZoneFor } from '$lib/data/timezone';
 
 	// Start on the centre line in Castile, which is both a realistic destination
 	// and the clearest demonstration of a low-Sun totality.
@@ -22,7 +24,6 @@
 	let lon = $state(-4.5288);
 	let elevation = $state(740);
 	let label = $state('Palencia, Spain');
-	let timeZone = $state('Europe/Madrid');
 
 	let t = $state(utcToT(new Date('2026-08-12T18:30:20Z')));
 	let playing = $state(false);
@@ -36,6 +37,15 @@
 	const local = $derived(localCircumstances(observer));
 	const geometry = $derived(skyGeometry(t, observer));
 	const time = $derived(tToUtc(t));
+
+	// Times are always shown in the local zone of the place being simulated, not
+	// the browser's. Deriving the zone from the coordinates keeps it correct no
+	// matter how the position was set — search, map click, geolocation or typed
+	// coordinates — so it can never fall out of step with the marker.
+	const timeZone = $derived(timeZoneFor(lat, lon));
+	const zoneLabel = $derived(describeTimeZone(timeZone));
+	const zoneShort = $derived(zoneAbbreviation(time, timeZone));
+	const zoneDisplay = $derived(zoneShort ? `${zoneLabel} (${zoneShort})` : zoneLabel);
 
 	// Scrub across the observer's own eclipse where there is one, otherwise the
 	// window in which the shadow is on the Earth at all.
@@ -98,8 +108,6 @@
 		lon = next.lon;
 		elevation = next.elevation;
 		label = next.label;
-		const known = PATH_PLACES.find((p) => `${p.name}, ${p.country}` === next.label);
-		timeZone = known?.timeZone ?? timeZone;
 		const fresh = localCircumstances({ lat: next.lat, lon: next.lon, elevation: next.elevation });
 		t = fresh.max.t;
 		playing = false;
@@ -158,7 +166,9 @@
 					No eclipse yet
 				{/if}
 			</span>
-			<span class="clock-readout">{formatClock(time, timeZone, true)}</span>
+			<span class="clock-readout">
+				{formatClock(time, timeZone, true)}{#if zoneShort}<em>{zoneShort}</em>{/if}
+			</span>
 			<span class="utc">{formatUtc(time)} UTC</span>
 		</div>
 	</div>
@@ -223,6 +233,7 @@
 		/>
 		<div class="scrub-ends">
 			<span>{formatClock(tToUtc(range.start), timeZone)}</span>
+			<span class="scrub-zone">local time in {zoneLabel}</span>
 			<span>{formatClock(tToUtc(range.end), timeZone)}</span>
 		</div>
 	</div>
@@ -297,7 +308,10 @@
 						</tbody>
 					</table>
 				</div>
-				<p class="tz">Local times shown for {timeZone.replace('_', ' ')}.</p>
+				<p class="tz">
+					Local times are for {zoneDisplay} — the zone at the position you picked, not your
+					device's.
+				</p>
 			{/if}
 		</div>
 
@@ -362,6 +376,17 @@
 		font-variant-numeric: tabular-nums;
 		font-size: 1.25rem;
 		font-weight: 650;
+		display: flex;
+		align-items: baseline;
+		gap: 0.35rem;
+	}
+
+	.clock-readout em {
+		font-style: normal;
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		color: var(--text-dim);
 	}
 
 	.utc {
@@ -401,9 +426,18 @@
 	.scrub-ends {
 		display: flex;
 		justify-content: space-between;
+		gap: 0.75rem;
 		font-size: 0.78rem;
 		color: var(--text-faint);
 		font-variant-numeric: tabular-nums;
+	}
+
+	.scrub-zone {
+		font-variant-numeric: normal;
+		text-align: center;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.panels {

@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "topojson-client": "^3.1.0",
+    "tz-lookup": "^6.1.25",
     "world-atlas": "^2.0.2"
   }
 }

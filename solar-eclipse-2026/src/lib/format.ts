@@ -10,13 +10,36 @@ export function formatDuration(seconds: number): string {
 }
 
 export function formatClock(date: Date, timeZone: string, withSeconds = false): string {
-	return new Intl.DateTimeFormat('en-GB', {
+	const options: Intl.DateTimeFormatOptions = {
 		hour: '2-digit',
 		minute: '2-digit',
 		...(withSeconds ? { second: '2-digit' } : {}),
 		hour12: false,
 		timeZone
-	}).format(date);
+	};
+	try {
+		return new Intl.DateTimeFormat('en-GB', options).format(date);
+	} catch {
+		// An unknown zone would otherwise throw and blank the whole panel.
+		return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(date);
+	}
+}
+
+/**
+ * Short name of the zone at that instant — "CEST", "GMT+1" — so a local time is
+ * never ambiguous about which zone it is in. Depends on the date because of
+ * summer time.
+ */
+export function zoneAbbreviation(date: Date, timeZone: string): string {
+	try {
+		const parts = new Intl.DateTimeFormat('en-GB', {
+			timeZone,
+			timeZoneName: 'short'
+		}).formatToParts(date);
+		return parts.find((part) => part.type === 'timeZoneName')?.value ?? '';
+	} catch {
+		return '';
+	}
 }
 
 export function formatUtc(date: Date, withSeconds = true): string {

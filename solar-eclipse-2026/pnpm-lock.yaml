@@ -11,6 +11,9 @@ importers:
       topojson-client:
         specifier: ^3.1.0
         version: 3.1.0
+      tz-lookup:
+        specifier: ^6.1.25
+        version: 6.1.25
       world-atlas:
         specifier: ^2.0.2
         version: 2.0.2
@@ -1007,6 +1010,9 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  tz-lookup@6.1.25:
+    resolution: {integrity: sha512-fFewT9o1uDzsW1QnUU1ValqaihFnwiUiiHr1S79/fxOzKXYYvX+EHeRnpvQJ9B3Qg67wPXT6QF2Esc4pFOrvLg==}
+
   undici-types@7.24.6:
     resolution: {integrity: sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==}
 
@@ -1900,6 +1906,8 @@ snapshots:
   tr46@0.0.3: {}
 
   typescript@5.9.3: {}
+
+  tz-lookup@6.1.25: {}
 
   undici-types@7.24.6: {}
 

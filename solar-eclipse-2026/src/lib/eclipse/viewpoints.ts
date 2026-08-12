@@ -86,7 +86,7 @@ function shortlist(spots: Spot[], origin: Point): Spot[] {
 export interface ViewpointSearch {
 	origin: ScoredSpot | null;
 	spots: ScoredSpot[];
-	/** Number of candidates OpenStreetMap returned before shortlisting. */
+	/** Candidates within the radius that OpenStreetMap knew about, before shortlisting. */
 	found: number;
 	/**
 	 * Set when the list of nearby places could not be fetched. The verdict for
@@ -134,7 +134,11 @@ export async function findViewpoints(
 		spotsUnavailable =
 			caught instanceof Error ? caught.message : 'Could not list nearby places.';
 	}
-	const candidates = shortlist(found, origin);
+	// Overpass is asked for a bounding box, because a box goes through its
+	// spatial index and a circle does not. The corners that buys are trimmed
+	// here, so "within 30 km" means what it says.
+	const nearby = found.filter((spot) => distanceM(origin, spot) <= radiusM);
+	const candidates = shortlist(nearby, origin);
 
 	// The starting point is worth judging too — you may not need to move at all.
 	const originSpot: Spot = {
@@ -201,7 +205,13 @@ export async function findViewpoints(
 		return a.distanceM - b.distanceM;
 	});
 
-	return { origin: originScored ?? null, spots: rest, found: found.length, spotsUnavailable, reduced };
+	return {
+		origin: originScored ?? null,
+		spots: rest,
+		found: nearby.length,
+		spotsUnavailable,
+		reduced
+	};
 }
 
 /* ------------------------------------------------------------------ *

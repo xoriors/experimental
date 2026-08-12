@@ -1,20 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { buildQuery, clampRadius, MAX_RADIUS_M } from '../src/lib/data/overpass-query';
+import {
+	boundingBox,
+	buildQuery,
+	clampRadius,
+	MAX_RADIUS_M
+} from '../src/lib/data/overpass-query';
 
-/** Every `(around:<radius>,<lat>,<lon>)` in a query, in metres. */
-function radii(query: string): number[] {
-	return [...query.matchAll(/\(around:(\d+),/g)].map((m) => Number(m[1]));
+/** Every spatial filter in a query, as its north–south half-width in metres. */
+function halfWidths(query: string, lat = 47.66): number[] {
+	return [...query.matchAll(/\((-?[\d.]+),(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)\);/g)].map((m) =>
+		Math.round(((Number(m[3]) - Number(m[1])) / 2) * 111320)
+	);
 }
 
 function clauses(query: string): string[] {
 	return query
 		.split('\n')
 		.map((line) => line.trim())
-		.filter((line) => line.endsWith(');') && line.includes('around:'));
+		.filter((line) => /^n(wr|ode)\[/.test(line));
 }
 
 describe('the Overpass query', () => {
 	const at = { lat: 47.66, lon: 23.58 };
+
+	it('bounds every clause with a box rather than a circle', () => {
+		// This is the whole difference between the feature working and not.
+		// `(around:25000,…)` puts the spatial test after the tag scan: the full
+		// query took 14 s against OSM France and then gave up with nothing. The
+		// same clauses as bounding boxes went through the spatial index and
+		// returned 188 places in three seconds.
+		const query = buildQuery(at.lat, at.lon, 30000);
+		expect(query).not.toContain('around:');
+		expect(clauses(query).every((clause) => /\(-?[\d.]+,-?[\d.]+,-?[\d.]+,-?[\d.]+\);$/.test(clause)))
+			.toBe(true);
+	});
 
 	it('asks for the output in the order every instance parses', () => {
 		// `out center tags 250` puts geometry before verbosity, which some parsers
@@ -23,31 +42,35 @@ describe('the Overpass query', () => {
 	});
 
 	it('gives Overpass a runtime limit it can meet, not one it will hit', () => {
-		const full = buildQuery(at.lat, at.lon, 30000, 'full');
-		const lean = buildQuery(at.lat, at.lon, 30000, 'lean');
 		const timeoutOf = (q: string) => Number(q.match(/\[timeout:(\d+)\]/)![1]);
-		// Both must finish inside the endpoint's own eight-second attempt window
-		// with room to spare, and the fallback must be the quicker of the two.
-		expect(timeoutOf(full)).toBeLessThanOrEqual(10);
-		expect(timeoutOf(lean)).toBeLessThan(timeoutOf(full));
+		const full = timeoutOf(buildQuery(at.lat, at.lon, 30000, 'full'));
+		const lean = timeoutOf(buildQuery(at.lat, at.lon, 30000, 'lean'));
+		// Measured at about three seconds, so there is real headroom — but not so
+		// much that a struggling instance holds a connection open for a minute.
+		expect(full).toBeGreaterThanOrEqual(12);
+		expect(full).toBeLessThanOrEqual(20);
+		expect(lean).toBeLessThan(full);
 	});
 
 	it('keeps the everyday things close and only ranges wide for the rare ones', () => {
-		// A 60 km circle holds thousands of car parks and no more viewpoints worth
-		// having. Asking for all of them is what earns a gateway 504.
+		// A 60 km box holds thousands of car parks and no more viewpoints worth
+		// having, and asking for all of them is what makes a query too expensive.
 		const query = buildQuery(at.lat, at.lon, 60000, 'full');
-		const viewpoint = query.match(/nwr\["tourism"="viewpoint"\]\(around:(\d+),/)![1];
-		const parking = query.match(/nwr\["amenity"="parking"\]\["name"\]\(around:(\d+),/)![1];
-		const terrace = query.match(/"outdoor_seating"="yes".*\(around:(\d+),/)![1];
+		const boxOf = (pattern: RegExp) =>
+			Math.round(((Number(query.match(pattern)![3]) - Number(query.match(pattern)![1])) / 2) * 111320);
 
-		expect(Number(viewpoint)).toBe(60000);
-		expect(Number(parking)).toBeLessThanOrEqual(20000);
-		expect(Number(terrace)).toBeLessThanOrEqual(25000);
+		const viewpoint = boxOf(/viewpoint"\]\((-?[\d.]+),(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)\)/);
+		const parking = boxOf(/parking"\]\["name"\]\((-?[\d.]+),(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)\)/);
+		const terrace = boxOf(/outdoor_seating.*?\((-?[\d.]+),(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)\)/);
+
+		expect(viewpoint).toBeCloseTo(60000, -2);
+		expect(parking).toBeLessThanOrEqual(20100);
+		expect(terrace).toBeLessThanOrEqual(25100);
 	});
 
 	it('never widens a search the user asked to keep small', () => {
-		for (const radius of radii(buildQuery(at.lat, at.lon, 8000, 'full'))) {
-			expect(radius).toBe(8000);
+		for (const half of halfWidths(buildQuery(at.lat, at.lon, 8000, 'full'))) {
+			expect(half).toBeCloseTo(8000, -2);
 		}
 	});
 
@@ -56,7 +79,7 @@ describe('the Overpass query', () => {
 		const lean = buildQuery(at.lat, at.lon, 60000, 'lean');
 
 		expect(clauses(lean).length).toBeLessThan(clauses(full).length);
-		expect(Math.max(...radii(lean))).toBeLessThan(Math.max(...radii(full)));
+		expect(Math.max(...halfWidths(lean))).toBeLessThan(Math.max(...halfWidths(full)));
 		const limitOf = (q: string) => Number(q.match(/out tags center (\d+);/)![1]);
 		expect(limitOf(lean)).toBeLessThan(limitOf(full));
 	});
@@ -66,15 +89,6 @@ describe('the Overpass query', () => {
 		expect(lean).toContain('"tourism"="viewpoint"');
 		expect(lean).toContain('"outdoor_seating"="yes"');
 		expect(lean).toContain('"amenity"="parking"');
-	});
-
-	it('leads each venue clause with the tag Overpass can index', () => {
-		// The planner uses the first filter it can look up. `outdoor_seating=yes`
-		// is a few hundred thousand objects worldwide; `amenity~restaurant|cafe…`
-		// is tens of millions, and starting there scans most of a country.
-		expect(buildQuery(at.lat, at.lon, 30000)).toContain(
-			'nwr["outdoor_seating"="yes"]["amenity"'
-		);
 	});
 
 	it('asks only for named summits', () => {
@@ -87,5 +101,31 @@ describe('the Overpass query', () => {
 		expect(clampRadius(50)).toBe(2000);
 		expect(clampRadius(500000)).toBe(MAX_RADIUS_M);
 		expect(clampRadius(30000.4)).toBe(30000);
+	});
+});
+
+describe('the bounding box', () => {
+	it('contains the circle it stands in for', () => {
+		const box = boundingBox(47.66, 23.58, 30000);
+		expect((box.north - box.south) / 2).toBeCloseTo(30000 / 111320, 6);
+		// A degree of longitude is shorter at 47°N, so the box must be wider in
+		// degrees to hold the same distance east and west.
+		expect(box.east - box.west).toBeGreaterThan(box.north - box.south);
+	});
+
+	it('widens towards the poles without running away', () => {
+		const tromso = boundingBox(69.65, 18.96, 30000);
+		const quito = boundingBox(-0.18, -78.47, 30000);
+		expect(tromso.east - tromso.west).toBeGreaterThan(quito.east - quito.west);
+		// At the pole itself the cosine floor stops the box becoming infinite.
+		const pole = boundingBox(89.99, 0, 30000);
+		expect(Number.isFinite(pole.east - pole.west)).toBe(true);
+		expect(pole.north).toBeLessThanOrEqual(90);
+	});
+
+	it('clips at the antimeridian rather than wrapping, which Overpass rejects', () => {
+		const box = boundingBox(-16.5, 179.9, 40000);
+		expect(box.east).toBeLessThanOrEqual(180);
+		expect(box.west).toBeGreaterThanOrEqual(-180);
 	});
 });

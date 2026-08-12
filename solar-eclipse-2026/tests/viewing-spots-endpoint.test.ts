@@ -149,7 +149,13 @@ describe('the viewing-spots endpoint', () => {
 		);
 
 		const sent = queryOf(upstream.mock.calls[0] as [string, RequestInit]);
-		expect(sent).toContain('47.66,23.58');
+		const [, south, west, north, east] = sent.match(
+			/\((-?[\d.]+),(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)\);/
+		)!;
+		// The boxes are centred on the rounded position, not the caller's exact
+		// one, so everyone searching from the same town shares a cache entry.
+		expect((Number(south) + Number(north)) / 2).toBeCloseTo(47.66, 4);
+		expect((Number(west) + Number(east)) / 2).toBeCloseTo(23.58, 4);
 		expect(sent).not.toContain('47.66312');
 		expect(response.headers.get('cache-control')).toContain('s-maxage=86400');
 	});

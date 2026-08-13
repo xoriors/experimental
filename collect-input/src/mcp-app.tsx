@@ -7,7 +7,7 @@ import {
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js"
 import { StrictMode, useEffect, useMemo, useState } from "react"
 import { createRoot } from "react-dom/client"
-import type { Field, Spec, Values } from "../spec.js"
+import { summarize, type Field, type Spec, type Values } from "../spec.js"
 import "./mcp-app.css"
 
 // The view. It renders whatever spec the model sent and, on submit, asks the
@@ -139,7 +139,7 @@ function Control({
           </option>
           {options.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.detail ? `${o.label} — ${o.detail}` : o.label}
+              {o.detail ? `${o.label} (${o.detail})` : o.label}
             </option>
           ))}
         </select>
@@ -269,10 +269,21 @@ function Form({ formId, spec }: Payload) {
       }
 
       // The answers go straight to the model as the user's next message; the
-      // server is out of the loop from here.
+      // server is out of the loop from here. Prose first so the transcript
+      // stays readable, then the JSON block the model should parse.
+      const text = [
+        "Here is what I picked:",
+        "",
+        summarize(spec, values),
+        "",
+        "```json",
+        JSON.stringify(values, null, 2),
+        "```",
+      ].join("\n")
+
       const posted = await app.sendMessage({
         role: "user",
-        content: [{ type: "text", text: JSON.stringify(values) }],
+        content: [{ type: "text", text }],
       })
       if (posted.isError) {
         setFailure("The host would not accept the answers.")
@@ -329,7 +340,7 @@ function Form({ formId, spec }: Payload) {
       )}
 
       <button type="submit" className="submit" disabled={busy || sent}>
-        {sent ? "Sent" : busy ? "Checking…" : (spec.submitLabel ?? "Submit")}
+        {sent ? "Sent" : busy ? "Checking..." : (spec.submitLabel ?? "Submit")}
       </button>
     </form>
   )
@@ -360,7 +371,7 @@ function Root() {
   }, [])
 
   const view = useMemo(() => {
-    if (!payload) return <p className="waiting">Waiting for a form…</p>
+    if (!payload) return <p className="waiting">Waiting for a form</p>
     return <Form key={payload.formId} {...payload} />
   }, [payload])
 

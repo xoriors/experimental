@@ -63,11 +63,14 @@ function createServer(): McpServer {
       title: "Collect input from the user",
       description:
         "Ask the user for structured input with a real form instead of a back-and-forth in prose. " +
-        "You design the fields; this renders them and returns the answers as the user's next message. " +
+        "One form beats five rounds of questions. " +
+        "You design the fields; this renders them and the answers come back as the user's next message. " +
         "Use it whenever you need several specifics before you can act (booking details, filters, " +
         "preferences, configuration, a confirmation). Pre-fill `default` for anything you already " +
-        "know so the form only asks for the gaps. Field types: text, textarea, number, date, time, " +
-        "select, cards, multiselect, boolean, range.",
+        "know so the form only asks for the gaps. " +
+        "After calling this, STOP. Do not also ask the same questions in text and do not guess the " +
+        "answers: the user is already answering them in the form, and their reply carries the values. " +
+        "Field types: text, textarea, number, date, time, select, cards, multiselect, boolean, range.",
       inputSchema: SpecSchema.shape,
       outputSchema: z.object({
         formId: z.string(),
@@ -92,7 +95,12 @@ function createServer(): McpServer {
         content: [
           {
             type: "text",
-            text: `Showing "${spec.title}" to the user. Their answers arrive as their next message.`,
+            // The instruction is repeated here on purpose: models default hard
+            // to rendering the form and then narrating every question under it,
+            // which is worse than either alone.
+            text:
+              `Showing "${spec.title}" to the user. Stop here: do not ask these questions in ` +
+              `text as well. Their answers arrive as their next message.`,
           },
         ],
         // The view renders from this: the spec it must draw, plus the id it

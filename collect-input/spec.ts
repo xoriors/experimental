@@ -158,6 +158,30 @@ export function validate(spec: Spec, values: Values): ValidationResult {
   return { valid: Object.keys(errors).length === 0, errors }
 }
 
+// How a single answer reads in prose: option labels rather than raw values,
+// so the summary says "Premium" where the JSON says "premium".
+function describe(field: Field, value: FieldValue): string {
+  const labelOf = (v: string) => field.options?.find((o) => o.value === v)?.label ?? v
+  if (typeof value === "boolean") return value ? "yes" : "no"
+  if (Array.isArray(value)) return value.map(labelOf).join(", ")
+  if (field.type === "select" || field.type === "cards") return labelOf(String(value))
+  return String(value)
+}
+
+// The answers as prose, to sit above the JSON block in the message that goes
+// back to the model. The prose keeps the transcript readable for a human
+// scrolling back; the JSON is what the model should actually parse, so
+// parsing cannot drift as the wording changes.
+export function summarize(spec: Spec, values: Values): string {
+  const lines: string[] = []
+  for (const field of spec.fields) {
+    const value = values[field.key]
+    if (isBlank(value)) continue
+    lines.push(`${field.label}: ${describe(field, value as FieldValue)}`)
+  }
+  return lines.join("\n")
+}
+
 // A spec is only usable if every choice field actually offers choices.
 export function specProblems(spec: Spec): string[] {
   const problems: string[] = []

@@ -5,7 +5,7 @@ hand back what the user entered.
 
 It has no idea what a hotel is. Or a flight, or a database. The model decides what to ask; this
 server draws it; the answers go back; the model does whatever comes next with whatever other tools
-it has. That separation is the whole point — you write this server once and it works for every
+it has. That separation is the whole point: you write this server once and it works for every
 domain you ever bolt onto your agent.
 
 Built on [MCP Apps](https://modelcontextprotocol.io/extensions/apps/overview) (spec `2026-01-26`).
@@ -35,12 +35,26 @@ One tool. The model sends a field spec:
 }
 ```
 
-...and gets back, as the user's next message:
+...and gets back, as the user's next message, a prose summary followed by a JSON block:
+
+````
+Here is what I picked:
+
+Departing from: Cluj-Napoca
+Outbound: 2026-09-12
+Cabin: Premium
+Checked bags: 2
+Dates flexible: yes
 
 ```json
 { "depart_from": "Cluj-Napoca", "dates": "2026-09-12",
   "cabin": "premium", "bags": 2, "flexible": true }
 ```
+````
+
+The prose keeps the transcript readable for a human scrolling back, and names the option's label
+where the JSON carries its value. The JSON block is what the model should parse, so parsing cannot
+drift as the wording changes.
 
 **Field types:** `text`, `textarea`, `number`, `date`, `time`, `select`, `cards`, `multiselect`,
 `boolean`, `range`. Every field takes `default`, so the model pre-fills anything it already
@@ -66,7 +80,7 @@ The one thing the server does still own is **validation**, through `validate_inp
 tool (`_meta.ui.visibility: ["app"]`, so the model never sees it and cannot call it). On submit the
 view calls it, shows any errors inline, and only sends `ui/message` once the answers pass.
 
-The rules live in [`spec.ts`](spec.ts) — required, numeric and date bounds, date/time shape, and
+The rules live in [`spec.ts`](spec.ts): required, numeric and date bounds, date/time shape, and
 membership in `options` for the choice types. Keeping them server-side means every client validates
 identically and the model can trust what reaches it, rather than each view reimplementing the rules
 and drifting. The view stays a renderer.
@@ -76,8 +90,8 @@ A spec the model got wrong (a `select` with no `options`, a duplicate `key`) is 
 
 ## Why there is no UI library
 
-The host pushes a full set of design tokens into the app — `--color-text-primary`,
-`--color-border-*`, `--border-radius-*`, `--font-sans`, and about seventy more — which
+The host pushes a full set of design tokens into the app (`--color-text-primary`,
+`--color-border-*`, `--border-radius-*`, `--font-sans`, and about seventy more), which
 [`src/mcp-app.css`](src/mcp-app.css) styles against, with fallbacks for running outside a host. The
 SDK's `applyHostStyleVariables`, `applyHostFonts` and `applyDocumentTheme` wire them up on connect.
 
@@ -132,6 +146,14 @@ http://localhost:3002` and add the printed URL as a custom connector.
 
 ## Example queries that should trigger it
 
-- "Book me a flight to Lisbon" — the model needs dates, cabin, bags before it can search.
-- "Set up my notification preferences."
-- "Help me filter these results" — channels, price range, availability.
+| What the user says | Fields the model should send |
+| --- | --- |
+| "Book me a flight to Lisbon next month" | departure airport `text`, outbound `date`, cabin `cards`, bags `range`, flexible `boolean` |
+| "Provision a Postgres instance for staging" | region `select`, version `select`, instance size `cards`, storage `range`, backups `boolean` |
+| "Set up my notification preferences" | channels `multiselect`, quiet hours `time`, digest frequency `select`, mute weekends `boolean` |
+| "I want to order coffee for the team" | drink `cards`, size `select`, extras `multiselect`, count `number`, notes `textarea` |
+| "Help me filter these search results" | price ceiling `range`, categories `multiselect`, in stock only `boolean`, sort by `select` |
+| "Schedule a follow-up with the client" | date `date`, time `time`, duration `select`, attendees `multiselect`, agenda `textarea` |
+
+The pattern is the same every time: the model needs several specifics before it can act, and asking
+for them one at a time in prose would take as many round trips as there are fields.

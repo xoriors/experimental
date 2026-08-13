@@ -1,0 +1,294 @@
+<title>Chalkboard Hangman</title>
+<style>
+  /* One committed visual world: a chalkboard. Every color is painted
+     explicitly so the page looks the same on any host theme. */
+  :root {
+    --board: #20302a;        /* deep green slate */
+    --board-edge: #16211d;
+    --chalk: #f2efe6;        /* white chalk */
+    --chalk-dim: #b8bfb4;    /* smudged chalk */
+    --chalk-yellow: #e6cf6f; /* yellow chalk */
+    --chalk-red: #dd8a80;    /* soft red chalk */
+    --tray: #6b4f3a;         /* wooden chalk tray */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--board-edge);
+    color: var(--chalk);
+    font-family: "Chalkboard SE", "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .board {
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.045), transparent 55%),
+      radial-gradient(ellipse at 75% 80%, rgba(255,255,255,.035), transparent 50%),
+      var(--board);
+    border: 10px solid var(--tray);
+    border-radius: 6px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.45), inset 0 0 60px rgba(0,0,0,.35);
+    max-width: 880px;
+    width: 100%;
+    padding: 32px clamp(20px, 4vw, 48px) 28px;
+  }
+
+  h1 {
+    margin: 0 0 4px;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 400;
+    letter-spacing: .04em;
+    text-align: center;
+    text-wrap: balance;
+    border-bottom: 3px solid rgba(242,239,230,.35);
+    padding-bottom: 10px;
+  }
+
+  .hint {
+    text-align: center;
+    color: var(--chalk-dim);
+    font-family: system-ui, sans-serif;
+    font-size: .85rem;
+    margin: 10px 0 22px;
+  }
+
+  .game {
+    display: flex;
+    gap: clamp(16px, 4vw, 40px);
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .drawing { flex: 0 0 auto; }
+  .drawing svg { display: block; }
+  .drawing [data-part] { visibility: hidden; }
+
+  .play {
+    flex: 1 1 320px;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .word {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    letter-spacing: .05em;
+  }
+
+  .word span {
+    min-width: 1.2em;
+    text-align: center;
+    border-bottom: 3px solid var(--chalk-dim);
+    padding-bottom: 2px;
+    color: var(--chalk-yellow);
+  }
+
+  .word span.empty { color: transparent; }
+
+  .status {
+    text-align: center;
+    min-height: 1.6em;
+    font-size: 1.15rem;
+    color: var(--chalk);
+  }
+  .status.win  { color: var(--chalk-yellow); }
+  .status.lose { color: var(--chalk-red); }
+
+  .letters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(38px, 1fr));
+    gap: 8px;
+  }
+
+  .letters button {
+    font: inherit;
+    font-size: 1.05rem;
+    padding: 8px 0;
+    background: transparent;
+    color: var(--chalk);
+    border: 2px solid rgba(242,239,230,.4);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .letters button:hover:not(:disabled) {
+    background: rgba(242,239,230,.12);
+  }
+  .letters button:focus-visible {
+    outline: 3px solid var(--chalk-yellow);
+    outline-offset: 2px;
+  }
+  .letters button:disabled { cursor: default; opacity: .9; }
+  .letters button.good { color: var(--chalk-yellow); border-color: var(--chalk-yellow); }
+  .letters button.bad  { color: var(--chalk-red);   border-color: var(--chalk-red); opacity: .55; }
+
+  .again {
+    align-self: center;
+    font: inherit;
+    font-size: 1.1rem;
+    padding: 10px 26px;
+    background: var(--chalk-yellow);
+    color: #33301c;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: none;
+  }
+  .again:focus-visible { outline: 3px solid var(--chalk); outline-offset: 2px; }
+  .again.show { display: inline-block; }
+
+  .score {
+    text-align: center;
+    color: var(--chalk-dim);
+    font-family: system-ui, sans-serif;
+    font-size: .85rem;
+    margin-top: 22px;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+
+<div class="board">
+  <h1>Chalkboard Hangman</h1>
+  <p class="hint">Guess the word one letter at a time — you can miss 6 times. Click the letters or type on your keyboard.</p>
+
+  <div class="game">
+    <div class="drawing" aria-hidden="true">
+      <svg width="200" height="240" viewBox="0 0 200 240"
+           stroke="#f2efe6" stroke-width="4" stroke-linecap="round" fill="none">
+        <!-- gallows: always visible -->
+        <line x1="20"  y1="230" x2="120" y2="230"/>
+        <line x1="60"  y1="230" x2="60"  y2="20"/>
+        <line x1="60"  y1="20"  x2="140" y2="20"/>
+        <line x1="140" y1="20"  x2="140" y2="45"/>
+        <!-- the figure: one part appears per wrong guess -->
+        <circle data-part="1" cx="140" cy="65"  r="20"/>
+        <line   data-part="2" x1="140" y1="85"  x2="140" y2="145"/>
+        <line   data-part="3" x1="140" y1="100" x2="110" y2="125"/>
+        <line   data-part="4" x1="140" y1="100" x2="170" y2="125"/>
+        <line   data-part="5" x1="140" y1="145" x2="115" y2="185"/>
+        <line   data-part="6" x1="140" y1="145" x2="165" y2="185"/>
+      </svg>
+    </div>
+
+    <div class="play">
+      <div class="word" id="word"></div>
+      <p class="status" id="status" role="status"></p>
+      <div class="letters" id="letters"></div>
+      <button class="again" id="again">Play again</button>
+    </div>
+  </div>
+
+  <p class="score" id="score">Wins: 0 · Losses: 0</p>
+</div>
+
+<script>
+  // A small list of everyday words the game picks from.
+  const WORDS = [
+    "APPLE", "HOUSE", "TIGER", "CLOUD", "MUSIC", "BEACH", "CANDLE",
+    "GARDEN", "PLANET", "WINTER", "BRIDGE", "ORANGE", "PENCIL",
+    "MOUNTAIN", "ELEPHANT", "RAINBOW", "SANDWICH", "COMPUTER"
+  ];
+
+  const MAX_MISSES = 6;
+  let word = "";        // the word to guess
+  let guessed = [];     // letters tried so far
+  let misses = 0;       // wrong guesses so far
+  let over = false;     // is the round finished?
+  let wins = 0, losses = 0;
+
+  const wordEl = document.getElementById("word");
+  const statusEl = document.getElementById("status");
+  const lettersEl = document.getElementById("letters");
+  const againEl = document.getElementById("again");
+  const scoreEl = document.getElementById("score");
+
+  function newRound() {
+    word = WORDS[Math.floor(Math.random() * WORDS.length)];
+    guessed = [];
+    misses = 0;
+    over = false;
+
+    statusEl.textContent = "";
+    statusEl.className = "status";
+    againEl.classList.remove("show");
+
+    // hide every body part again
+    document.querySelectorAll("[data-part]").forEach(p => p.style.visibility = "hidden");
+
+    // build one button per letter of the alphabet
+    lettersEl.innerHTML = "";
+    for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+      const b = document.createElement("button");
+      b.textContent = letter;
+      b.addEventListener("click", () => guess(letter, b));
+      lettersEl.appendChild(b);
+    }
+
+    drawWord();
+  }
+
+  function drawWord() {
+    wordEl.innerHTML = "";
+    for (const letter of word) {
+      const s = document.createElement("span");
+      const known = guessed.includes(letter);
+      s.textContent = letter;
+      if (!known) s.className = "empty"; // hidden letters keep the blank line
+      wordEl.appendChild(s);
+    }
+  }
+
+  function guess(letter, button) {
+    if (over || guessed.includes(letter)) return;
+    guessed.push(letter);
+    button.disabled = true;
+
+    if (word.includes(letter)) {
+      button.className = "good";
+      drawWord();
+      if ([...word].every(l => guessed.includes(l))) endRound(true);
+    } else {
+      button.className = "bad";
+      misses++;
+      document.querySelector(`[data-part="${misses}"]`).style.visibility = "visible";
+      if (misses >= MAX_MISSES) endRound(false);
+    }
+  }
+
+  function endRound(won) {
+    over = true;
+    if (won) { wins++; } else { losses++; }
+    statusEl.textContent = won ? "You got it! 🎉" : `Out of guesses — the word was ${word}.`;
+    statusEl.className = "status " + (won ? "win" : "lose");
+    scoreEl.textContent = `Wins: ${wins} · Losses: ${losses}`;
+    lettersEl.querySelectorAll("button").forEach(b => b.disabled = true);
+    againEl.classList.add("show");
+    // reveal the full word
+    guessed = [...word];
+    drawWord();
+  }
+
+  againEl.addEventListener("click", newRound);
+
+  // let the physical keyboard work too
+  document.addEventListener("keydown", e => {
+    const letter = e.key.toUpperCase();
+    if (letter.length !== 1 || letter < "A" || letter > "Z") return;
+    const button = [...lettersEl.querySelectorAll("button")]
+      .find(b => b.textContent === letter);
+    if (button && !button.disabled) guess(letter, button);
+  });
+
+  newRound();
+</script>

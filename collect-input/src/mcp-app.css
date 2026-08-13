@@ -1,0 +1,225 @@
+/* Styled entirely with the design tokens the host pushes into the app
+   (--color-*, --border-radius-*, --font-*), with fallbacks for when the app
+   runs outside a host. That is why there is no UI kit here: the form inherits
+   the surrounding chat's palette, radii and type, in either theme, for free. */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+  background: var(--color-background-primary, #fff);
+  color: var(--color-text-primary, #16181d);
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-size: var(--font-text-md-size, 14px);
+  line-height: var(--font-text-md-line-height, 1.5);
+}
+
+.waiting {
+  padding: 32px 8px;
+  text-align: center;
+  color: var(--color-text-tertiary, #6b7280);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.form-head h1 {
+  margin: 0;
+  font-size: var(--font-heading-sm-size, 18px);
+  line-height: var(--font-heading-sm-line-height, 1.3);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.intent {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary, #4b5563);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Fieldset is only here to disable a whole control at once; it must not add
+   any box of its own. */
+.field fieldset {
+  all: unset;
+  display: block;
+}
+
+.label {
+  font-weight: var(--font-weight-medium, 500);
+  font-size: var(--font-text-sm-size, 13px);
+}
+
+.required {
+  color: var(--color-text-danger, #b42318);
+}
+
+.help,
+.error {
+  margin: 0;
+  font-size: var(--font-text-xs-size, 12px);
+}
+
+.help {
+  color: var(--color-text-tertiary, #6b7280);
+}
+
+.error {
+  color: var(--color-text-danger, #b42318);
+}
+
+.form-error {
+  font-size: var(--font-text-sm-size, 13px);
+}
+
+.control {
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--color-background-primary, #fff);
+  border: var(--border-width-regular, 1px) solid var(--color-border-primary, #d0d5dd);
+  border-radius: var(--border-radius-md, 8px);
+}
+
+.control:focus-visible,
+.card:focus-visible,
+.submit:focus-visible {
+  outline: 2px solid var(--color-ring-primary, #2563eb);
+  outline-offset: 1px;
+}
+
+.control[aria-invalid="true"] {
+  border-color: var(--color-border-danger, #b42318);
+}
+
+textarea.control {
+  resize: vertical;
+}
+
+fieldset:disabled .control,
+fieldset:disabled .card {
+  background: var(--color-background-disabled, #f3f4f6);
+  color: var(--color-text-disabled, #9ca3af);
+  cursor: not-allowed;
+}
+
+/* cards: a radio group where each option carries a second line. */
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card {
+  flex: 1 1 130px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: var(--color-background-primary, #fff);
+  border: var(--border-width-regular, 1px) solid var(--color-border-primary, #d0d5dd);
+  border-radius: var(--border-radius-md, 8px);
+}
+
+.card:hover:not(:disabled) {
+  border-color: var(--color-border-secondary, #98a2b3);
+}
+
+.card.is-picked {
+  border-color: var(--color-border-info, #2563eb);
+  background: var(--color-background-info, #eff6ff);
+  color: var(--color-text-info, #1d4ed8);
+}
+
+.card-label {
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.card-detail,
+.check-detail {
+  font-size: var(--font-text-xs-size, 12px);
+  color: var(--color-text-tertiary, #6b7280);
+}
+
+.card.is-picked .card-detail {
+  color: inherit;
+}
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.check input {
+  margin: 2px 0 0;
+  accent-color: var(--color-background-info, #2563eb);
+}
+
+.range {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range input {
+  flex: 1;
+  accent-color: var(--color-background-info, #2563eb);
+}
+
+.range-value {
+  min-width: 2.5ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.submit {
+  align-self: flex-start;
+  padding: 9px 18px;
+  font: inherit;
+  font-weight: var(--font-weight-medium, 500);
+  cursor: pointer;
+  color: var(--color-text-inverse, #fff);
+  background: var(--color-background-inverse, #16181d);
+  border: none;
+  border-radius: var(--border-radius-md, 8px);
+}
+
+.submit:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.form.is-sent {
+  opacity: 0.75;
+}

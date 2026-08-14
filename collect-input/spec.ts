@@ -73,7 +73,10 @@ const TIME_RE = /^\d{2}:\d{2}$/
 function isRealDate(value: string): boolean {
   if (!DATE_RE.test(value)) return false
   const [y, m, d] = value.split("-").map(Number)
-  const parsed = new Date(Date.UTC(y, m - 1, d))
+  // Set the parts explicitly rather than using Date.UTC, which reads years 0
+  // to 99 as 1900 to 1999 and would call year 0099 a different date entirely.
+  const parsed = new Date(0)
+  parsed.setUTCFullYear(y, m - 1, d)
   // A rolled-over date (Feb 31 becoming Mar 3) no longer matches its parts.
   return (
     parsed.getUTCFullYear() === y && parsed.getUTCMonth() === m - 1 && parsed.getUTCDate() === d

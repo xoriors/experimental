@@ -265,6 +265,23 @@ function Form({ formId, spec }: Payload) {
         name: "validate_input",
         arguments: { formId, values },
       })
+      // An error result carries no structuredContent, so it has to be read
+      // first: otherwise the failure would look like a spotless validation and
+      // clear the field errors without saying anything at all.
+      if (checked.isError) {
+        const said = checked.content?.find((c) => c.type === "text")?.text
+        const reason = said ?? "Could not check the answers."
+        // The server drops a form once its answers pass, and evicts old ones,
+        // so this one may simply be gone. Nothing here can revive it.
+        const gone = reason.toLowerCase().includes("expired form")
+        if (gone) {
+          consumed = true
+          setSpent(true)
+        }
+        setFailure(gone ? `${reason} Ask for a new form to try again.` : reason)
+        return
+      }
+
       const result = checked.structuredContent as
         | { valid: boolean; errors: Record<string, string> }
         | undefined

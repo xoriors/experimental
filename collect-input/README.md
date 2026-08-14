@@ -37,7 +37,7 @@ One tool. The model sends a field spec:
 
 ...and gets back, as the user's next message, a prose summary followed by a JSON block:
 
-````
+````text
 Here is what I picked:
 
 Departing from: Cluj-Napoca
@@ -68,7 +68,7 @@ There is deliberately no app-only *submit* tool. In the hotel version, the form'
 `hold_room`, which meant the server had to know what a room hold was. Here the view skips the
 server on submit and goes straight to `ui/message`. The round trip is:
 
-```
+```text
 model -> collect_input -> form -> user -> ui/message -> model -> (its own tools)
 ```
 
@@ -80,13 +80,17 @@ The one thing the server does still own is **validation**, through `validate_inp
 tool (`_meta.ui.visibility: ["app"]`, so the model never sees it and cannot call it). On submit the
 view calls it, shows any errors inline, and only sends `ui/message` once the answers pass.
 
-The rules live in [`spec.ts`](spec.ts): required, numeric and date bounds, date/time shape, and
-membership in `options` for the choice types. Keeping them server-side means every client validates
-identically and the model can trust what reaches it, rather than each view reimplementing the rules
-and drifting. The view stays a renderer.
+The rules live in [`spec.ts`](spec.ts): required fields, numeric and date bounds, and membership in
+`options` for the choice types. Dates and times are checked for meaning rather than shape, so
+`2026-02-31` and `29:99` are rejected the way any other nonsense would be. Keeping the rules
+server-side means every client validates identically and the model can trust what reaches it,
+rather than each view reimplementing them and drifting. The view stays a renderer.
 
-A spec the model got wrong (a `select` with no `options`, a duplicate `key`) is rejected by
-`collect_input` with a precise reason, so the model can fix it and retry.
+The spec itself is checked the same way before a form is ever shown. A `select` with no `options`,
+a duplicate `key`, a `number` whose `min` is text, a default that is not among the offered options,
+or bounds like `min: 10, max: 2` that no answer could satisfy are all rejected by `collect_input`
+with a precise reason, so the model can fix the spec and retry instead of rendering a form the user
+cannot complete.
 
 ## Why there is no UI library
 
@@ -102,7 +106,7 @@ the `ext-apps` repo use one either.
 
 ## Layout
 
-```
+```text
 collect-input/
   spec.ts           the field-spec contract and the validation rules (shared)
   server.ts         collect_input + validate_input + the ui:// resource

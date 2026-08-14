@@ -1,0 +1,20 @@
+node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/dragos/CDL/experimental/collect-input/serve.ts' imported from /home/dragos/CDL/experimental/collect-input/
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)
+    at nextStep (node:internal/modules/customization_hooks:189:26)
+    at resolveBaseSync (file:///home/dragos/CDL/experimental/collect-input/node_modules/tsx/dist/register-C4vWVmug.mjs:2:10932)
+    at resolveDirectorySync (file:///home/dragos/CDL/experimental/collect-input/node_modules/tsx/dist/register-C4vWVmug.mjs:2:12238)
+    at resolveTsPathsSync (file:///home/dragos/CDL/experimental/collect-input/node_modules/tsx/dist/register-C4vWVmug.mjs:2:13445)
+    at resolve (file:///home/dragos/CDL/experimental/collect-input/node_modules/tsx/dist/register-C4vWVmug.mjs:2:15991) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/dragos/CDL/experimental/collect-input/serve.ts'
+}
+
+Node.js v24.18.0

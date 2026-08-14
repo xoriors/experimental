@@ -235,6 +235,10 @@ function Form({ formId, spec }: Payload) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
+  // The server consumes a form the moment its answers validate, so once that
+  // happens this form is finished whether or not delivery then succeeds.
+  // Retrying would only ask the server about a form it has already forgotten.
+  const [spent, setSpent] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
 
   function setValue(key: string, v: Values[string]) {
@@ -249,9 +253,11 @@ function Form({ formId, spec }: Payload) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (busy || sent) return
+    if (busy || spent) return
     setBusy(true)
     setFailure(null)
+    // A local flag, because the `spent` state does not update within this call.
+    let consumed = false
     try {
       // Validation lives on the server, so every client enforces the same
       // rules and the model can trust what it gets back.
@@ -267,6 +273,11 @@ function Form({ formId, spec }: Payload) {
         setErrors(result?.errors ?? {})
         return
       }
+
+      // Past this point the server has dropped the form, so there is no going
+      // back to it.
+      consumed = true
+      setSpent(true)
 
       // The answers go straight to the model as the user's next message; the
       // server is out of the loop from here. Prose first so the transcript
@@ -286,12 +297,13 @@ function Form({ formId, spec }: Payload) {
         content: [{ type: "text", text }],
       })
       if (posted.isError) {
-        setFailure("The host would not accept the answers.")
+        setFailure("The host would not accept the answers. Ask for a new form to try again.")
         return
       }
       setSent(true)
     } catch (err) {
-      setFailure(err instanceof Error ? err.message : "Could not send the answers.")
+      const reason = err instanceof Error ? err.message : "Could not send the answers."
+      setFailure(consumed ? `${reason} Ask for a new form to try again.` : reason)
     } finally {
       setBusy(false)
     }
@@ -315,7 +327,7 @@ function Form({ formId, spec }: Payload) {
               {field.label}
               {field.required && <span className="required" aria-hidden="true"> *</span>}
             </label>
-            <fieldset disabled={sent || busy}>
+            <fieldset disabled={spent || busy}>
               <Control
                 field={field}
                 value={values[field.key]}
@@ -339,8 +351,14 @@ function Form({ formId, spec }: Payload) {
         </p>
       )}
 
-      <button type="submit" className="submit" disabled={busy || sent}>
-        {sent ? "Sent" : busy ? "Checking..." : (spec.submitLabel ?? "Submit")}
+      <button type="submit" className="submit" disabled={busy || spent}>
+        {sent
+          ? "Sent"
+          : busy
+            ? "Checking..."
+            : spent
+              ? "Not delivered"
+              : (spec.submitLabel ?? "Submit")}
       </button>
     </form>
   )

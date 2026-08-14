@@ -67,6 +67,25 @@ export interface ValidationResult {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^\d{2}:\d{2}$/
 
+// Shape is not enough: "2026-02-31" and "29:99" both match the patterns above
+// while being no date and no time at all. Validation is this server's one job,
+// so the answers it passes on have to be real.
+function isRealDate(value: string): boolean {
+  if (!DATE_RE.test(value)) return false
+  const [y, m, d] = value.split("-").map(Number)
+  const parsed = new Date(Date.UTC(y, m - 1, d))
+  // A rolled-over date (Feb 31 becoming Mar 3) no longer matches its parts.
+  return (
+    parsed.getUTCFullYear() === y && parsed.getUTCMonth() === m - 1 && parsed.getUTCDate() === d
+  )
+}
+
+function isRealTime(value: string): boolean {
+  if (!TIME_RE.test(value)) return false
+  const [h, min] = value.split(":").map(Number)
+  return h <= 23 && min <= 59
+}
+
 // Types whose answer is a single string drawn from `options`.
 const CHOICE_TYPES: FieldType[] = ["select", "cards"]
 
@@ -111,7 +130,7 @@ function checkField(field: Field, value: FieldValue | undefined): string | null 
     }
 
     case "date": {
-      if (typeof value !== "string" || !DATE_RE.test(value)) return "Expected a date (YYYY-MM-DD)"
+      if (typeof value !== "string" || !isRealDate(value)) return "Expected a date (YYYY-MM-DD)"
       // ISO dates compare correctly as plain strings.
       if (typeof field.min === "string" && value < field.min) return `Pick ${field.min} or later`
       if (typeof field.max === "string" && value > field.max) return `Pick ${field.max} or earlier`
@@ -119,7 +138,7 @@ function checkField(field: Field, value: FieldValue | undefined): string | null 
     }
 
     case "time": {
-      if (typeof value !== "string" || !TIME_RE.test(value)) return "Expected a time (HH:MM)"
+      if (typeof value !== "string" || !isRealTime(value)) return "Expected a time (HH:MM)"
       if (typeof field.min === "string" && value < field.min) return `Pick ${field.min} or later`
       if (typeof field.max === "string" && value > field.max) return `Pick ${field.max} or earlier`
       return null
@@ -182,7 +201,75 @@ export function summarize(spec: Spec, values: Values): string {
   return lines.join("\n")
 }
 
-// A spec is only usable if every choice field actually offers choices.
+// Settings the model can get wrong in ways the user could never fix from the
+// form: a numeric bound written as text, a default of the wrong type, bounds
+// that no value can satisfy. Caught here, at the tool boundary, so the model
+// gets a precise reason and can retry rather than rendering a dead form.
+function settingProblems(field: Field): string[] {
+  const problems: string[] = []
+  const at = `Field "${field.key}"`
+  const { type, min, max, default: preset } = field
+
+  if (type === "number" || type === "range") {
+    for (const [name, bound] of [
+      ["min", min],
+      ["max", max],
+    ] as const) {
+      if (bound !== undefined && typeof bound !== "number") {
+        problems.push(`${at} is a ${type} but its ${name} is not a number`)
+      }
+    }
+    if (typeof min === "number" && typeof max === "number" && min > max) {
+      problems.push(`${at} has min ${min} above max ${max}, so no value can satisfy it`)
+    }
+    if (preset !== undefined && typeof preset !== "number") {
+      problems.push(`${at} is a ${type} but its default is not a number`)
+    }
+  }
+
+  if (type === "date" || type === "time") {
+    const real = type === "date" ? isRealDate : isRealTime
+    for (const [name, bound] of [
+      ["min", min],
+      ["max", max],
+      ["default", preset],
+    ] as const) {
+      if (bound === undefined) continue
+      if (typeof bound !== "string" || !real(bound)) {
+        problems.push(`${at} is a ${type} but its ${name} is not a valid ${type}`)
+      }
+    }
+    if (typeof min === "string" && typeof max === "string" && min > max) {
+      problems.push(`${at} has min ${min} above max ${max}, so no value can satisfy it`)
+    }
+  }
+
+  if (type === "boolean" && preset !== undefined && typeof preset !== "boolean") {
+    problems.push(`${at} is a boolean but its default is not true or false`)
+  }
+
+  if ((type === "text" || type === "textarea") && preset !== undefined && typeof preset !== "string") {
+    problems.push(`${at} is a ${type} but its default is not text`)
+  }
+
+  // A default the user cannot see among the choices is worse than none.
+  const allowed = (field.options ?? []).map((o) => o.value)
+  if (CHOICE_TYPES.includes(type) && preset !== undefined) {
+    if (typeof preset !== "string" || !allowed.includes(preset)) {
+      problems.push(`${at} has a default that is not one of its options`)
+    }
+  }
+  if (type === "multiselect" && preset !== undefined) {
+    if (!Array.isArray(preset) || preset.some((v) => !allowed.includes(v))) {
+      problems.push(`${at} has a default that is not a list of its options`)
+    }
+  }
+
+  return problems
+}
+
+// A spec is only usable if every choice field actually offers choices, every
+// key is distinct, and no field is configured so that it can never be answered.
 export function specProblems(spec: Spec): string[] {
   const problems: string[] = []
   const seen = new Set<string>()
@@ -193,6 +280,7 @@ export function specProblems(spec: Spec): string[] {
     if (needsOptions && !field.options?.length) {
       problems.push(`Field "${field.key}" is a ${field.type} but has no options`)
     }
+    problems.push(...settingProblems(field))
   }
   return problems
 }

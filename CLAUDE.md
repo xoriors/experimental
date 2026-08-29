@@ -35,6 +35,10 @@ LLM-assisted git merge-conflict resolution driven by semantic intent (commit mes
 - `skill/instructions.md` is the Claude Code skill prompt defining the `scan` / `resolve <file>` / `apply` workflow.
 - Demo conflict repos: `make rename`, `make logic`; clean up with `make clean`.
 
+### ice-cube-simulator — working demo
+
+Single-file, dependency-free canvas simulator (`ice-cube-simulator/index.html`) of why ice floats and how it melts: draggable buoyancy tank (91.7 % / 8.3 % split), hexagonal-lattice vs liquid molecular views tied to the melt animation, exact densities (ice Ih 0.9167 vs water 0.9998 g/cm³ at 0 °C). Open the file directly — no build step. The physics constants are load-bearing and documented in its README; keep them exact if you touch it.
+
 ### ansible — working infra example
 
 Tutorial-scale Ansible + Docker playground: one container runs Apache, another runs the playbook against it. Run with `docker-compose up --build` from `ansible/`.

@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- ARTIFACT-START -->
+<title>Why Ice Floats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<style>
+/* ---------- tokens: light ---------- */
+:root{
+  color-scheme: light;
+  --bg:#e9f0f6;
+  --panel:#ffffff;
+  --icePanelBg:#f1f8fe;
+  --watPanelBg:#e2eff9;
+  --line:#cfdde8;
+  --ink:#142230;
+  --muted:#54687a;
+  --accent:#0f6fc0;
+  --accentSoft:#dcecf9;
+  --btnInk:#ffffff;
+  --heat:#cd5a26;
+  --heatSoft:#f9e9de;
+  --good:#177a4c;
+  --iceFill:#eaf6ff;
+  --iceEdge:#98c6e4;
+  --iceBar:#93c5ea;
+  --barTrack:#d8e6f1;
+  --bond:#7ca7c8;
+  --oAtom:#d8503e;
+  --oEdge:#a23425;
+  --hAtom:#f6f9fc;
+  --hEdge:#8ba1b2;
+  --waterHi:rgba(103,166,219,0.40);
+  --waterLo:rgba(47,111,170,0.62);
+  --shadow:0 1px 2px rgba(20,40,60,.06), 0 8px 24px -18px rgba(20,40,60,.35);
+}
+/* ---------- tokens: dark (system) ---------- */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0b131b;
+    --panel:#121d28;
+    --icePanelBg:#15222f;
+    --watPanelBg:#132738;
+    --line:#243748;
+    --ink:#e4edf5;
+    --muted:#92a7b9;
+    --accent:#57a8e8;
+    --accentSoft:#17324a;
+    --btnInk:#06263e;
+    --heat:#ee8850;
+    --heatSoft:#3a2416;
+    --good:#4fc088;
+    --iceFill:#dceefb;
+    --iceEdge:#8cb8d6;
+    --iceBar:#2f5d84;
+    --barTrack:#1b2c3c;
+    --bond:#57809f;
+    --oAtom:#e0604e;
+    --oEdge:#8c3020;
+    --hAtom:#e9eff4;
+    --hEdge:#7b92a4;
+    --waterHi:rgba(72,132,192,0.35);
+    --waterLo:rgba(34,84,134,0.66);
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -16px rgba(0,0,0,.6);
+  }
+}
+/* ---------- tokens: dark (explicit toggle) ---------- */
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0b131b;
+  --panel:#121d28;
+  --icePanelBg:#15222f;
+  --watPanelBg:#132738;
+  --line:#243748;
+  --ink:#e4edf5;
+  --muted:#92a7b9;
+  --accent:#57a8e8;
+  --accentSoft:#17324a;
+  --btnInk:#06263e;
+  --heat:#ee8850;
+  --heatSoft:#3a2416;
+  --good:#4fc088;
+  --iceFill:#dceefb;
+  --iceEdge:#8cb8d6;
+  --iceBar:#2f5d84;
+  --barTrack:#1b2c3c;
+  --bond:#57809f;
+  --oAtom:#e0604e;
+  --oEdge:#8c3020;
+  --hAtom:#e9eff4;
+  --hEdge:#7b92a4;
+  --waterHi:rgba(72,132,192,0.35);
+  --waterLo:rgba(34,84,134,0.66);
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -16px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Atkinson Hyperlegible',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1040px;margin:0 auto;padding:18px 14px 56px}
+
+/* ---------- header ---------- */
+header{margin:6px 2px 16px}
+.eyebrow{
+  font-family:'Spline Sans Mono',ui-monospace,monospace;
+  font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 6px;
+}
+h1{
+  font-family:'Bricolage Grotesque','Atkinson Hyperlegible',system-ui,sans-serif;
+  font-weight:800;font-size:clamp(1.65rem,5.4vw,2.45rem);
+  line-height:1.08;letter-spacing:-.015em;margin:0 0 10px;text-wrap:balance;
+}
+.lede{max-width:62ch;margin:0;color:var(--muted);font-size:15.5px}
+.lede b{color:var(--ink)}
+
+/* ---------- density chips ---------- */
+.chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0 14px}
+@media (min-width:720px){.chips{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.chip{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:10px 12px 9px;box-shadow:var(--shadow);min-width:0;
+}
+.chip .lbl{
+  display:block;font-family:'Spline Sans Mono',ui-monospace,monospace;
+  font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.chip .num{
+  font-family:'Spline Sans Mono',ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;
+  font-size:clamp(19px,2.6vw,23px);font-weight:600;line-height:1.15;
+}
+.chip .num small{font-size:.62em;font-weight:600}
+.chip .unit{display:block;font-size:11px;color:var(--muted);font-family:'Spline Sans Mono',ui-monospace,monospace}
+.chip.ratio{border-color:var(--accent);background:linear-gradient(180deg,var(--accentSoft),var(--panel))}
+.chip.ratio .num{color:var(--accent)}
+
+/* ---------- layout grid ---------- */
+.grid{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:880px){.grid{grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);align-items:start}}
+.sidecol{display:grid;gap:14px;min-width:0}
+
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:14px;box-shadow:var(--shadow);min-width:0;
+}
+.cardhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0 2px 10px}
+.cardhead h2{
+  font-family:'Bricolage Grotesque',system-ui,sans-serif;
+  font-size:17px;font-weight:700;margin:0;letter-spacing:-.01em;
+}
+.hint{font-size:12px;color:var(--muted);margin:0}
+
+/* ---------- stage ---------- */
+#stage{
+  display:block;width:100%;height:clamp(400px,62vh,540px);
+  border-radius:12px;background:linear-gradient(180deg,var(--panel) 0%,var(--icePanelBg) 100%);
+  border:1px solid var(--line);
+  touch-action:pan-y;
+}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+.btn{
+  font-family:'Atkinson Hyperlegible',system-ui,sans-serif;
+  font-size:14.5px;font-weight:700;
+  border:1px solid var(--line);border-radius:11px;
+  background:var(--panel);color:var(--ink);
+  min-height:44px;padding:0 16px;cursor:pointer;
+}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--btnInk)}
+.btn:focus-visible,input:focus-visible{outline:2px solid var(--heat);outline-offset:2px}
+.temp{flex:1;min-width:180px;display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--muted)}
+.temp b{color:var(--heat);font-family:'Spline Sans Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.temp input{width:100%;accent-color:var(--heat);min-height:28px;margin:0}
+.meltbar{
+  position:relative;height:22px;margin-top:12px;border-radius:7px;
+  background:var(--barTrack);overflow:hidden;
+}
+.meltbar i{
+  position:absolute;inset:0 auto 0 0;width:100%;
+  background:linear-gradient(90deg,var(--iceBar),var(--iceFill));
+  border-right:2px solid var(--iceEdge);
+  transition:width .3s linear;
+}
+.meltbar span{
+  position:absolute;inset:0;display:flex;align-items:center;padding-left:10px;
+  font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:11px;font-weight:600;
+  color:var(--ink);letter-spacing:.04em;font-variant-numeric:tabular-nums;
+}
+
+/* ---------- molecule panels ---------- */
+.mols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.mols figure{margin:0;min-width:0}
+.mols figcaption{font-size:12.5px;line-height:1.3;margin-bottom:6px}
+.mols figcaption b{display:block}
+.rho{
+  font-family:'Spline Sans Mono',ui-monospace,monospace;
+  font-size:10.5px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums;
+}
+.rho.done{color:var(--good)}
+canvas.mol{
+  display:block;width:100%;aspect-ratio:1/1.12;border-radius:10px;border:1px solid var(--line);
+}
+#iceCv{background:var(--icePanelBg)}
+#watCv{background:var(--watPanelBg)}
+.molnote{font-size:11.5px;line-height:1.45;color:var(--muted);margin:6px 0 0}
+.legend{font-size:11.5px;color:var(--muted);margin:10px 2px 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.legend i{display:inline-block}
+.dotO{width:11px;height:11px;border-radius:50%;background:var(--oAtom);border:1.5px solid var(--oEdge)}
+.dotH{width:9px;height:9px;border-radius:50%;background:var(--hAtom);border:1.5px solid var(--hEdge)}
+.dashB{width:16px;border-top:2px dashed var(--bond);margin:0 2px}
+.legend .sep{width:6px}
+
+/* ---------- ratio bars ---------- */
+.bar{display:grid;grid-template-columns:46px minmax(0,1fr) 58px;align-items:center;gap:8px;margin:7px 0}
+.barlbl{font-size:12.5px;font-weight:700;text-align:right}
+.track{height:24px;border-radius:5px;background:var(--barTrack);overflow:hidden}
+.fill{display:block;height:100%;width:var(--w);border-radius:0 4px 4px 0;animation:grow .9s ease-out}
+.fill.water{background:var(--accent)}
+.fill.ice{background:var(--iceBar);box-shadow:inset 0 0 0 1.5px var(--iceEdge)}
+@keyframes grow{from{width:0}}
+.barval{
+  font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:12px;font-weight:600;
+  font-variant-numeric:tabular-nums;color:var(--ink);
+}
+.barnote{font-size:13px;color:var(--muted);margin:10px 2px 0;line-height:1.55}
+.barnote b{color:var(--ink)}
+.barnote sub{font-size:.7em}
+
+/* ---------- explainer cards ---------- */
+.cardsrow{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin-top:14px}
+.mini h3{
+  font-family:'Bricolage Grotesque',system-ui,sans-serif;
+  font-size:15px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em;
+}
+.mini p{font-size:13.5px;line-height:1.55;color:var(--muted);margin:0}
+.mini b{color:var(--ink)}
+
+footer{
+  margin-top:22px;text-align:center;font-size:11.5px;color:var(--muted);
+  font-family:'Spline Sans Mono',ui-monospace,monospace;line-height:1.7;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+<!-- HEAD-END -->
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">a hands-on density lab</p>
+  <h1>Why ice floats — and how it melts back into water</h1>
+  <p class="lede">Same H₂O molecules, two ways of packing them. Frozen, they lock into an <b>open honeycomb lattice</b> that takes up ~9% more room — so the solid is lighter than the liquid, and it floats.</p>
+</header>
+
+<section class="chips" aria-label="key densities">
+  <div class="chip"><span class="lbl">ice · 0 °C</span><span class="num">0.9167</span><span class="unit">g/cm³</span></div>
+  <div class="chip"><span class="lbl">water · 0 °C</span><span class="num">0.9998</span><span class="unit">g/cm³</span></div>
+  <div class="chip ratio"><span class="lbl">density ratio ice∶water</span><span class="num">0.917</span><span class="unit">≈ 11 ∶ 12</span></div>
+  <div class="chip"><span class="lbl">so a cube floats</span><span class="num">91.7<small>%</small></span><span class="unit">under · 8.3% above</span></div>
+</section>
+
+<div class="grid">
+
+  <section class="card">
+    <div class="cardhead">
+      <h2>The tank</h2>
+      <p class="hint" id="statusLine">floating at rest — drag the cube, push it under, let go</p>
+    </div>
+    <canvas id="stage" aria-label="Interactive tank: an ice cube floating in water. Drag the cube to feel buoyancy; press start melting to watch it shrink into water."></canvas>
+    <div class="controls">
+      <button class="btn primary" id="btnMelt">▶ start melting</button>
+      <button class="btn" id="btnReset" aria-label="Reset: freeze a new cube">↺ reset</button>
+      <label class="temp">
+        <span>water temperature <b id="tempVal">20 °C</b></span>
+        <input type="range" id="tempSlider" min="0" max="40" step="1" value="20" aria-label="Water temperature in degrees Celsius">
+      </label>
+    </div>
+    <div class="meltbar" role="img" aria-label="Ice remaining"><i id="meltFill"></i><span id="meltLbl">ice left 100%</span></div>
+  </section>
+
+  <div class="sidecol">
+
+    <section class="card">
+      <div class="cardhead">
+        <h2>Zoom in ×100,000,000</h2>
+        <p class="hint">same frame, live molecule count — watch the lattice collapse</p>
+      </div>
+      <div class="mols">
+        <figure>
+          <figcaption><b>inside the cube</b><span class="rho" id="iceRho">solid · 0.9167 g/cm³</span></figcaption>
+          <canvas class="mol" id="iceCv" aria-label="Animated molecular view of ice: water molecules vibrating in an open hexagonal lattice held by hydrogen bonds"></canvas>
+          <p class="molnote">Hydrogen bonds pin the molecules into an open hexagonal lattice — the rings are <b>empty space</b>.</p>
+        </figure>
+        <figure>
+          <figcaption><b>inside the water</b><span class="rho">liquid · 0.9998 g/cm³</span></figcaption>
+          <canvas class="mol" id="watCv" aria-label="Animated molecular view of liquid water: the same molecules tumbling freely and packing closer together"></canvas>
+          <p class="molnote">No lattice: neighbours sit just as close, but they fill the holes — <b>~9% more fit</b> in the same space.</p>
+        </figure>
+      </div>
+      <p class="legend"><i class="dotO"></i> oxygen <span class="sep"></span> <i class="dotH"></i> hydrogen <span class="sep"></span> <i class="dashB"></i> hydrogen bond</p>
+    </section>
+
+    <section class="card">
+      <div class="cardhead"><h2>The exact ratio</h2><p class="hint">measured at 0 °C</p></div>
+      <div class="bar"><span class="barlbl">water</span><div class="track"><i class="fill water" style="--w:100%"></i></div><span class="barval">0.9998</span></div>
+      <div class="bar"><span class="barlbl">ice</span><div class="track"><i class="fill ice" style="--w:91.68%"></i></div><span class="barval">0.9167</span></div>
+      <p class="barnote">ρ<sub>ice</sub> ÷ ρ<sub>water</sub> = 0.9167 ÷ 0.9998 = <b>0.9168</b> — and exactly that fraction of a floating cube, <b>91.7%</b>, sits below the line, leaving <b>8.3%</b> in the air. Flipped around: freezing expands water by <b>+9.1%</b> in volume, which is why pipes and bottles burst.</p>
+    </section>
+
+  </div>
+</div>
+
+<section class="cardsrow">
+  <article class="card mini">
+    <h3>Why it floats</h3>
+    <p>Water pushes up on anything submerged with the weight of the water displaced (<b>Archimedes' principle</b>). A floating object sinks only until it has displaced its own weight — ice gets there at <b>91.7% submerged</b>. Push the cube deeper and the extra displaced water shoves it straight back up.</p>
+  </article>
+  <article class="card mini">
+    <h3>Why ice is the odd one out</h3>
+    <p>Almost every substance is <i>denser</i> as a solid and sinks in its own liquid. Water flips this: each H₂O forms up to <b>4 hydrogen bonds</b>, and below 0 °C they lock into the open hexagonal lattice you see above. The enforced holes mean <b>~9% less mass</b> in every cm³.</p>
+  </article>
+  <article class="card mini">
+    <h3>Melting without warming</h3>
+    <p>While it melts, incoming heat is spent <b>breaking hydrogen bonds</b>, not raising temperature — the cube holds at exactly <b>0 °C</b> until the last crystal is gone. That toll, the latent heat of fusion, is <b>334 J per gram</b>: enough to heat the same gram of water from 0 to 80 °C.</p>
+  </article>
+  <article class="card mini">
+    <h3>The level never moves</h3>
+    <p>A floating cube already displaces <b>exactly the volume its meltwater will fill</b>, so the surface doesn't rise by a hair as it melts — watch the dashed line. Same reason melting <i>sea</i> ice barely changes sea level, while melting <i>land</i> ice raises it.</p>
+  </article>
+</section>
+
+<footer>
+  ρ at 0 °C — ice Ih 0.9167 g/cm³ · liquid water 0.9998 g/cm³ (CRC Handbook)<br>
+  melting shown ≈ ×30 faster than a real cube in still 20 °C water
+</footer>
+
+</div>
+
+<script>
+'use strict';
+
+/* ================= constants ================= */
+const RHO_ICE = 0.9167;            // g/cm³ at 0 °C
+const RHO_WATER = 0.99984;         // g/cm³ at 0 °C
+const SUB = RHO_ICE / RHO_WATER;   // 0.9168 → fraction of a floating cube under water
+const EXPAND = RHO_WATER / RHO_ICE;// 1.0906 → volume gain on freezing / packing gain on melting
+const TAU = Math.PI * 2;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MOTION = reduceMotion ? 0.35 : 1;
+
+/* ================= palette from CSS tokens ================= */
+const pal = {};
+function readPalette(){
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['ink','muted','accent','heat','good','iceFill','iceEdge','bond',
+                   'oAtom','oEdge','hAtom','hEdge','line','panel','waterHi','waterLo'])
+    pal[k] = cs.getPropertyValue('--' + k).trim();
+}
+readPalette();
+const mqDark = matchMedia('(prefers-color-scheme: dark)');
+if (mqDark.addEventListener) mqDark.addEventListener('change', readPalette);
+new MutationObserver(readPalette).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+
+function hexA(hex, a){
+  const h = hex.replace('#','');
+  const f = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const n = parseInt(f, 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+/* ================= shared sim state ================= */
+const state = {
+  f: 1,            // remaining ice volume fraction (1 → 0)
+  melting: false,
+  melted: false,
+  meltedAt: 0,
+  T: 20,           // surrounding water temperature °C
+  t: 0,            // sim clock, s
+  dragged: false,
+};
+
+const $ = id => document.getElementById(id);
+const cvStage = $('stage'), cvIce = $('iceCv'), cvWat = $('watCv');
+const MONO = '"Spline Sans Mono", ui-monospace, SFMono-Regular, monospace';
+
+/* ================= canvas fitting ================= */
+function fit(cv){
+  const r = cv.getBoundingClientRect();
+  const d = Math.min(window.devicePixelRatio || 1, 2.5);
+  const W = Math.max(2, Math.round(r.width * d));
+  const H = Math.max(2, Math.round(r.height * d));
+  if (cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  return { ctx, w: r.width, h: r.height };
+}
+
+/* ================= melting model ================= */
+/* dV/dt ∝ surface area × (T − 0 °C); latent heat keeps the cube at 0 °C throughout. */
+function meltStep(dt){
+  if (state.melting && state.T > 0 && state.f > 0){
+    state.f = Math.max(0, state.f - (state.T / 300) * Math.pow(state.f, 2/3) * dt);
+    if (state.f <= 0.004){
+      state.f = 0;
+      state.melting = false;
+      state.melted = true;
+      state.meltedAt = state.t;
+      syncButtons();
+    }
+  }
+}
+
+/* ================= the tank ================= */
+const stage = { cy: NaN, vy: 0, drag: null, dragV: 0, lastT: 0, plumes: [], ripples: [], lastRip: 0 };
+let stageW = 360, stageH = 480;
+
+function stageGeom(w, h){
+  const gw = Math.min(w * 0.88, 520);
+  const gx = (w - gw) / 2;
+  const gtop = h * 0.075;
+  const gbot = h - 16;
+  const yW = gtop + (gbot - gtop) * 0.335;                 // waterline — never moves
+  const S0 = Math.min(gw * 0.40, (gbot - gtop) * 0.40, 150); // full cube side, px
+  return { gx, gw, gtop, gbot, yW, S0 };
+}
+const cubeSide = g => g.S0 * Math.cbrt(Math.max(state.f, 0));
+
+function stepCube(g, dt){
+  if (state.f <= 0) return;
+  const S = cubeSide(g);
+  if (!isFinite(stage.cy)) stage.cy = g.yW + S * (SUB - 0.5);   // start at equilibrium
+  if (!stage.drag){
+    const bottom = stage.cy + S / 2;
+    const subF = Math.min(Math.max((bottom - g.yW) / S, 0), 1);
+    const G = 1400;
+    /* canvas y grows downward, so net upward force (buoyancy > weight) is negative */
+    let a = -G * (EXPAND * subF - 1);
+    a -= stage.vy * 2.2;               // water drag
+    stage.vy += a * dt;
+    stage.cy += stage.vy * dt;
+  }
+  const minCy = g.gtop + S / 2 + 4, maxCy = g.gbot - S / 2 - 6;
+  if (stage.cy < minCy){ stage.cy = minCy; stage.vy = Math.max(stage.vy, 0); }
+  if (stage.cy > maxCy){ stage.cy = maxCy; stage.vy = Math.min(stage.vy, 0); }
+}
+
+function roundRectPath(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function arrow(ctx, x, y0, y1, color){
+  const dir = Math.sign(y1 - y0) || 1;
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1 - dir * 5); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y1); ctx.lineTo(x - 4.5, y1 - dir * 8); ctx.lineTo(x + 4.5, y1 - dir * 8);
+  ctx.closePath(); ctx.fill();
+}
+
+function haloText(ctx, text, x, y, color){
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = hexA(pal.panel, 0.85); ctx.lineWidth = 3;
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+function chipText(ctx, x, y, text, align){
+  ctx.font = '600 10.5px ' + MONO;
+  const wd = ctx.measureText(text).width + 14;
+  const xx = align === 'right' ? x - wd : align === 'center' ? x - wd / 2 : x;
+  roundRectPath(ctx, xx, y - 9, wd, 18, 9);
+  ctx.fillStyle = hexA(pal.panel, 0.88); ctx.fill();
+  ctx.strokeStyle = pal.line; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = pal.ink; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, xx + 7, y + 0.5);
+  ctx.textBaseline = 'alphabetic';
+  return xx;
+}
+
+function drawHoneycomb(ctx, x0, y0, x1, y1, R, color, lw){
+  ctx.strokeStyle = color; ctx.lineWidth = lw;
+  const sx = 1.5 * R, sy = Math.sqrt(3) * R;
+  for (let c = -1; x0 + c * sx < x1 + 2 * R; c++){
+    for (let r = -1; y0 + r * sy < y1 + 2 * R; r++){
+      const cx = x0 + c * sx, cy = y0 + r * sy + (c % 2 ? sy / 2 : 0);
+      ctx.beginPath();
+      for (let k = 0; k < 6; k++){
+        const a = Math.PI / 3 * k;
+        const px = cx + R * Math.cos(a), py = cy + R * Math.sin(a);
+        k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.closePath(); ctx.stroke();
+    }
+  }
+}
+
+function drawStage(dt){
+  const { ctx, w, h } = fit(cvStage);
+  stageW = w; stageH = h;
+  const g = stageGeom(w, h);
+  ctx.clearRect(0, 0, w, h);
+  stepCube(g, dt);
+
+  const S = cubeSide(g);
+  const cx = g.gx + g.gw / 2;
+  const bottom = stage.cy + S / 2, top = stage.cy - S / 2;
+  const subF = state.f > 0 ? Math.min(Math.max((bottom - g.yW) / S, 0), 1) : 0;
+
+  /* water body */
+  const grad = ctx.createLinearGradient(0, g.yW, 0, g.gbot);
+  grad.addColorStop(0, pal.waterHi); grad.addColorStop(1, pal.waterLo);
+  ctx.fillStyle = grad;
+  const R = 16;
+  ctx.beginPath();
+  ctx.moveTo(g.gx, g.yW);
+  ctx.lineTo(g.gx, g.gbot - R);
+  ctx.arcTo(g.gx, g.gbot, g.gx + R, g.gbot, R);
+  ctx.lineTo(g.gx + g.gw - R, g.gbot);
+  ctx.arcTo(g.gx + g.gw, g.gbot, g.gx + g.gw, g.gbot - R, R);
+  ctx.lineTo(g.gx + g.gw, g.yW);
+  ctx.closePath(); ctx.fill();
+
+  /* cold meltwater plumes (meltwater at ~0 °C is denser → it sinks) */
+  if (state.melting && state.T > 0 && state.f > 0 && Math.random() < dt * 9 * MOTION && stage.plumes.length < 42)
+    stage.plumes.push({ x: cx + (Math.random() - .5) * S * 0.8, y: bottom - 2,
+                        vy: 22 + Math.random() * 26, a: 0.4, r: 1.6 + Math.random() * 2.2 });
+  for (let i = stage.plumes.length - 1; i >= 0; i--){
+    const p = stage.plumes[i];
+    p.y += p.vy * dt; p.x += Math.sin(p.y * 0.05) * 6 * dt; p.a -= dt * 0.22;
+    if (p.a <= 0 || p.y > g.gbot - 6){ stage.plumes.splice(i, 1); continue; }
+    ctx.fillStyle = hexA('#ffffff', 0); // reset
+    ctx.globalAlpha = p.a;
+    ctx.fillStyle = pal.accent;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  /* the cube */
+  if (state.f > 0){
+    const tilt = Math.sin(state.t * 0.6) * 0.035 * MOTION * (stage.drag ? 0.3 : 1);
+    ctx.save();
+    ctx.translate(cx, stage.cy); ctx.rotate(tilt);
+    const r = Math.max(3, S * 0.10);
+    const cg = ctx.createLinearGradient(0, -S / 2, 0, S / 2);
+    cg.addColorStop(0, '#ffffff'); cg.addColorStop(0.25, pal.iceFill); cg.addColorStop(1, pal.iceFill);
+    roundRectPath(ctx, -S / 2, -S / 2, S, S, r);
+    ctx.fillStyle = cg; ctx.fill();
+    ctx.save();                                     // honeycomb texture = its lattice, visible from afar
+    roundRectPath(ctx, -S / 2, -S / 2, S, S, r); ctx.clip();
+    drawHoneycomb(ctx, -S / 2, -S / 2, S / 2, S / 2, Math.max(6, S / 9), hexA(pal.iceEdge, 0.5), 1);
+    ctx.restore();
+    roundRectPath(ctx, -S / 2, -S / 2, S, S, r);
+    ctx.strokeStyle = pal.iceEdge; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
+
+    /* translucent water over the submerged part */
+    ctx.save();
+    ctx.beginPath(); ctx.rect(g.gx, g.yW, g.gw, g.gbot - g.yW); ctx.clip();
+    ctx.save();
+    ctx.translate(cx, stage.cy); ctx.rotate(tilt);
+    roundRectPath(ctx, -S / 2, -S / 2, S, S, r);
+    ctx.fillStyle = pal.waterHi; ctx.fill();
+    ctx.restore(); ctx.restore();
+
+    /* density tag on the cube */
+    if (S > 62) chipText(ctx, cx, stage.cy - (S > 92 ? S * 0.17 : 0), 'ρ 0.917', 'center');
+  }
+
+  /* ripples on the waterline while bobbing */
+  if (state.f > 0 && Math.abs(stage.vy) > 130 && state.t - stage.lastRip > 0.35){
+    stage.lastRip = state.t;
+    stage.ripples.push({ r: S * 0.62, a: 0.5 });
+  }
+  for (let i = stage.ripples.length - 1; i >= 0; i--){
+    const rp = stage.ripples[i];
+    rp.r += 95 * dt; rp.a -= dt * 0.75;
+    if (rp.a <= 0){ stage.ripples.splice(i, 1); continue; }
+    ctx.globalAlpha = rp.a; ctx.strokeStyle = pal.accent; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(cx, g.yW, rp.r, rp.r * 0.16, 0, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  /* waterline (it never moves — that's the point) */
+  ctx.strokeStyle = pal.accent; ctx.lineWidth = 2; ctx.globalAlpha = 0.85;
+  ctx.beginPath(); ctx.moveTo(g.gx + 1, g.yW); ctx.lineTo(g.gx + g.gw - 1, g.yW); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = pal.muted; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(g.gx - 8, g.yW); ctx.lineTo(g.gx + g.gw + 8, g.yW); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = '600 10.5px ' + MONO; ctx.textAlign = 'left';
+  haloText(ctx, 'water level — won’t move', g.gx + 8, g.yW - 9, pal.muted);
+
+  /* density tag for the water */
+  chipText(ctx, g.gx + 10, g.gbot - 18, 'ρ 1.000', 'left');
+
+  /* glass */
+  ctx.strokeStyle = hexA(pal.ink === '' ? '#888888' : (pal.ink[0] === '#' ? pal.ink : '#888888'), 0.28);
+  ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(g.gx - 6, g.gtop);
+  ctx.lineTo(g.gx - 6, g.gbot - 14);
+  ctx.quadraticCurveTo(g.gx - 6, g.gbot + 6, g.gx + 14, g.gbot + 6);
+  ctx.lineTo(g.gx + g.gw - 14, g.gbot + 6);
+  ctx.quadraticCurveTo(g.gx + g.gw + 6, g.gbot + 6, g.gx + g.gw + 6, g.gbot - 14);
+  ctx.lineTo(g.gx + g.gw + 6, g.gtop);
+  ctx.stroke();
+
+  if (state.f > 0){
+    /* live above/below annotations */
+    if (S > 52){
+      const bx = cx + S / 2 + 10;
+      ctx.font = '600 10px ' + MONO; ctx.textAlign = 'left';
+      if (top < g.yW - 2){
+        ctx.strokeStyle = pal.heat; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(bx, top); ctx.lineTo(bx, g.yW - 1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(bx - 3, top); ctx.lineTo(bx + 3, top); ctx.stroke();
+        haloText(ctx, ((1 - subF) * 100).toFixed(1) + '% above', bx + 6, Math.max(top + 4, g.yW - 8), pal.heat);
+      }
+      ctx.strokeStyle = pal.accent; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(bx, g.yW + 1); ctx.lineTo(bx, bottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx - 3, bottom); ctx.lineTo(bx + 3, bottom); ctx.stroke();
+      haloText(ctx, (subF * 100).toFixed(1) + '% under', bx + 6, Math.min(g.yW + (bottom - g.yW) / 2 + 3, bottom - 4), pal.accent);
+    }
+
+    /* weight vs buoyancy arrows, labels beside their midpoints */
+    if (S > 46){
+      const ax = cx - S / 2 - 24;
+      const L = 40;
+      const Lb = Math.max(6, L * EXPAND * subF);
+      arrow(ctx, ax, stage.cy, stage.cy + L, pal.muted);
+      arrow(ctx, ax, stage.cy, stage.cy - Lb, pal.accent);
+      ctx.font = '600 ' + (w < 430 ? 9.5 : 10) + 'px ' + MONO;
+      ctx.textAlign = 'right';
+      haloText(ctx, 'weight', ax - 8, stage.cy + L * 0.55 + 3, pal.muted);
+      haloText(ctx, 'buoyancy', ax - 8, stage.cy - Lb * 0.55 + 3, pal.accent);
+      ctx.textAlign = 'left';
+    }
+
+    /* first-touch hint */
+    if (!state.dragged && state.t < 14 && !state.melting && state.f === 1){
+      const a = 0.55 + 0.35 * Math.sin(state.t * 3);
+      ctx.globalAlpha = Math.max(0, Math.min(1, a));
+      ctx.font = '600 12px ' + MONO; ctx.textAlign = 'center';
+      haloText(ctx, '👆 drag me — push me under', cx, g.yW + (g.gbot - g.yW) * 0.62, pal.ink);
+      ctx.globalAlpha = 1;
+    }
+  } else {
+    /* fully melted */
+    const dtm = state.t - state.meltedAt;
+    const a = Math.min(1, dtm / 0.8);
+    ctx.globalAlpha = a;
+    ctx.textAlign = 'center'; ctx.font = '600 12.5px ' + MONO; ctx.fillStyle = pal.ink;
+    ctx.fillText('100% water — ρ 1.000 g/cm³ everywhere', cx, g.yW + 44);
+    ctx.fillStyle = pal.good;
+    ctx.fillText('…and the level didn’t move ✓', cx, g.yW + 66);
+    ctx.globalAlpha = 1;
+  }
+  ctx.textAlign = 'left';
+}
+
+/* --- dragging the cube --- */
+function stagePoint(e){
+  const r = cvStage.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function hitCube(p){
+  if (state.f <= 0 || !isFinite(stage.cy)) return false;
+  const g = stageGeom(stageW, stageH);
+  const S = cubeSide(g);
+  const cx = g.gx + g.gw / 2;
+  return Math.abs(p.x - cx) < S / 2 + 18 && Math.abs(p.y - stage.cy) < S / 2 + 18;
+}
+cvStage.addEventListener('pointerdown', e => {
+  const p = stagePoint(e);
+  if (!hitCube(p)) return;
+  stage.drag = { offY: p.y - stage.cy };
+  stage.dragV = 0; stage.lastT = performance.now();
+  state.dragged = true;
+  try { cvStage.setPointerCapture(e.pointerId); } catch (_) {}
+  e.preventDefault();
+});
+cvStage.addEventListener('pointermove', e => {
+  if (!stage.drag){
+    cvStage.style.cursor = hitCube(stagePoint(e)) ? 'grab' : 'default';
+    return;
+  }
+  const g = stageGeom(stageW, stageH);
+  const S = cubeSide(g);
+  const p = stagePoint(e);
+  const ny = Math.min(Math.max(p.y - stage.drag.offY, g.gtop + S / 2 + 4), g.gbot - S / 2 - 6);
+  const now = performance.now();
+  const dt = Math.max((now - stage.lastT) / 1000, 1e-3);
+  const inst = Math.max(-900, Math.min(900, (ny - stage.cy) / dt));
+  stage.dragV = 0.6 * stage.dragV + 0.4 * inst;
+  stage.cy = ny; stage.lastT = now;
+  cvStage.style.cursor = 'grabbing';
+});
+for (const ev of ['pointerup', 'pointercancel'])
+  cvStage.addEventListener(ev, () => {
+    if (stage.drag){ stage.vy = stage.dragV; stage.drag = null; }
+  });
+/* let the page scroll unless the touch starts on the cube */
+cvStage.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  const r = cvStage.getBoundingClientRect();
+  if (hitCube({ x: t.clientX - r.left, y: t.clientY - r.top })) e.preventDefault();
+}, { passive: false });
+cvStage.addEventListener('touchmove', e => { if (stage.drag) e.preventDefault(); }, { passive: false });
+
+/* ================= molecular views ================= */
+const iceP = { sites: [], edges: [], liquid: [], extras: 0, b: 22, K: 0, w: 0, h: 0 };
+const watP = { mols: [], N: 0, b: 22, w: 0, h: 0 };
+
+const makeMol = (x, y) => ({
+  x, y,
+  vx: (Math.random() - .5) * 30, vy: (Math.random() - .5) * 30,
+  a: Math.random() * TAU, va: (Math.random() - .5) * 1.4,
+});
+
+function buildLattice(w, h){
+  const b = Math.max(15, Math.min(24, w / 7.4));
+  const sites = [], map = new Map(), edgeSet = new Set(), edgeList = [];
+  const key = (x, y) => Math.round(x * 4) + ',' + Math.round(y * 4);
+  const sx = 1.5 * b, sy = Math.sqrt(3) * b;
+  for (let c = -1; c * sx < w + 2 * b; c++){
+    for (let r = -1; r * sy < h + 2 * b; r++){
+      const cx = c * sx, cy = r * sy + (c % 2 ? sy / 2 : 0);
+      const ids = [];
+      for (let k = 0; k < 6; k++){
+        const a = Math.PI / 3 * k;
+        const x = cx + b * Math.cos(a), y = cy + b * Math.sin(a);
+        const kk = key(x, y);
+        if (!map.has(kk)){ map.set(kk, sites.length); sites.push({ x, y }); }
+        ids.push(map.get(kk));
+      }
+      for (let k = 0; k < 6; k++){
+        const a = ids[k], b2 = ids[(k + 1) % 6];
+        const ek = Math.min(a, b2) + '-' + Math.max(a, b2);
+        if (!edgeSet.has(ek)){ edgeSet.add(ek); edgeList.push([a, b2]); }
+      }
+    }
+  }
+  const pad = b * 0.55;
+  const keep = new Map(), S2 = [];
+  sites.forEach((s, i) => {
+    if (s.x >= pad && s.x <= w - pad && s.y >= pad && s.y <= h - pad){
+      keep.set(i, S2.length); S2.push(s);
+    }
+  });
+  const E2 = edgeList.filter(([a, b_]) => keep.has(a) && keep.has(b_))
+                     .map(([a, b_]) => [keep.get(a), keep.get(b_)]);
+  const nb = S2.map(() => []);
+  E2.forEach(([a, b_]) => { nb[a].push(b_); nb[b_].push(a); });
+  const cxm = w / 2, cym = h / 2;
+  let maxD = 1;
+  S2.forEach(s => { s.d = Math.hypot(s.x - cxm, s.y - cym); maxD = Math.max(maxD, s.d); });
+  S2.forEach((s, i) => {
+    const dirs = nb[i].map(j => Math.atan2(S2[j].y - s.y, S2[j].x - s.x)).sort((a, b_) => a - b_);
+    if (dirs.length >= 2){ s.h1 = dirs[0]; s.h2 = dirs[1]; }
+    else if (dirs.length === 1){ s.h1 = dirs[0] - 0.91; s.h2 = dirs[0] + 0.91; }
+    else { s.h1 = Math.random() * TAU; s.h2 = s.h1 + 1.82; }
+    /* edges of the frame melt first, centre last */
+    s.order = Math.min(0.999, Math.max(0.001, (1 - s.d / maxD) * 0.94 + 0.03 + (Math.random() - 0.5) * 0.10));
+    s.frozen = true;
+    s.p1 = Math.random() * TAU; s.p2 = Math.random() * TAU;
+    s.w1 = 4.5 + Math.random() * 3; s.w2 = 4.5 + Math.random() * 3;
+    s.sx = s.x; s.sy = s.y;
+  });
+  iceP.sites = S2; iceP.edges = E2; iceP.b = b; iceP.K = S2.length;
+  iceP.liquid = []; iceP.extras = 0;
+}
+
+function buildWater(w, h){
+  const b = iceP.b || 22;
+  const N = Math.max(4, Math.round(iceP.K * EXPAND));
+  const ms = [];
+  let guard = 0;
+  while (ms.length < N && guard < 9000){
+    guard++;
+    const x = b * 0.5 + Math.random() * (w - b), y = b * 0.5 + Math.random() * (h - b);
+    let ok = true;
+    for (const m of ms){
+      const dx = m.x - x, dy = m.y - y;
+      if (dx * dx + dy * dy < (b * 0.78) ** 2){ ok = false; break; }
+    }
+    if (ok) ms.push(makeMol(x, y));
+  }
+  while (ms.length < N) ms.push(makeMol(b + Math.random() * (w - 2 * b), b + Math.random() * (h - 2 * b)));
+  watP.mols = ms; watP.N = N; watP.b = b;
+}
+
+function stepLiquid(ms, w, h, dt, b, obstacles){
+  const jig = (26 + state.T * 2.2) * MOTION;
+  const vmax = 46 + state.T * 2.6;
+  const pad = b * 0.45;
+  const d0 = b * 1.02, d02 = d0 * d0, coh = b * 1.55, coh2 = coh * coh;
+  for (const m of ms){
+    m.vx += (Math.random() - 0.5) * jig * dt * 10;
+    m.vy += (Math.random() - 0.5) * jig * dt * 10;
+  }
+  for (let i = 0; i < ms.length; i++){
+    const A = ms[i];
+    for (let j = i + 1; j < ms.length; j++){
+      const B = ms[j];
+      let dx = B.x - A.x, dy = B.y - A.y, d2 = dx * dx + dy * dy;
+      if (d2 < 1e-4){ dx = 0.01; dy = 0; d2 = 1e-4; }
+      if (d2 < d02){
+        const d = Math.sqrt(d2), k = (d0 - d) / d0 * 260 * dt, ux = dx / d, uy = dy / d;
+        A.vx -= ux * k; A.vy -= uy * k; B.vx += ux * k; B.vy += uy * k;
+      } else if (d2 < coh2){
+        const d = Math.sqrt(d2), k = (d - d0) / d0 * 24 * dt, ux = dx / d, uy = dy / d;
+        A.vx += ux * k; A.vy += uy * k; B.vx -= ux * k; B.vy -= uy * k;
+      }
+    }
+    if (obstacles){
+      const df = b * 0.98, df2 = df * df;
+      for (const s of obstacles){
+        if (!s.frozen) continue;
+        const dx = A.x - s.x, dy = A.y - s.y, d2 = dx * dx + dy * dy;
+        if (d2 < df2 && d2 > 1e-4){
+          const d = Math.sqrt(d2), k = (df - d) / df * 300 * dt;
+          A.vx += dx / d * k; A.vy += dy / d * k;
+        }
+      }
+    }
+  }
+  const damp = Math.exp(-1.35 * dt);
+  for (const m of ms){
+    m.vx *= damp; m.vy *= damp;
+    const v = Math.hypot(m.vx, m.vy);
+    if (v > vmax){ m.vx *= vmax / v; m.vy *= vmax / v; }
+    m.x += m.vx * dt; m.y += m.vy * dt; m.a += m.va * dt * MOTION;
+    if (Math.random() < dt * 0.8) m.va = (Math.random() - 0.5) * 1.6;
+    if (m.x < pad){ m.x = pad; m.vx = Math.abs(m.vx) * 0.6; }
+    if (m.x > w - pad){ m.x = w - pad; m.vx = -Math.abs(m.vx) * 0.6; }
+    if (m.y < pad){ m.y = pad; m.vy = Math.abs(m.vy) * 0.6; }
+    if (m.y > h - pad){ m.y = h - pad; m.vy = -Math.abs(m.vy) * 0.6; }
+  }
+}
+
+function drawMolAt(ctx, x, y, dir1, dir2, b){
+  const rO = b * 0.20, rH = rO * 0.58, dH = rO * 1.42;
+  ctx.fillStyle = pal.hAtom; ctx.strokeStyle = pal.hEdge; ctx.lineWidth = 1;
+  for (const d of [dir1, dir2]){
+    ctx.beginPath(); ctx.arc(x + Math.cos(d) * dH, y + Math.sin(d) * dH, rH, 0, TAU);
+    ctx.fill(); ctx.stroke();
+  }
+  ctx.fillStyle = pal.oAtom; ctx.strokeStyle = pal.oEdge;
+  ctx.beginPath(); ctx.arc(x, y, rO, 0, TAU); ctx.fill(); ctx.stroke();
+}
+
+function drawIce(dt){
+  const { ctx, w, h } = fit(cvIce);
+  if (w !== iceP.w || h !== iceP.h){ iceP.w = w; iceP.h = h; buildLattice(w, h); }
+  ctx.clearRect(0, 0, w, h);
+  const prog = 1 - state.f;
+
+  /* release molecules whose turn has come */
+  for (const s of iceP.sites){
+    if (s.frozen && prog > s.order){
+      s.frozen = false;
+      const m = makeMol(s.sx, s.sy);
+      m.a = s.h1 + 0.91;
+      iceP.liquid.push(m);
+    }
+  }
+  /* neighbouring melted ice flows in: same frame gradually holds +9% molecules */
+  if (iceP.liquid.length > 0){
+    const target = Math.round(iceP.K * (1 + (EXPAND - 1) * prog)) - iceP.K;
+    if (iceP.extras < target){
+      iceP.extras++;
+      const side = Math.floor(Math.random() * 4), pad = iceP.b * 0.5;
+      const m = makeMol(
+        side === 0 ? pad : side === 1 ? w - pad : pad + Math.random() * (w - 2 * pad),
+        side < 2 ? pad + Math.random() * (h - 2 * pad) : (side === 2 ? pad : h - pad));
+      m.vx = (w / 2 - m.x) * 0.4; m.vy = (h / 2 - m.y) * 0.4;
+      iceP.liquid.push(m);
+    }
+  }
+
+  const ampBase = (iceP.b * (0.030 + 0.028 * state.T / 40)) * MOTION + 0.4;
+  for (const s of iceP.sites){
+    if (!s.frozen) continue;
+    const boost = 1 + 1.6 * Math.max(0, 1 - Math.max(0, s.order - prog) * 10);
+    const amp = ampBase * (prog > 0 ? boost : 1);
+    s.sx = s.x + Math.sin(state.t * s.w1 + s.p1) * amp;
+    s.sy = s.y + Math.cos(state.t * s.w2 + s.p2) * amp;
+  }
+
+  /* hydrogen bonds */
+  ctx.setLineDash([3, 3]); ctx.lineWidth = 1.4; ctx.strokeStyle = pal.bond;
+  for (const [a, b_] of iceP.edges){
+    const A = iceP.sites[a], B = iceP.sites[b_];
+    if (!A.frozen || !B.frozen) continue;
+    const alpha = prog <= 0 ? 0.7
+      : 0.7 * Math.max(0.08, Math.min(1, (Math.min(A.order, B.order) - prog) * 9 + 0.25));
+    ctx.globalAlpha = alpha;
+    ctx.beginPath(); ctx.moveTo(A.sx, A.sy); ctx.lineTo(B.sx, B.sy); ctx.stroke();
+  }
+  ctx.globalAlpha = 1; ctx.setLineDash([]);
+
+  stepLiquid(iceP.liquid, w, h, dt, iceP.b, iceP.sites);
+
+  for (const s of iceP.sites) if (s.frozen) drawMolAt(ctx, s.sx, s.sy, s.h1, s.h2, iceP.b);
+  for (const m of iceP.liquid) drawMolAt(ctx, m.x, m.y, m.a - 0.91, m.a + 0.91, iceP.b);
+
+  const count = iceP.K + iceP.extras;
+  chipText(ctx, w - 8, 15, count + ' H₂O' + (iceP.extras ? ' (+' + iceP.extras + ')' : ''), 'right');
+}
+
+function drawWater(dt){
+  const { ctx, w, h } = fit(cvWat);
+  if (w !== watP.w || h !== watP.h || watP.N !== Math.max(4, Math.round(iceP.K * EXPAND))){
+    watP.w = w; watP.h = h; buildWater(w, h);
+  }
+  ctx.clearRect(0, 0, w, h);
+  stepLiquid(watP.mols, w, h, dt, watP.b, null);
+  for (const m of watP.mols) drawMolAt(ctx, m.x, m.y, m.a - 0.91, m.a + 0.91, watP.b);
+  chipText(ctx, w - 8, 15, watP.N + ' H₂O · same area', 'right');
+}
+
+/* ================= DOM wiring ================= */
+const btnMelt = $('btnMelt'), btnReset = $('btnReset');
+const tempSlider = $('tempSlider'), tempVal = $('tempVal');
+const statusLine = $('statusLine'), meltFill = $('meltFill'), meltLbl = $('meltLbl');
+const iceRho = $('iceRho');
+
+function syncButtons(){
+  if (state.melted){ btnMelt.textContent = '❄ freeze a new cube'; return; }
+  btnMelt.textContent = state.melting ? '⏸ pause'
+    : state.f < 1 ? '▶ resume melting' : '▶ start melting';
+}
+btnMelt.addEventListener('click', () => {
+  if (state.melted){ resetSim(); return; }
+  state.melting = !state.melting;
+  syncButtons();
+});
+btnReset.addEventListener('click', resetSim);
+tempSlider.addEventListener('input', () => {
+  state.T = +tempSlider.value;
+  tempVal.textContent = state.T + ' °C';
+});
+function resetSim(){
+  state.f = 1; state.melting = false; state.melted = false;
+  stage.cy = NaN; stage.vy = 0; stage.plumes.length = 0; stage.ripples.length = 0;
+  for (const s of iceP.sites) s.frozen = true;
+  iceP.liquid.length = 0; iceP.extras = 0;
+  syncButtons();
+}
+
+function updateDom(){
+  const pct = Math.round(state.f * 100);
+  meltFill.style.width = (state.f * 100).toFixed(1) + '%';
+  meltLbl.textContent = state.melted ? 'all melted — 0% ice' : 'ice left ' + pct + '%';
+  if (state.melted){
+    statusLine.textContent = 'all melted: same molecules, tighter packing — level unchanged ✓';
+    iceRho.textContent = 'now liquid · 0.9998 g/cm³ ✓';
+    iceRho.classList.add('done');
+  } else {
+    iceRho.classList.remove('done');
+    iceRho.textContent = 'solid · 0.9167 g/cm³' + (state.f < 1 ? ' · ' + Math.round((1 - state.f) * 100) + '% melted' : '');
+    if (state.melting)
+      statusLine.textContent = state.T > 0
+        ? 'melting: the cube stays at 0 °C while its bonds break (water at ' + state.T + ' °C)'
+        : 'at exactly 0 °C ice and water coexist — slide the temperature up';
+    else statusLine.textContent = state.f < 1
+      ? 'paused mid-melt — the lattice holds where it hasn’t collapsed yet'
+      : 'floating at rest — drag the cube, push it under, let go';
+  }
+}
+
+/* ================= main loop ================= */
+let last = performance.now(), lastDom = 0;
+function frame(now){
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  state.t += dt;
+  meltStep(dt);
+  drawStage(dt);
+  drawIce(dt);
+  drawWater(dt);
+  if (now - lastDom > 200){ lastDom = now; updateDom(); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+<!-- ARTIFACT-END -->
+</body>
+</html>

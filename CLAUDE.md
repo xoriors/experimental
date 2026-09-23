@@ -27,6 +27,14 @@ documented in the README: the ephemeris-meridian correction to `mu`, and the fac
 "eclipse magnitude" for a central eclipse is the Moon/Sun diameter ratio rather than the standard
 magnitude formula.
 
+### formal-verification — working demo
+
+TypeScript library (`src/`: merge sort, binary search, run-length encoding, a ledger) tested against Lean 4 reference models with machine-checked proofs (`lean/Verified/`, Lean core only, no Mathlib). The models compile to a native oracle (`lean/Oracle.lean`, line protocol over stdin/stdout); fast-check differential tests require the TypeScript to match it exactly, and `mutants/` holds deliberate bugs the oracle must catch.
+
+- `pnpm test` runs `lake build` first (needs elan on PATH). The build is the proof check: `warningAsError` turns any `sorry` into a failure, and `lean/Audit.lean` fails it on `native_decide` or custom axioms.
+- The guards in `Ledger.transfer` run in the same order as in `src/ledger.ts`, and the tests compare the exact error. Change one side and you must change the other.
+- The Lean ledger models `Number.MAX_SAFE_INTEGER` (`maxSafe`). Keep the generators in `tests/arbitraries.ts` producing values at and past 2^53, and keep `tests/generators.test.ts` passing so every branch stays covered.
+
 ### llm-git-conflict-resolve — working prototype
 
 LLM-assisted git merge-conflict resolution driven by semantic intent (commit messages + three-way diff) rather than textual diffs. Python 3 stdlib only.

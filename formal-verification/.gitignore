@@ -1,0 +1,3 @@
+node_modules/
+# Lake build output: .olean files and the compiled oracle
+lean/.lake/

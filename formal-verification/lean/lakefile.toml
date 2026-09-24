@@ -1,0 +1,20 @@
+name = "verified"
+version = "0.1.0"
+defaultTargets = ["Verified", "Audit", "oracle"]
+
+[leanOptions]
+autoImplicit = false
+# A `sorry` is a warning in Lean. Promote warnings to errors so an unfinished
+# proof fails the build (and therefore `pnpm test`) instead of slipping through.
+warningAsError = true
+
+[[lean_lib]]
+name = "Verified"
+
+# Fails the build if any theorem leans on `sorry`, `native_decide` or a custom axiom.
+[[lean_lib]]
+name = "Audit"
+
+[[lean_exe]]
+name = "oracle"
+root = "Oracle"

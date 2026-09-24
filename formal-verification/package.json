@@ -1,0 +1,20 @@
+{
+  "name": "formal-verification",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A TypeScript library tested against Lean 4 models that carry machine-checked proofs",
+  "scripts": {
+    "lean:build": "cd lean && lake build",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm lean:build && vitest run",
+    "test:watch": "vitest",
+    "oracle": "./lean/.lake/build/bin/oracle"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "fast-check": "^4.10.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}

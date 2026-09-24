@@ -1,0 +1,5 @@
+# native builds: `bend main.bend -o main` (and `main.c` / `main.js` / `main.gpu`)
+/main
+/main.c
+/main.js
+/main.gpu

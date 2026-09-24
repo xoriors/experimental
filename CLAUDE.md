@@ -39,6 +39,10 @@ LLM-assisted git merge-conflict resolution driven by semantic intent (commit mes
 
 Single-file, dependency-free canvas simulator (`ice-cube-simulator/index.html`) of why ice floats and how it melts: draggable buoyancy tank (91.7 % / 8.3 % split), hexagonal-lattice vs liquid molecular views tied to the melt animation, exact densities (ice Ih 0.9167 vs water 0.9998 g/cm³ at 0 °C). Open the file directly — no build step. The physics constants are load-bearing and documented in its README; keep them exact if you touch it.
 
+### formal-verification/bend — working demo
+
+A small verified, parallel tree library in [Bend 2](https://bend-lang.com/) (`tree.bend`), following the site's LAWS/PROOF convention: `LAWS.bend` is the human-owned spec (don't edit it to make a proof pass), `PROOF.bend` proves each law as `def Laws.<name>` plus helper lemmas. Install with `curl -fsSL https://bend-lang.com/install.sh | sh` (to `~/.bend/bin`), then from `formal-verification/bend/`: `bend PROOF.bend` must print `All terms check.`; `bend main.bend` runs it; `bend main.bend -o main && ./main 20` builds natively. Read `bend guide` before writing Bend; its own `AGENTS.md` and README cover the gotchas (affine proof terms, rewrite direction).
+
 ### ansible — working infra example
 
 Tutorial-scale Ansible + Docker playground: one container runs Apache, another runs the playbook against it. Run with `docker-compose up --build` from `ansible/`.

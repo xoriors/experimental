@@ -27,7 +27,10 @@
 # Environment:
 #   TLA2TOOLS_JAR   use this jar instead of the pinned download
 #   TLC_WORKERS     TLC worker threads (default 1: breadth-first on one worker
-#                   gives the shortest, reproducible counterexample)
+#                   gives the shortest safety/deadlock counterexample)
+#   TLC_FP          TLC fingerprint function index (default 0). TLC otherwise picks
+#                   one at random per run, which changes the liveness lassos it
+#                   prints; pinning it makes every counterexample reproducible
 #   TLC_JAVA_OPTS   extra JVM options (default: -XX:+UseParallelGC)
 set -euo pipefail
 
@@ -41,6 +44,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOLS_DIR="${ROOT}/.tools"
 JAR="${TLA2TOOLS_JAR:-${TOOLS_DIR}/tla2tools-${TLA_VERSION}.jar}"
 WORKERS="${TLC_WORKERS:-1}"
+FP="${TLC_FP:-0}"
 read -r -a JAVA_OPTS <<<"${TLC_JAVA_OPTS:--XX:+UseParallelGC}"
 
 die() { echo "tla.sh: $*" >&2; exit 2; }
@@ -79,7 +83,9 @@ run_tlc() {
   # TLC unpacks its standard modules (Naturals.tla, ...) into java.io.tmpdir;
   # a private one keeps concurrent runs from overwriting each other's mid-parse.
   mkdir -p "$meta/tmp"
-  ( cd "$dir" && java_tla -Djava.io.tmpdir="$meta/tmp" tlc2.TLC -workers "$WORKERS" -metadir "$meta" \
+  local fp=(-fp "$FP") arg
+  for arg in "$@"; do [[ "$arg" == -fp ]] && fp=(); done  # an explicit -fp wins
+  ( cd "$dir" && java_tla -Djava.io.tmpdir="$meta/tmp" tlc2.TLC -workers "$WORKERS" "${fp[@]}" -metadir "$meta" \
       -config "$(basename "$cfg")" "$@" "$(basename "$spec")" ) || rc=$?
   rm -rf "$meta"
   return "$rc"
@@ -212,5 +218,5 @@ case "$cmd" in
   pcal) fetch; pcal "$@" ;;
   pcal-check) fetch; pcal_check "$@" ;;
   check) fetch; check "$@" ;;
-  *) sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; [[ -z "$cmd" || "$cmd" == -h || "$cmd" == --help ]] ;;
+  *) sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'; [[ -z "$cmd" || "$cmd" == -h || "$cmd" == --help ]] ;;
 esac

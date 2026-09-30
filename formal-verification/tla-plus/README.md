@@ -1,16 +1,16 @@
 # tla-plus: model-checking real concurrent code
 
-Two small concurrent programs, one in **Rust** and one in **Go**. Each has a bug that passes its tests,
-a TLA+ specification that finds the bug in about a second, a fix that the model checker then
-verifies, and a bridge from the specification back to the running code, so the green result is
-about the code and not only about a drawing of it.
+Two small concurrent programs, one in **Rust** and one in **Go**. Each has a bug that the usual tests
+pass. Each has a TLA+ specification in which the TLC model checker finds that bug in about a second,
+a fix that TLC then verifies, and a bridge from the specification back to the running code. That
+bridge is what makes the green result about the code, and not only about a drawing of it.
 
 | | [`rust-blocking-queue/`](./rust-blocking-queue/) | [`go-worker-pool/`](./go-worker-pool/) |
 | --- | --- | --- |
 | The code | A bounded blocking queue from `Mutex` + `Condvar`, several producers and consumers | A worker pool whose `Submit` races `Shutdown` |
 | The bug | One `Condvar` for both sides + `notify_one`: a producer can wake a producer. The wakeup is lost and every thread ends up asleep (**deadlock**) | Check `closed`, unlock, *then* send: `Shutdown` slips in between and closes the channel (**panic: send on closed channel**). A second design built on `select` never panics but **loses accepted jobs** |
-| TLC's counterexample | 8 steps, 22 distinct states | 4 steps, 77 distinct states |
-| The fix, verified | Two `Condvar`s (`not_full` / `not_empty`): no deadlock, no lost wakeup, system-wide progress, with spurious wakeups modelled, up to 10 threads | Shutdown waits for in-flight senders before `close`: no panic, every accepted job handled exactly once, no deadlock, no goroutine leak |
+| TLC's counterexample | 8 steps, after exploring 22 distinct states | 4 steps, after exploring 77 distinct states |
+| The fix, verified | Two `Condvar`s (`not_full` / `not_empty`): no deadlock, no lost wakeup, system-wide progress, with spurious wakeups modelled; up to 10 threads (81,767 states) | `Shutdown` waits for in-flight senders before `close`: no panic, every accepted job handled exactly once, no deadlock, no goroutine leak; up to 4 clients, 2 `Shutdown` callers and 2 workers (137,224 states) |
 | Spec style | Plain TLA+ actions | PlusCal (an algorithm language that compiles to TLA+) |
 | Spec ↔ code bridge | **Trace validation**: the real queue logs its critical sections and TLC checks that the log is a behaviour of the spec | **Counterexample replay**: test hooks force TLC's interleaving on the real pool, which really panics (buggy) or doesn't (fixed) |
 
@@ -24,21 +24,24 @@ make all       # Rust + Go test suites, then every TLC model (downloads tla2tool
 Requirements: Java 11+ (for TLC), Rust with edition 2024 support (1.85+), Go 1.24+, `make`, `curl`
 and `bash`. No crates or Go modules beyond the standard libraries.
 
-Each project also has its own `make` targets (`make trace` / `make demo` in Rust, `make replay` /
-`make demo` in Go); see its README.
+Each project also has its own `make` targets (`make trace`, `make demo` and `make sweep` in Rust;
+`make replay` and `make demo` in Go); see its README.
 
 ## Why model checking for concurrency
 
-A test runs **one** interleaving of the threads, whichever the scheduler picked that time. A stress
-test runs a few million, all drawn from the same few habits of the same scheduler. Both bugs above
-survive that:
+A test runs **one** interleaving of the threads: whichever the scheduler picked that time. A stress
+test runs many, but all of them come from the same few habits of the same scheduler:
 
 - The Rust deadlock needs more threads than twice the queue's capacity, *and* a particular order of
-  wakeups. With 4 producers, 3 consumers and capacity 3, the real queue did not hang once in a
-  thousand stress trials. TLC found a 46-step path to the deadlock in that configuration in about
-  a second.
-- The Go panic needs `Shutdown` to run inside a window of a few instructions. Stress runs with an
-  idle queue hit it in under 1% of runs.
+  wakeups. With 4 producers, 3 consumers and capacity 3, the real queue hung in at most 5 of 1,000
+  stress trials, often in none. With 5 producers, 4 consumers and capacity 4 it never hung in 3,000.
+  TLC finds the 46-step path to the first deadlock in about a second, and the 77-step path to the
+  second in about nine seconds.
+- The Go panic needs `Shutdown` to land in a window a few instructions wide. Stress runs hit it in
+  under 1% of runs with an idle queue, and in roughly a fifth to a third of runs with a full one.
+  A racing test *written for this bug* catches it, but someone first has to guess that shape of
+  test. TLC derives the 4-step schedule from the design alone. It then proves that the fix is
+  safe on every interleaving of the model, which no amount of testing can do.
 
 TLC, the TLA+ model checker, does not sample. It enumerates **every** reachable state of a finite
 model, for example 2 producers, 1 consumer and capacity 1, and checks the properties in each one. It
@@ -61,7 +64,7 @@ Every model (`.cfg`) declares what TLC must report for it:
 ```tla
 \* SPEC: BlockingQueue.tla
 \* EXPECT: deadlock
-\* WHY: headline: 2 producers, 1 consumer, capacity 1; a producer wakes the other producer
+\* WHY: the smallest deadlock: 2 producers + 1 consumer > 2 x capacity 1; TLC's 8-step trace is the headline counterexample
 ```
 
 `check` fails whenever the observed outcome is different from the declared one. That applies in both
@@ -101,8 +104,8 @@ nothing about the program. The two projects show two complementary techniques fo
 
 - **Bounded models.** TLC proves the properties for the constants in each `.cfg`, not for every
   thread count. The small-scope hypothesis says most concurrency bugs show up with a few threads,
-  and here both bugs need at most 3 threads, but that is an empirical rule, not a proof. TLAPS
-  (the TLA+ proof system) or Apalache (a symbolic checker) can go further.
+  and here both bugs need only three threads or goroutines. But that is an empirical rule, not a
+  proof. TLAPS (the TLA+ proof system) or Apalache (a symbolic checker) can go further.
 - **Abstraction.** Each spec models one critical section, or one channel operation, as a single step,
   and each README argues why that neither hides nor invents bugs. The Go project also machine-checks
   that argument with a refinement.

@@ -38,7 +38,8 @@ test runs many, but all of them come from the same few habits of the same schedu
   TLC finds the 46-step path to the first deadlock in about a second, and the 77-step path to the
   second in about nine seconds.
 - The Go panic needs `Shutdown` to land in a window a few instructions wide. Stress runs hit it in
-  under 1% of runs with an idle queue, and in roughly a fifth to a third of runs with a full one.
+  1–2% of runs with an idle queue, and in a fifth to two thirds of runs with a full one, depending
+  on machine load.
   A racing test *written for this bug* catches it, but someone first has to guess that shape of
   test. TLC derives the 4-step schedule from the design alone. It then proves that the fix is
   safe on every interleaving of the model, which no amount of testing can do.

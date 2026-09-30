@@ -1,0 +1,8 @@
+[package]
+name = "blocking-queue"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "A bounded blocking queue (Mutex + Condvar) in a buggy and a fixed variant, verified with TLA+"
+
+[dependencies]

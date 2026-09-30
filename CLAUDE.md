@@ -27,6 +27,18 @@ documented in the README: the ephemeris-meridian correction to `mu`, and the fac
 "eclipse magnitude" for a central eclipse is the Moon/Sun diameter ratio rather than the standard
 magnitude formula.
 
+### formal-verification/tla-plus — working demos (Rust + Go, TLA+)
+
+Two concurrent programs checked with the TLC model checker. Each has a buggy variant, a fixed variant, and TLA+ specs of both.
+`rust-blocking-queue/` is a `Mutex`+`Condvar` queue, specified in plain TLA+ and bridged to the code by trace validation.
+`go-worker-pool/` is a worker pool with `Submit` racing `Shutdown`, specified in PlusCal and bridged by counterexample replay through `testHook` variables.
+
+- `make all` from `formal-verification/tla-plus/` runs both test suites, then every model. Needs Java 11+, Rust, Go 1.24.
+- `tools/tla.sh` downloads a sha256-pinned `tla2tools.jar` (v1.7.4) into the gitignored `.tools/`, and `tools/tla.sh check` runs every `.cfg`.
+- **Every `.cfg` declares `\* SPEC:` and `\* EXPECT:` headers**, and `check` fails when TLC's outcome differs, in either direction. Buggy designs, mutations and reachability probes are *expected* to fail. Keep those models failing: they are what shows the passing ones aren't vacuous.
+- After editing a PlusCal spec, re-translate it with `tools/tla.sh pcal <spec>`. `make verify` runs `pcal-check` and fails on a stale translation.
+- The READMEs quote observed TLC output and state counts. Re-run the models and update those numbers whenever you touch a spec.
+
 ### llm-git-conflict-resolve — working prototype
 
 LLM-assisted git merge-conflict resolution driven by semantic intent (commit messages + three-way diff) rather than textual diffs. Python 3 stdlib only.

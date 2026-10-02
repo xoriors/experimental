@@ -1,0 +1,3 @@
+# cargo build output, including the fresh logs `make trace` writes to target/traces/
+/target/
+Cargo.lock

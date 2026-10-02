@@ -1,0 +1,8 @@
+# Pinned tla2tools.jar download and TLC logs (tools/tla.sh)
+.tools/
+# TLC scratch output when run by hand
+states/
+*_TTrace_*.tla
+*_TTrace_*.bin
+# PlusCal translator backups
+*.old

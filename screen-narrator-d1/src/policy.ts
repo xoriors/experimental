@@ -52,14 +52,17 @@ export const NO_URGENCY_LEVEL: Urgency = 2;
 /** Urgency score (expected value over the levels) → level. */
 export const urgencyLevel = (score: number): Urgency => nearestLevel(score, TOP_URGENCY) as Urgency;
 
+/** Two decimals for the decision log; anything but a finite number (a malformed answer) reads n/a instead of throwing. */
+const f2 = (x: number | undefined): string => (typeof x === "number" && Number.isFinite(x) ? x.toFixed(2) : "n/a");
+
 export function decide(p: Prediction, t: Thresholds = DEFAULT_THRESHOLDS): Decision {
 	const announce = p.announce ?? 0;
 	if (announce < t.announce)
-		return { action: "drop", narratable: false, speech: "", reason: `P(announce)=${announce.toFixed(2)} < ${t.announce}` };
+		return { action: "drop", narratable: false, speech: "", reason: `P(announce)=${f2(announce)} < ${t.announce}` };
 
 	const action = URGENCY_LEVELS[p.urgency ? urgencyLevel(p.urgency.score) : NO_URGENCY_LEVEL];
 	if (action === "drop")
-		return { action, narratable: false, speech: "", reason: `announce but urgency ${p.urgency?.score.toFixed(2)} → drop` };
+		return { action, narratable: false, speech: "", reason: `announce but urgency ${f2(p.urgency?.score)} → drop` };
 
 	const kind = p.kind?.choice ?? "cosmetic";
 	const kindP = p.kind?.probabilities[kind] ?? 0;
@@ -72,6 +75,6 @@ export function decide(p: Prediction, t: Thresholds = DEFAULT_THRESHOLDS): Decis
 		action,
 		narratable: (action === "interrupt" || action === "queue") && !sensitive,
 		speech,
-		reason: `P(announce)=${announce.toFixed(2)}, kind=${kind} (${kindP.toFixed(2)}), urgency=${p.urgency?.score.toFixed(2) ?? "n/a"}`,
+		reason: `P(announce)=${f2(announce)}, kind=${kind} (${f2(kindP)}), urgency=${f2(p.urgency?.score)}`,
 	};
 }

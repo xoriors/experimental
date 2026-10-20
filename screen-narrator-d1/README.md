@@ -29,10 +29,11 @@ before/after pair of screenshots this project asks it:
 - **Main action?** Which button is the one the user is expected to press next?
 - **True?** Is a generated spoken description actually supported by the screen (a hallucination check)?
 
-The same questions go to **d1** (Liquid's smaller model), a **pixel diff** ("speak if enough pixels changed",
-the naive baseline) and a **Claude vision model** asked for the same answers as JSON (built, not run yet: see
-[What's done](#whats-done-and-whats-next)). The screens are six small
-fake apps with scripted changes, so the right answer is known for every pair. Details:
+The same questions go to **d1** (Liquid's smaller model) and a **Claude vision model** asked for the same answers
+as JSON (built, not run yet: see [What's done](#whats-done-and-whats-next)). A **pixel diff** ("speak if enough
+pixels changed") is the naive baseline for the first question only: it can say whether something changed, not
+what or how urgent. The screens are six small fake apps with scripted changes, so the right answer is known for
+every pair. Details:
 [the question set](#what-we-test-the-question-set), [Dataset](#dataset-synthetic-screens-labels-known-by-construction),
 [Baselines](#baselines-what-helps-is-measured-against).
 
@@ -154,6 +155,7 @@ Text version of the diagram:
 ```bash
 pnpm install
 cp .env.example .env            # then set LIQUID_API_KEY (and optionally ANTHROPIC_API_KEY)
+pnpm exec playwright install chromium   # once: the browser capture drives
 pnpm capture --clean            # 142 synthetic before/after pairs → data/pairs/ (~17 s, Playwright)
 pnpm bench --dry-run            # what it would ask, and the estimated cost
 pnpm bench                      # d1-ultra, d1, pixel-diff on every pair → runs/<id>/results.json
@@ -333,7 +335,7 @@ Done:
 
 - Fixtures, capture, all six questions, the d1 / d1-ultra / pixel-diff backends, the cached runner, metrics,
   the report and live mode.
-- 136 offline tests.
+- 138 offline tests.
 - A full real run (above).
 - Live mode's `/api/decide` checked with a real d1-ultra call (a test dialog → "interrupt: Dialog opened").
 

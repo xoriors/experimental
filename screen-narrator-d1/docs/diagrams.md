@@ -8,6 +8,10 @@ so no font is embedded in the SVGs):
 pnpm diagrams
 ```
 
+`pptr.json` points at `/usr/bin/google-chrome-stable`. On a machine with Chrome or Chromium elsewhere, change its
+`executablePath` (or delete the file and the `-p docs/pptr.json` flag, and drop `PUPPETEER_SKIP_DOWNLOAD=1` so
+mermaid-cli downloads its own browser).
+
 ## Pipeline: capture → bench → report, and live mode
 
 ![Pipeline](pipeline.svg)

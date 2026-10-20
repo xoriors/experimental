@@ -1,0 +1,11 @@
+flowchart LR
+    F["fixtures/*.html<br/>6 fake apps, 17 transitions"] -->|pnpm capture| P["data/pairs<br/>142 before/after PNGs + labels"]
+    P -->|pnpm bench| B{backends}
+    B --> U[d1-ultra]
+    B --> D[d1]
+    B --> X[pixel diff]
+    B --> V[Claude VLM]
+    U & D & X & V --> R["runs/id/results.json"]
+    R -->|pnpm report| H["report.html<br/>accuracy, calibration, noise, cost"]
+    S[shared screen] -->|pnpm live| L[localhost page]
+    L -->|d1-ultra| T["speaks: interrupt / queue / mention / drop"]

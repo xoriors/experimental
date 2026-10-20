@@ -1,0 +1,14 @@
+flowchart TD
+    A["Prediction for one before/after pair"] --> B{"P(announce) at least<br/>thresholds.announce?"}
+    B -->|no| DROP1[drop: stay silent]
+    B -->|yes| C{"urgency level<br/>(score rounded, 0 to 3)"}
+    C -->|0| DROP2[drop: stay silent]
+    C -->|1| M["mention: keep for 'What's new?'"]
+    C -->|2| Q[queue: speak after current speech]
+    C -->|3| I[interrupt: speak now]
+    M & Q & I --> K{"kind probability at least<br/>thresholds.confident?"}
+    K -->|no| H["hedge: 'Probably: dialog opened'"]
+    K -->|yes| S["plain: 'Dialog opened'"]
+    H & S --> SEN{"P(sensitive) at least<br/>thresholds.sensitive?"}
+    SEN -->|yes| NO["append 'Sensitive content, not read aloud'<br/>no generated detail"]
+    SEN -->|no| NAR["if queue or interrupt: narratable,<br/>optional Claude detail, spoken only if fact-checked"]

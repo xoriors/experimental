@@ -28,6 +28,73 @@ backend settings, question wording and image bytes, so re-runs are free until so
 `pnpm report --sample` renders the layout from synthetic answers. `pnpm tsx src/smoke.ts` makes one tiny real
 call to each Liquid model.
 
+## How it works
+
+![Pipeline: capture, bench, report, and live mode](docs/pipeline.svg)
+
+There are two ways to use it: an offline **benchmark** that scores the models on known answers, and a **live
+mode** that shows what a narrator built on d1-ultra would actually say. The Mermaid sources for every diagram
+are in [`docs/`](docs/diagrams.md).
+
+**1. Capture** (`pnpm capture`)
+- Six small fake web apps (`fixtures/*.html`: mail, settings, chat, shop, bank, news) and 17 scripted
+  changes (`fixtures/scenarios.ts`): a dialog opens, an error appears, a toast slides in, a card is hovered,
+  a clock ticks, and so on.
+- Playwright opens each app, takes a screenshot, makes the change, takes a second screenshot. Because the
+  script made the change, the right answer is known ("dialog opened → announce, interrupt now").
+- Each change runs in 6 variants (light/dark × 3 screen sizes, with density and language rotated), plus a
+  40-step "2 minutes in the mail app" session for the noise metric: **142 labelled pairs** in `data/pairs/`.
+
+**2. Benchmark** (`pnpm bench`)
+- Every backend gets the same before/after pair and the same questions from `src/questions.ts`: should a
+  blind user hear about this? What kind of change? How urgent? Is private information visible? Which button
+  is the main action? Is this spoken description true?
+- Backends: **d1-ultra** (under test), **d1** (Liquid's smaller model), **pixel diff** ("speak if enough pixels
+  changed", free) and a **Claude VLM** asked the same questions as JSON.
+- Answers go to `runs/<id>/results.json`. Paid answers are cached, so re-runs cost nothing until the question
+  wording, the images or a backend's settings change.
+
+**3. Report** (`pnpm report`)
+- One self-contained HTML page per run: accuracy, **calibration** (does "90 % sure" mean right 90 % of the
+  time?), false interrupts, how chatty each backend would be over the session, cost and latency, and a
+  browser of every pair with each backend's answer.
+
+What the benchmark is designed to expose:
+
+```text
+pair: shop hover card (30–46 % of pixels change, purely cosmetic)
+  pixel diff → announce   ✗
+  d1-ultra   → stay quiet ✓
+
+pair: "Settings saved" toast (1–4 % of pixels)
+  pixel diff → stay quiet ✗ (on most variants)
+  d1-ultra   → announce, queue ✓
+```
+
+### From probabilities to speaking
+
+d1-ultra only returns probabilities. `src/policy.ts` turns them into what a narrator does, and both the
+benchmark's noise metric and live mode use it:
+
+![Decision policy](docs/decision.svg)
+
+- **drop:** stay silent. **mention:** keep it for when the user asks "What's new?". **queue:** say it after
+  the current speech. **interrupt:** say it now.
+- When the model isn't sure what kind of change it is, the phrase is hedged ("Probably: dialog opened").
+- A screen that looks sensitive is announced but never described.
+
+### Live mode
+
+![Live mode: one change from screen to speech](docs/live-mode.svg)
+
+- The page watches a shared tab or screen and does a cheap local comparison every 500 ms. It only asks
+  d1-ultra when something actually moved and the screen has settled, which keeps the cost low.
+- The local server holds the API keys, asks Liquid the four core questions, applies the policy and returns the
+  decision. The page speaks it with the browser's text-to-speech and logs why it spoke or stayed quiet.
+- With narration on, Claude writes one detailed sentence ("Dialog: Delete 3 messages? Buttons Cancel and
+  Delete") and d1-ultra fact-checks it against the screen. The detail is spoken only if it passes; a
+  rejected one is shown struck through in the log.
+
 ## First results (run 20261019-142237)
 
 142 pairs (102 transition pairs and a 40-frame session), all six questions, synthetic fixtures. 130 pairs have a
@@ -207,6 +274,7 @@ billed again for every question, but measured `usage.input_tokens` counts them *
 ```
 screen-narrator-d1/
   .env.example         LIQUID_API_KEY, ANTHROPIC_API_KEY, NARRATOR_VLM_MODEL / _EFFORT, PIXEL_DIFF_THRESHOLD, …
+  docs/                Mermaid diagrams (*.mmd) + pre-rendered *.svg, embedded in docs/diagrams.md
   fixtures/            6 HTML apps (+ common.js/css) and scenarios.ts: transitions, variants, labels, the session
   src/
     types.ts           the shared contracts: Pair, Prediction, PairResult, RunResult

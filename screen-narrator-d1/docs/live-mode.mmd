@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant Page as Live page
+    participant Server as Local server
+    participant Liquid as Liquid d1-ultra
+    participant Claude as Claude narrator
+    loop every sample interval, default 500 ms
+        Page->>Page: grab frame, compare 64x40 grayscale with last stable frame
+    end
+    Page->>Page: change detected, wait until the frame settles
+    Page->>Server: POST /api/decide with before and after JPEG
+    Server->>Liquid: core questions announce, kind, urgency, sensitive
+    Liquid-->>Server: probabilities
+    Server->>Server: toPrediction then decide with the thresholds
+    Server-->>Page: prediction, decision, latency, cost
+    Page->>Page: speak, queue, keep for What's new, or stay silent
+    opt narration on and decision is narratable
+        Page->>Server: POST /api/narrate with the after frame
+        Server->>Claude: describe the main change in one sentence
+        Claude-->>Server: narration
+        Server->>Liquid: is every claim supported by the screen
+        Liquid-->>Server: P supported
+        Server-->>Page: narration, speak flag, cost
+        Page->>Page: speak the detail only if the speak flag is set
+    end

@@ -91,10 +91,12 @@ export function noulOf(answers: Record<string, unknown>, key: string): number | 
 export function toPrediction(answers: Record<string, unknown>): Prediction {
 	const a = answers as Answers;
 	const p: Prediction = {};
-	if (a.announce) p.announce = a.announce.noul;
+	// A malformed noul (null, a string) stays absent, so metrics skip it instead of scoring it as a confident "no".
+	const announce = noulOf(answers, "announce"), sensitive = noulOf(answers, "sensitive");
+	if (announce !== undefined) p.announce = announce;
 	if (a.kind) p.kind = { choice: a.kind.choice, probabilities: a.kind.probabilities };
 	if (a.urgency) p.urgency = { score: a.urgency.score, probabilities: a.urgency.probabilities };
-	if (a.sensitive) p.sensitive = a.sensitive.noul;
+	if (sensitive !== undefined) p.sensitive = sensitive;
 	if (a.primary) p.primary = { choice: a.primary.choice, probabilities: a.primary.probabilities };
 	const supported = noulOf(answers, "supportedTrue"), unsupported = noulOf(answers, "supportedFalse");
 	if (supported !== undefined && unsupported !== undefined) p.supported = { supported, unsupported };

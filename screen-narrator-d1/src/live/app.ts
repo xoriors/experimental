@@ -230,7 +230,11 @@ export function createApp(deps: LiveDeps) {
 				return json(res, 502, { error: message, ...usage });
 			}
 			const supported = noulOf(check.answers, "supported");
-			if (supported === undefined) return json(res, 502, { error: `${body.model} answered the fact-check without a probability`, ...usage });
+			if (supported === undefined) {
+				// The fact-check ran and was paid for, so its usage goes on the error too.
+				const checkUsage = { inputTokens: check.inputTokens, costUsd: liquidCostUsd(body.model, check.inputTokens) };
+				return json(res, 502, { error: `${body.model} answered the fact-check without a probability`, ...checkUsage, ...usage });
+			}
 			json(res, 200, {
 				narration: narration.text,
 				refused: false,

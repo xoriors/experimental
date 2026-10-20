@@ -148,7 +148,13 @@ export interface Verdict {
 	/** What the narrator would do with this answer (decide()); null on error. */
 	action: Action | null;
 	speech: string | null;
-	/** The narrator would speak (action is not drop). Errored or missing results are silence. */
+	/**
+	 * The narrator would surface it (action is not drop). Errored or missing results are silence.
+	 * DELIBERATE: `mention` counts, although live mode doesn't speak it until the user asks "What's new?". The noise
+	 * metric measures how much a backend puts in front of the user, and a What's-new entry is still one to wade
+	 * through; the published results (e.g. d1's 7.0/min) use this definition. To measure only spoken interrupts and
+	 * queued announcements instead, exclude "mention" here and update the README's First results table.
+	 */
 	said: boolean;
 	/** `said` disagrees with a clear announce label: a false or a missed announcement. False for ambiguous labels. */
 	saidWrongly: boolean;

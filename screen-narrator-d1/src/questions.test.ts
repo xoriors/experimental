@@ -19,6 +19,12 @@ describe("toPrediction", () => {
 		expect(toPrediction({ supportedTrue: { noul: 0.9 }, supportedFalse: { noul: "x" } }).supported).toBeUndefined();
 	});
 
+	it("leaves a malformed announce / sensitive answer absent rather than scoring it as 0", () => {
+		const p = toPrediction({ announce: { noul: null }, sensitive: { noul: Number.NaN } });
+		expect(p.announce).toBeUndefined();
+		expect(p.sensitive).toBeUndefined();
+	});
+
 	it("noulOf reads one yes-probability by key", () => {
 		expect(noulOf({ supported: { noul: 0.7 } }, "supported")).toBe(0.7);
 		expect(noulOf({ supported: { noul: Number.NaN } }, "supported")).toBeUndefined();

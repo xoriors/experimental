@@ -293,7 +293,7 @@ Done:
 
 - Fixtures, capture, all six questions, the d1 / d1-ultra / pixel-diff backends, the cached runner, metrics,
   the report and live mode.
-- 135 offline tests.
+- 136 offline tests.
 - A full real run (above).
 - Live mode's `/api/decide` checked with a real d1-ultra call (a test dialog → "interrupt: Dialog opened").
 

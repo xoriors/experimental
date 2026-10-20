@@ -5,7 +5,7 @@
 // - public/results.json: the raw run, for anyone who wants to re-score it.
 // Without a run id it publishes the run in runs/latest.
 import { fromRoot } from "./env.ts";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { computeMetrics } from "./metrics.ts";
 import { missingImages, renderReport, resolveRunId } from "./report.ts";
@@ -13,6 +13,18 @@ import type { RunResult } from "./types.ts";
 import { errorMessage, isEntryPoint } from "./util.ts";
 
 const OUT = fromRoot("public");
+const PAIRS_DIR = fromRoot("data", "pairs");
+
+/**
+ * Everything published is public, so a pair's image path must be a real PNG file inside data/pairs/: an edited or
+ * hand-written index could otherwise point at `.env` (or `../anything`, or a symlink out) and get it uploaded.
+ */
+export function assertPublishable(rel: string): void {
+	const abs = fromRoot(rel);
+	const inside = (p: string, dir: string) => p.startsWith(dir + path.sep);
+	if (!rel.endsWith(".png") || !inside(abs, PAIRS_DIR) || lstatSync(abs).isSymbolicLink() || !inside(realpathSync(abs), realpathSync(PAIRS_DIR)))
+		throw new Error(`refusing to publish ${rel}: only PNG files inside data/pairs/ are published`);
+}
 
 function main(argv: string[]): void {
 	const id = resolveRunId(argv.find((a) => !a.startsWith("--")));
@@ -21,10 +33,12 @@ function main(argv: string[]): void {
 	const run = JSON.parse(readFileSync(file, "utf8")) as RunResult;
 	const missing = missingImages(run);
 	if (missing.length) throw new Error(`${missing.length} screenshots are missing (e.g. ${missing[0]}): run \`pnpm capture\` first`);
+	const images = [...new Set(run.pairs.flatMap((p) => [p.before, p.after]))];
+	images.forEach(assertPublishable);
 
 	rmSync(OUT, { recursive: true, force: true });
 	let bytes = 0;
-	for (const rel of new Set(run.pairs.flatMap((p) => [p.before, p.after]))) {
+	for (const rel of images) {
 		const dest = path.join(OUT, rel);
 		mkdirSync(path.dirname(dest), { recursive: true });
 		copyFileSync(fromRoot(rel), dest);

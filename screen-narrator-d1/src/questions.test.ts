@@ -31,3 +31,13 @@ describe("toPrediction", () => {
 		expect(noulOf({}, "supported")).toBeUndefined();
 	});
 });
+
+describe("malformed urgency answers", () => {
+	it("leave urgency absent, so decide() treats them like a missing answer instead of throwing", async () => {
+		const { decide } = await import("./policy.ts");
+		const p = toPrediction({ announce: { noul: 0.9 }, urgency: { score: null, probabilities: {} } });
+		expect(p.urgency).toBeUndefined();
+		expect(decide(p).action).toBe("queue");
+		expect(() => decide({ announce: 0.9, urgency: { score: Number.NaN, probabilities: {} } })).not.toThrow();
+	});
+});

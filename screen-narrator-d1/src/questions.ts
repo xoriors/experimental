@@ -95,7 +95,8 @@ export function toPrediction(answers: Record<string, unknown>): Prediction {
 	const announce = noulOf(answers, "announce"), sensitive = noulOf(answers, "sensitive");
 	if (announce !== undefined) p.announce = announce;
 	if (a.kind) p.kind = { choice: a.kind.choice, probabilities: a.kind.probabilities };
-	if (a.urgency) p.urgency = { score: a.urgency.score, probabilities: a.urgency.probabilities };
+	// A score that isn't a finite number (null from a malformed answer) leaves urgency absent, like a missing answer.
+	if (a.urgency && Number.isFinite(a.urgency.score)) p.urgency = { score: a.urgency.score, probabilities: a.urgency.probabilities };
 	if (sensitive !== undefined) p.sensitive = sensitive;
 	if (a.primary) p.primary = { choice: a.primary.choice, probabilities: a.primary.probabilities };
 	const supported = noulOf(answers, "supportedTrue"), unsupported = noulOf(answers, "supportedFalse");

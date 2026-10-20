@@ -1,0 +1,5 @@
+# Upload only the built site (pnpm site → public/) and its config: no source, no package.json (so Vercel neither
+# installs nor builds), and never .env, data/ or runs/.
+/*
+!/public
+!/vercel.json

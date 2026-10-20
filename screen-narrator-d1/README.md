@@ -1,32 +1,86 @@
 # screen-narrator-d1
 
-A playground for testing whether Liquid AI's **d1-ultra** decision model can be the "brain" of a screen
-narrator for blind and low-vision users: it looks at what changed on screen and decides **whether to speak,
-what kind of thing happened, and how urgently** — and we measure how well it does that against simple
-baselines.
+Can Liquid AI's [**d1-ultra**](https://www.liquid.ai/blog/d1-ultra) decision model tell a screen narrator for
+blind and low-vision users **when to speak and when to stay quiet**? This project measures it on 142
+screen changes with known right answers, against simple baselines, and lets you hear it live on your own screen.
+
+**📊 Live results report: [screen-narrator-d1.vercel.app](https://screen-narrator-d1.vercel.app)**: every
+screenshot pair, every model's answer, calibration charts, cost and latency.
+
+## The problem
+
+A blind user hears their screen through a screen reader, and the screen never stops changing: a dialog opens,
+an error appears, a message arrives, but also a spinner turns, a clock ticks, the mouse highlights a card. A
+narrator that announces every change talks constantly and becomes noise; one that misses changes leaves the
+user stuck, unaware that a "Delete 3 messages?" dialog is waiting for them. Describing the screen is the easy
+half. The hard half is the decision: **is this change worth saying, what kind of change is it, and is it urgent
+enough to interrupt?**
+
+## What this tests
+
+That decision is exactly what d1-ultra is built for. It doesn't write text, it answers questions with
+**calibrated probabilities**: when it says 90 % sure, it should be right about 90 % of the time. So for every
+before/after pair of screenshots this project asks it:
+
+- **Announce?** Does a blind user need to be told about this change at all?
+- **What kind?** Dialog, error, notification, new page, new content, scroll, cosmetic, or nothing.
+- **How urgent?** Drop it, mention it when asked, say it next, or interrupt now.
+- **Sensitive?** Is a password, card number or private message visible, so it must not be read out?
+- **Main action?** Which button is the one the user is expected to press next?
+- **True?** Is a generated spoken description actually supported by the screen (a hallucination check)?
+
+The same questions go to **d1** (Liquid's smaller model), a **pixel diff** ("speak if enough pixels changed",
+the naive baseline) and a **Claude vision model** asked for the same answers as JSON (built, not run yet: see
+[What's done](#whats-done-and-whats-next)). The screens are six small
+fake apps with scripted changes, so the right answer is known for every pair. Details:
+[the question set](#what-we-test-the-question-set), [Dataset](#dataset-synthetic-screens-labels-known-by-construction),
+[Baselines](#baselines-what-helps-is-measured-against).
+
+## Results (run 20261019-142237)
+
+The full interactive version is the [live report](https://screen-narrator-d1.vercel.app). Brier score and ECE
+measure calibration (lower is better); AUROC measures how well the probabilities separate the two answers
+(1.0 is perfect).
+
+142 pairs (102 transition pairs and a 40-frame session), all six questions, synthetic fixtures. 130 pairs have a
+clear `announce` label; 12 are ambiguous and left out of the scores.
+
+| | d1-ultra | d1 | pixel diff |
+|---|---|---|---|
+| `announce` accuracy | **100 %** | 91.5 % | 83.1 % |
+| `announce` Brier / ECE | **0.012** / **0.073** | 0.069 / 0.106 | 0.156 / 0.169 |
+| AUROC | **1.00** | 0.99 | 0.86 |
+| Session: announcements/min (labelled: 3.0) | **3.0** (0 false, 0 missed) | 7.0 (9 false, 1 missed) | 4.0 (2 false) |
+| `kind` top-1 | **82.9 %** | 78.3 % | — |
+| `urgency` false / missed interrupts | 4.8 % / 19 % | 4.8 % / **7.7 %** | — |
+| `sensitive` accuracy | 95.8 % | 95.8 % | — |
+| `primary` / `supported` | 100 % / 100 % | 100 % / 100 % | — |
+| p50 latency (4 calls at a time) | 3.5 s | 2.9 s | 86 ms |
+| Cost for the whole run | $0.017 | price not published here | free |
+
+How to read this:
+
+- **The gate works on these fixtures.** d1-ultra separated "worth announcing" from "not" perfectly. It wasn't
+  fooled by large cosmetic changes (the hover card) or by small important ones (the toast), and it matched the
+  labelled rate exactly on the session. Pixel diff is about as good on the session only because most idle
+  frames there are byte-identical.
+- **d1-ultra's mistakes are defensible.** Every `kind` miss calls a near-invisible change (a spinner frame or a
+  clock tick, about 0.01 % of pixels) `none` instead of `cosmetic`. Its only `sensitive` misses are a partly masked
+  card number (`•••• 4242`), a label people could argue about. d1 instead missed the private chat messages.
+- **Benchmark latency is not live latency.** The table's 3.5 s p50 (16 s p95) is 4 concurrent requests with
+  full-size PNGs. Live mode sends one downscaled JPEG pair at a time, and a single call there took ~0.6 s.
+  For an "interrupt now" gate the live number is the one that matters, so measure it when you try screen
+  sharing.
+- **Urgency is the weakest part.** d1-ultra under-calls some interrupts (19 % missed). The rubric wording is the
+  first thing to tune.
+- **Caveat: these are synthetic, clean screens labelled by their author.** Treat 100 % as "the task is
+  learnable", not as a production number. Real, messy apps are the next test.
+- **Billing differs from the docs.** `usage.input_tokens` counted the images once per request (about 2.9k tokens
+  per pair), not once per question, so a full run cost under 2 cents.
 
 > **Status: working prototype.** Capture, benchmark, report and live mode all run. The Claude VLM baseline and
 > narrator have been checked only against mocked clients so far: no Anthropic credentials were set up. See
 > [What's done](#whats-done-and-whats-next).
-
-## Quick start
-
-```bash
-pnpm install
-cp .env.example .env            # then set LIQUID_API_KEY (and optionally ANTHROPIC_API_KEY)
-pnpm capture --clean            # 142 synthetic before/after pairs → data/pairs/ (~17 s, Playwright)
-pnpm bench --dry-run            # what it would ask, and the estimated cost
-pnpm bench                      # d1-ultra, d1, pixel-diff on every pair → runs/<id>/results.json
-pnpm report                     # → runs/<id>/report.html (prints an xdg-open line)
-pnpm live                       # http://127.0.0.1:5178: share a screen or tab, hear what it would announce
-pnpm test && pnpm typecheck
-```
-
-`pnpm bench` flags: `--backends d1-ultra,d1,pixel-diff,vlm`, `--questions core|all`, `--filter TEXT`,
-`--limit N`, `--concurrency N`, `--no-cache`, `--dry-run`. Paid answers are cached in `runs/cache/`, keyed by
-backend settings, question wording and image bytes, so re-runs are free until something changes.
-`pnpm report --sample` renders the layout from synthetic answers. `pnpm tsx src/smoke.ts` makes one tiny real
-call to each Liquid model.
 
 ## How it works
 
@@ -35,6 +89,7 @@ call to each Liquid model.
 There are two ways to use it: an offline **benchmark** that scores the models on known answers, and a **live
 mode** that shows what a narrator built on d1-ultra would actually say. The Mermaid sources for every diagram
 are in [`docs/`](docs/diagrams.md).
+
 
 **1. Capture** (`pnpm capture`). Playwright screenshots six small fake web apps before and after 17 scripted
 changes (a dialog opens, a toast slides in, a card is hovered…). The script made the change, so the right answer
@@ -94,43 +149,26 @@ Text version of the diagram:
 
 **Live mode sends your screen to Liquid's cloud.** Only point it at windows with nothing private on them.
 
-## First results (run 20261019-142237)
+## Quick start
 
-142 pairs (102 transition pairs and a 40-frame session), all six questions, synthetic fixtures. 130 pairs have a
-clear `announce` label; 12 are ambiguous and left out of the scores.
+```bash
+pnpm install
+cp .env.example .env            # then set LIQUID_API_KEY (and optionally ANTHROPIC_API_KEY)
+pnpm capture --clean            # 142 synthetic before/after pairs → data/pairs/ (~17 s, Playwright)
+pnpm bench --dry-run            # what it would ask, and the estimated cost
+pnpm bench                      # d1-ultra, d1, pixel-diff on every pair → runs/<id>/results.json
+pnpm report                     # → runs/<id>/report.html (prints an xdg-open line)
+pnpm site [runId]               # → public/: that report + its screenshots, the site the README links to
+vercel deploy --prod --yes      # publish public/ (run from this folder; vercel.json + .vercelignore upload public/ only)
+pnpm live                       # http://127.0.0.1:5178: share a screen or tab, hear what it would announce
+pnpm test && pnpm typecheck
+```
 
-| | d1-ultra | d1 | pixel diff |
-|---|---|---|---|
-| `announce` accuracy | **100 %** | 91.5 % | 83.1 % |
-| `announce` Brier / ECE | **0.012** / **0.073** | 0.069 / 0.106 | 0.156 / 0.169 |
-| AUROC | **1.00** | 0.99 | 0.86 |
-| Session: announcements/min (labelled: 3.0) | **3.0** (0 false, 0 missed) | 7.0 (9 false, 1 missed) | 4.0 (2 false) |
-| `kind` top-1 | **82.9 %** | 78.3 % | — |
-| `urgency` false / missed interrupts | 4.8 % / 19 % | 4.8 % / **7.7 %** | — |
-| `sensitive` accuracy | 95.8 % | 95.8 % | — |
-| `primary` / `supported` | 100 % / 100 % | 100 % / 100 % | — |
-| p50 latency (4 calls at a time) | 3.5 s | 2.9 s | 86 ms |
-| Cost for the whole run | $0.017 | price not published here | free |
-
-How to read this:
-
-- **The gate works on these fixtures.** d1-ultra separated "worth announcing" from "not" perfectly. It wasn't
-  fooled by large cosmetic changes (the hover card) or by small important ones (the toast), and it matched the
-  labelled rate exactly on the session. Pixel diff is about as good on the session only because most idle
-  frames there are byte-identical.
-- **d1-ultra's mistakes are defensible.** Every `kind` miss calls a near-invisible change (a spinner frame or a
-  clock tick, about 0.01 % of pixels) `none` instead of `cosmetic`. Its only `sensitive` misses are a partly masked
-  card number (`•••• 4242`), a label people could argue about. d1 instead missed the private chat messages.
-- **Benchmark latency is not live latency.** The table's 3.5 s p50 (16 s p95) is 4 concurrent requests with
-  full-size PNGs. Live mode sends one downscaled JPEG pair at a time, and a single call there took ~0.6 s.
-  For an "interrupt now" gate the live number is the one that matters, so measure it when you try screen
-  sharing.
-- **Urgency is the weakest part.** d1-ultra under-calls some interrupts (19 % missed). The rubric wording is the
-  first thing to tune.
-- **Caveat: these are synthetic, clean screens labelled by their author.** Treat 100 % as "the task is
-  learnable", not as a production number. Real, messy apps are the next test.
-- **Billing differs from the docs.** `usage.input_tokens` counted the images once per request (about 2.9k tokens
-  per pair), not once per question, so a full run cost under 2 cents.
+`pnpm bench` flags: `--backends d1-ultra,d1,pixel-diff,vlm`, `--questions core|all`, `--filter TEXT`,
+`--limit N`, `--concurrency N`, `--no-cache`, `--dry-run`. Paid answers are cached in `runs/cache/`, keyed by
+backend settings, question wording and image bytes, so re-runs are free until something changes.
+`pnpm report --sample` renders the layout from synthetic answers. `pnpm tsx src/smoke.ts` makes one tiny real
+call to each Liquid model.
 
 ## Why d1-ultra is the gate, not the narrator
 
@@ -274,10 +312,12 @@ screen-narrator-d1/
     run.ts, cache.ts   `pnpm bench`: backends × pairs → runs/<id>/results.json, paid answers cached
     metrics.ts         Brier, ECE, reliability bins, AUROC, confusion, urgency, noise, cost
     report.ts, report/ `pnpm report`: one self-contained runs/<id>/report.html
+    publish.ts         `pnpm site`: the report + its screenshots → public/ for Vercel
     live/              `pnpm live`: localhost server (Liquid proxy, Claude narrator) + the speaking page
     smoke.ts           one tiny real call per Liquid model
   data/                generated pairs (regenerable) + private/ (gitignored)
   runs/                results, reports, cache (gitignored)
+  public/              the published site, built by `pnpm site` (gitignored); vercel.json + .vercelignore deploy it
 ```
 
 **Stack:** TypeScript on Node 22 with pnpm, `tsx` for scripts, `vitest` for the metrics maths and

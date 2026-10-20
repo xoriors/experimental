@@ -4,3 +4,7 @@ node_modules/
 data/
 # Benchmark results and the API-response cache.
 runs/
+# The published site (pnpm site) and the Vercel project link.
+public/
+.vercel/
+.vercel

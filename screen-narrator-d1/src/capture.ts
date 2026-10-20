@@ -204,8 +204,15 @@ async function captureSession(browser: Browser, wanted: (id: string) => boolean)
 	const pairs: Pair[] = [];
 	try {
 		const page = await ctx.newPage();
-		const errors = await openFixture(page, SESSION.app, v);
-		let prev = await shot(page);
+		let errors: string[];
+		let prev: Buffer;
+		try {
+			errors = await openFixture(page, SESSION.app, v);
+			prev = await shot(page);
+		} catch (e) {
+			// Reported like any other failed job: throwing here would reject the whole capture pool and skip index.json.
+			return { pairs, failures: [{ id: ids[0]!, scenario: SESSION.name, error: errorMessage(e) }] };
+		}
 		for (const [i, step] of SESSION.steps.entries()) {
 			const id = ids[i]!;
 			try {

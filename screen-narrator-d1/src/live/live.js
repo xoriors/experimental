@@ -26,6 +26,8 @@ const state = {
 	narration: null,
 	whatsNew: [],
 	sharingSince: 0,
+	/** totals.announcements when the current share started. */
+	announcementsAtShare: 0,
 	totals: { calls: 0, sent: 0, skipped: 0, tokens: 0, cost: 0, costUnknown: false, cancelled: 0, announcements: 0 },
 };
 
@@ -42,6 +44,8 @@ const controls = {
 
 function settings() {
 	const num = (el, lo, hi, fallback) => {
+		// A cleared field is "" and Number("") is 0, which would mean an announce threshold of 0 (speak everything).
+		if (el.value.trim() === "") return fallback;
 		const v = Number(el.value);
 		return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
 	};
@@ -143,6 +147,8 @@ async function startSharing() {
 	// The browser's own "Stop sharing" button ends the track without going through this page.
 	stream.getVideoTracks()[0]?.addEventListener("ended", stopSharing);
 	state.sharingSince = Date.now();
+	// The rate is per share: announcements from an earlier share would inflate a fresh one's short duration.
+	state.announcementsAtShare = state.totals.announcements;
 	setSharing(true);
 	schedule();
 }
@@ -152,6 +158,7 @@ function stopSharing() {
 	state.timer = 0;
 	for (const t of state.stream?.getTracks() ?? []) t.stop();
 	state.stream = null;
+	state.sharingSince = 0;
 	$("video").srcObject = null;
 	setSharing(false);
 }
@@ -268,9 +275,14 @@ async function judge(before, after) {
 		});
 		Object.assign(row, r);
 		addUsage(r.inputTokens, r.costUsd);
-		act(r, row);
-		// The server's policy says whether a detail sentence is worth it (spoken now or next, and not sensitive).
-		if (s.narrate && r.decision.narratable) void narrate(before, after, r.decision, row);
+		// A decision that comes back after sharing stopped (or moved to another window) describes a screen that is
+		// no longer being watched: log it, but don't speak it.
+		if (state.stream !== stream) row.spoken = "(sharing stopped, not spoken)";
+		else {
+			act(r, row);
+			// The server's policy says whether a detail sentence is worth it (spoken now or next, and not sensitive).
+			if (s.narrate && r.decision.narratable) void narrate(before, after, r.decision, row);
+		}
 	} catch (err) {
 		row.error = err.message;
 	} finally {
@@ -346,7 +358,8 @@ async function narrate(before, after, decision, row) {
 function addNarrationUsage(r) {
 	if (r.narratorInputTokens === undefined) return;
 	addUsage(r.narratorInputTokens + r.narratorOutputTokens, r.narratorCostUsd);
-	if (typeof r.supported === "number") addUsage(r.inputTokens, r.costUsd);
+	// inputTokens is the fact-check's, present whenever it ran (even when its answer was unusable).
+	if (r.inputTokens !== undefined) addUsage(r.inputTokens, r.costUsd);
 }
 
 function addUsage(tokens, cost) {
@@ -446,7 +459,7 @@ function renderTotals() {
 	const cancelled = t.cancelled ? ` + ${t.cancelled} cancelled narration${t.cancelled === 1 ? "" : "s"} (cost not reported)` : "";
 	$("t-cost").textContent = `$${t.cost.toFixed(5)}${t.costUnknown ? ` + ${unpriced.length ? unpriced.join(", ") : "some calls"} (price unset)` : ""}${cancelled}`;
 	const minutes = state.sharingSince ? (Date.now() - state.sharingSince) / 60000 : 0;
-	$("t-rate").textContent = minutes > 0.05 ? (t.announcements / minutes).toFixed(1) : "0.0";
+	$("t-rate").textContent = minutes > 0.05 ? ((t.announcements - state.announcementsAtShare) / minutes).toFixed(1) : "0.0";
 }
 
 async function loadFixtures() {

@@ -85,7 +85,13 @@ export function responseText(res: Pick<ClaudeResponse, "content">): string {
 		.join("");
 }
 
-/** True for failures that mean "no usable credentials": 401, 403, or the SDK finding none before sending anything. */
+/**
+ * True for failures that mean "no usable credentials": 401, 403, or the SDK finding none before sending anything.
+ * DELIBERATE: any non-APIError counts, because the SDK reports "no credentials found" as a plain Error, not a typed
+ * one. The cost: an unexpected non-API failure also turns the live narrator off until restart. Narrowing it would mean
+ * matching the SDK's message text, which breaks silently on an SDK update. Two code reviews flagged this; revisit if
+ * the SDK adds a typed missing-credentials error.
+ */
 export function isCredentialError(err: unknown): boolean {
 	return err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError || !(err instanceof Anthropic.APIError);
 }

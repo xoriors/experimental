@@ -140,7 +140,14 @@ export async function askOne(backend: Backend, pair: Pair, set: QuestionSet, use
 		const t1 = performance.now();
 		const out = await backend.answer({ pair, questionSet: set, images });
 		const latencyMs = Math.round(performance.now() - t1);
-		if (key) writeCache(key, out, latencyMs);
+		if (key) {
+			// The answer is already paid for: a failed cache write (disk full, permissions) must not turn it into an error.
+			try {
+				writeCache(key, out, latencyMs);
+			} catch (err) {
+				console.error(`[${backend.name}] ${pair.id}: answer not cached: ${errorMessage(err)}`);
+			}
+		}
 		return { ...base, ...out, latencyMs, cached: false };
 	} catch (err) {
 		return { ...base, error: errorMessage(err), latencyMs: Math.round(performance.now() - t0) };

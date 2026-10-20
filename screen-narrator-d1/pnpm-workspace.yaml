@@ -1,0 +1,3 @@
+allowBuilds:
+  # tsx runs on esbuild; its postinstall only fetches/verifies the platform binary.
+  esbuild: true

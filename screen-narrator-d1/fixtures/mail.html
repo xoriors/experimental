@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lettera</title>
+<link rel="stylesheet" href="common.css">
+<style>
+	:root { --accent: #c2410c; --accent-soft: #fdeee6; }
+	[data-theme="dark"] { --accent: #f08a4b; --accent-soft: #3a2519; --on-accent: #1b1208; }
+	body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+	.topbar { display: flex; align-items: center; gap: 14px; height: 60px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex: none; }
+	[data-density="compact"] .topbar { height: 50px; }
+	.brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 18px; width: 214px; letter-spacing: -0.01em; }
+	.logo { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: var(--on-accent); }
+	.search { flex: 1; max-width: 680px; display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 14px; border-radius: 21px; background: var(--surface-2); color: var(--muted); }
+	[data-density="compact"] .search { height: 34px; }
+	.search input { flex: 1; border: 0; background: transparent; outline: none; min-width: 0; }
+	.top-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+	.clock { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; padding: 0 6px; }
+	.layout { flex: 1; display: flex; min-height: 0; }
+	.sidebar { width: 246px; flex: none; display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 12px 8px; }
+	.compose { height: 48px; justify-content: flex-start; padding: 0 20px; margin: 0 0 12px 4px; border-radius: 14px; background: var(--accent-soft); border-color: transparent; font-weight: 650; width: fit-content; }
+	[data-density="compact"] .compose { height: 38px; }
+	.folder { display: flex; align-items: center; gap: 14px; height: calc(var(--row) - 10px); padding: 0 12px 0 18px; border-radius: 0 17px 17px 0; color: var(--text); }
+	.folder:hover { background: var(--surface-2); }
+	.folder.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+	.folder .count { margin-left: auto; font-size: var(--fs-sm); font-weight: 700; }
+	.side-heading { margin: 16px 0 4px 18px; font-size: var(--fs-sm); font-weight: 700; color: var(--muted); }
+	.label-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--c); margin: 0 3px; }
+	.side-foot { margin-top: auto; padding: 10px 12px 4px 18px; display: grid; gap: 8px; color: var(--muted); font-size: var(--fs-sm); }
+	.sync { display: flex; align-items: center; gap: 8px; }
+	.meter { height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+	.meter i { display: block; height: 100%; width: 21%; background: var(--accent); }
+	.main { flex: 1; min-width: 0; margin: 0 16px 16px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
+	.toolbar { display: flex; align-items: center; gap: 4px; height: 50px; padding: 0 10px; border-bottom: 1px solid var(--border); flex: none; }
+	[data-density="compact"] .toolbar { height: 42px; }
+	.toolbar .sel-count { margin: 0 8px; font-weight: 650; }
+	.toolbar .range { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); padding-right: 6px; }
+	.check { width: 17px; height: 17px; margin: 0 10px; accent-color: var(--accent); flex: none; }
+	.banner { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--danger-soft); color: var(--danger); border-bottom: 1px solid var(--border); font-weight: 600; }
+	.banner p { flex: 1; color: var(--text); font-weight: 500; }
+	.banner strong { color: var(--danger); margin-right: 6px; }
+	.list { flex: 1; overflow: auto; }
+	.row { position: relative; display: flex; align-items: center; height: var(--row); padding: 0 12px 0 6px; border-bottom: 1px solid var(--border); cursor: pointer; }
+	.row:hover { background: var(--surface-2); box-shadow: inset 1px 0 0 var(--border), inset -1px 0 0 var(--border), 0 1px 3px rgba(0,0,0,.12); z-index: 1; }
+	.row.selected { background: var(--accent-soft); }
+	.row .star { color: var(--faint); width: 30px; height: 30px; }
+	.row .star .icon { width: 17px; height: 17px; }
+	.row .who { width: 200px; flex: none; padding-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.row .what { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 14px; }
+	.row .snip { color: var(--muted); }
+	.row .when { width: 64px; text-align: right; font-size: var(--fs-sm); color: var(--muted); flex: none; }
+	.row.unread .who, .row.unread .subj, .row.unread .when { font-weight: 700; color: var(--text); }
+	.row .hover-actions { display: none; gap: 2px; }
+	.row:hover .hover-actions { display: flex; }
+	.row:hover .when { display: none; }
+	.row .hover-actions .icon-btn { width: 32px; height: 32px; }
+	.row .avatar { display: none; }
+	/* Message view */
+	.msg-head { padding: 18px 28px 6px; display: grid; gap: 16px; }
+	.msg-head h1 { font-size: 22px; font-weight: 600; }
+	.from { display: flex; align-items: center; gap: 12px; }
+	.from .meta { flex: 1; min-width: 0; }
+	.from .addr { color: var(--muted); font-size: var(--fs-sm); }
+	.from .when { color: var(--muted); font-size: var(--fs-sm); }
+	.msg-body { flex: 1; overflow: auto; padding: 12px 28px 40px; }
+	.newsletter { max-width: 620px; margin: 0 auto; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fbfaf5; color: #26302a; }
+	.nl-top { background: #2f6b45; color: #f1f7f2; padding: 18px 26px; display: flex; justify-content: space-between; align-items: baseline; }
+	.nl-top b { font: 700 22px Georgia, "Noto Serif", serif; }
+	.nl-hero { height: 150px; background: radial-gradient(circle at 25% 70%, #6fa86a 0 22%, transparent 23%), radial-gradient(circle at 48% 55%, #4f8a4f 0 26%, transparent 27%), radial-gradient(circle at 74% 72%, #86b97a 0 20%, transparent 21%), linear-gradient(#d8e8d0, #b9d3ad); }
+	.nl-content { padding: 22px 26px; display: grid; gap: 12px; }
+	.nl-content h2 { font: 700 21px Georgia, "Noto Serif", serif; }
+	.nl-content ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+	.nl-cta { justify-self: start; background: #2f6b45; color: #fff; padding: 10px 18px; border-radius: 6px; font-weight: 650; }
+	.nl-foot { padding: 14px 26px 20px; font-size: 12px; color: #6a736c; border-top: 1px solid #e3e3da; }
+	.nl-foot a { color: #2f6b45; text-decoration: underline; }
+	.toast { left: 50%; bottom: 28px; transform: translateX(-50%); }
+	.toast .icon { color: var(--accent); }
+	@media (max-width: 700px) {
+		.topbar { gap: 8px; padding: 0 8px; }
+		.brand { width: auto; font-size: 17px; }
+		.search { display: none; }
+		.main { margin: 0; border: 0; border-radius: 0; }
+		.toolbar .range { display: none; }
+		.row { display: grid; grid-template-columns: auto auto 1fr auto; grid-template-areas: "check av who when" "check av what what"; align-items: start; height: auto; padding: 10px 14px 10px 2px; row-gap: 2px; }
+		.row .check { grid-area: check; margin-top: 9px; }
+		.row .star, .row .hover-actions, .row:hover .hover-actions { display: none; }
+		.row .avatar { grid-area: av; display: inline-grid; margin-right: 10px; }
+		.row .who { grid-area: who; width: auto; padding-left: 0; }
+		.row .when, .row:hover .when { grid-area: when; display: block; width: auto; padding-left: 8px; }
+		.row .what { grid-area: what; padding-right: 0; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+		.row .subj { display: block; }
+		.row .sep { display: none; }
+		.msg-head { padding: 12px 16px 4px; }
+		.msg-head h1 { font-size: 19px; }
+		.msg-body { padding: 10px 12px 30px; }
+		.nl-top, .nl-content, .nl-foot { padding-left: 16px; padding-right: 16px; }
+		.toast { left: 12px; right: 12px; bottom: 16px; transform: none; }
+		.banner { flex-wrap: wrap; }
+	}
+</style>
+</head>
+<body>
+<header class="topbar">
+	<button class="icon-btn only-mobile" data-i18n-attr="aria-label=menu"><i data-icon="menu"></i></button>
+	<div class="brand"><span class="logo"><i data-icon="mail"></i></span>Lettera</div>
+	<label class="search"><i data-icon="search"></i><input data-i18n-attr="placeholder=search;aria-label=search"></label>
+	<div class="top-right">
+		<span class="clock" id="clock">10:41</span>
+		<button class="icon-btn hide-mobile" data-i18n-attr="aria-label=settings"><i data-icon="gear"></i></button>
+		<span class="avatar" style="--c:#5b6bd6" data-i18n-attr="aria-label=account" role="img">AR</span>
+	</div>
+</header>
+<div class="layout">
+	<nav class="sidebar hide-mobile" data-i18n-attr="aria-label=folders">
+		<button class="btn compose"><i data-icon="edit"></i><span data-i18n="compose"></span></button>
+		<a class="folder active" href="#" aria-current="page"><i data-icon="inbox"></i><span data-i18n="inbox"></span><span class="count" id="inboxCount">3</span></a>
+		<a class="folder" href="#"><i data-icon="star"></i><span data-i18n="starred"></span></a>
+		<a class="folder" href="#"><i data-icon="send"></i><span data-i18n="sent"></span></a>
+		<a class="folder" href="#"><i data-icon="file"></i><span data-i18n="drafts"></span><span class="count">2</span></a>
+		<a class="folder" href="#"><i data-icon="archive"></i><span data-i18n="archive"></span></a>
+		<a class="folder" href="#"><i data-icon="trash"></i><span data-i18n="trash"></span></a>
+		<div class="side-heading" data-i18n="labels"></div>
+		<a class="folder" href="#"><span class="label-dot" style="--c:#2f9e6a"></span><span data-i18n="labelHome"></span></a>
+		<a class="folder" href="#"><span class="label-dot" style="--c:#4f7ad8"></span><span data-i18n="labelWork"></span></a>
+		<a class="folder" href="#"><span class="label-dot" style="--c:#c9862b"></span><span data-i18n="labelTravel"></span></a>
+		<div class="side-foot">
+			<div class="sync"><span class="spinner" id="syncSpinner"></span><span data-i18n="checking"></span></div>
+			<div class="meter"><i></i></div>
+			<span data-i18n="storage"></span>
+		</div>
+	</nav>
+	<main class="main">
+		<section id="listView" style="display:contents">
+			<div class="toolbar">
+				<input type="checkbox" class="check" id="selectAll" data-i18n-attr="aria-label=selectAll">
+				<span id="bulk" hidden style="display:contents">
+					<span class="sel-count" id="selCount"></span>
+					<button class="icon-btn" data-i18n-attr="aria-label=archive"><i data-icon="archive"></i></button>
+					<button class="icon-btn" id="deleteSelected" data-i18n-attr="aria-label=delete"><i data-icon="trash"></i></button>
+					<button class="icon-btn" data-i18n-attr="aria-label=markRead"><i data-icon="mail"></i></button>
+				</span>
+				<span id="idle" style="display:contents">
+					<button class="icon-btn" data-i18n-attr="aria-label=refresh"><i data-icon="refresh"></i></button>
+					<button class="icon-btn" data-i18n-attr="aria-label=more"><i data-icon="more"></i></button>
+				</span>
+				<span class="range" data-i18n="range"></span>
+			</div>
+			<div class="banner" id="banner" role="alert" hidden>
+				<i data-icon="alert"></i>
+				<p><strong data-i18n="sendFailed"></strong><span data-i18n="sendFailedBody"></span></p>
+				<button class="btn" data-i18n="editMessage"></button>
+			</div>
+			<div class="list" id="list" role="list"></div>
+		</section>
+		<section id="msgView" hidden style="flex-direction:column;flex:1;min-height:0">
+			<div class="toolbar">
+				<button class="icon-btn" id="back" data-i18n-attr="aria-label=backToInbox"><i data-icon="back"></i></button>
+				<button class="icon-btn" data-i18n-attr="aria-label=archive"><i data-icon="archive"></i></button>
+				<button class="icon-btn" id="deleteOpen" data-i18n-attr="aria-label=delete"><i data-icon="trash"></i></button>
+				<button class="icon-btn" data-i18n-attr="aria-label=markUnread"><i data-icon="mail"></i></button>
+				<span class="range" data-i18n="msgPos"></span>
+			</div>
+			<div class="msg-body" id="msgBody">
+				<div class="msg-head">
+					<h1 id="msgSubject"></h1>
+					<div class="from">
+						<span class="avatar" style="--c:#2f6b45">GD</span>
+						<div class="meta"><b>Greenleaf Digest</b> <span class="addr">&lt;news@greenleaf.example&gt;</span><div class="addr" data-i18n="toMe"></div></div>
+						<span class="when">10:12</span>
+					</div>
+				</div>
+				<article class="newsletter">
+					<div class="nl-top"><b>The Weekly Garden</b><span data-i18n="nlIssue"></span></div>
+					<div class="nl-hero"></div>
+					<div class="nl-content">
+						<h2 data-i18n="nlHeading"></h2>
+						<p data-i18n="nlIntro"></p>
+						<ol id="nlList"></ol>
+						<p data-i18n="nlMore"></p>
+						<a class="nl-cta" href="#" data-i18n="nlCta"></a>
+						<p data-i18n="nlWinter"></p>
+						<p data-i18n="nlWinter2"></p>
+					</div>
+					<div class="nl-foot"><span data-i18n="nlFoot"></span> <a href="#" data-i18n="unsubscribe"></a></div>
+				</article>
+			</div>
+		</section>
+	</main>
+</div>
+
+<dialog class="modal" id="confirm" aria-labelledby="confirmTitle">
+	<div class="modal-body">
+		<h2 id="confirmTitle"></h2>
+		<p id="confirmBody"></p>
+	</div>
+	<div class="modal-actions">
+		<button class="btn" id="confirmCancel" autofocus data-i18n="cancel"></button>
+		<button class="btn btn-danger" id="confirmDelete" data-primary data-i18n="delete"></button>
+	</div>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden><i data-icon="mail"></i><span id="toastText"></span></div>
+
+<script src="common.js"></script>
+<script>
+const STRINGS = {
+	en: {
+		title: "Inbox – Lettera", menu: "Main menu", search: "Search mail", settings: "Settings", account: "Account: Ana Ruiz", folders: "Folders",
+		compose: "Compose", inbox: "Inbox", starred: "Starred", sent: "Sent", drafts: "Drafts", archive: "Archive", trash: "Trash",
+		labels: "Labels", labelHome: "Home", labelWork: "Work", labelTravel: "Travel",
+		checking: "Checking for new mail…", storage: "3.1 GB of 15 GB used",
+		selectAll: "Select all", delete: "Delete", markRead: "Mark as read", markUnread: "Mark as unread", refresh: "Refresh", more: "More",
+		range: "1–50 of 1,284", selected: "{n} selected", star: "Star", select: "Select message from {who}",
+		sendFailed: "Couldn't send “Workshop agenda comments”.", sendFailedBody: "The address tomas.herrera@example isn't valid.", editMessage: "Edit message",
+		backToInbox: "Back to Inbox", msgPos: "2 of 1,284", toMe: "to me",
+		confirmManyTitle: "Delete {n} messages?", confirmManyBody: "They'll be moved to Trash and deleted for good after 30 days.",
+		confirmOneTitle: "Delete this message?", confirmOneBody: "It'll be moved to Trash and deleted for good after 30 days.",
+		cancel: "Cancel", newFrom: "New message from {who}",
+		nlIssue: "Issue 142", nlHeading: "5 plants for shady balconies",
+		nlIntro: "Not every balcony gets full sun, and that's fine. These five plants are happy with a few hours of light a day.",
+		nlPlants: ["Ferns, for soft green texture", "Hostas, with big leaves in blue and gold", "Begonias, for colour all summer", "Fuchsias, which love a hanging basket", "Ivy, to trail over the railing"],
+		nlMore: "Water them in the morning and group the pots together: they keep each other humid.", nlCta: "Read the full guide",
+		nlWinter: "Also this week: how to keep your herbs going through the winter, and why a saucer of gravel helps.",
+		nlWinter2: "See you next Saturday, and happy gardening.",
+		nlFoot: "You're receiving this because you subscribed to The Weekly Garden.", unsubscribe: "Unsubscribe",
+		msgs: [
+			["Greenleaf Digest", "The Weekly Garden: 5 plants for shady balconies", "Plus: how to keep herbs going through the winter", "10:12", 1, "GD", "#2f6b45"],
+			["Lettera", "Tip: organise your inbox with labels", "Labels help you find messages faster. Here's how to start", "09:58", 1, "L", "#c2410c"],
+			["Northfield Running Club", "October newsletter: the autumn 10K route", "Registration for the river loop opens on Monday", "09:31", 1, "NR", "#7c4dc4"],
+			["City Library", "Your reserved book is ready", "Pick it up from the front desk by 26 October", "08:50", 0, "CL", "#3a7bbf"],
+			["Harbor & Pine", "Your order has shipped", "Estimated delivery: Thursday. Track your parcel online", "08:05", 0, "HP", "#8a6d3b"],
+			["Calendar", "Reminder: team sync at 15:00", "This event starts in 7 hours", "18 Oct", 0, "C", "#1f8a7a"],
+			["Brightwater Energy", "Your October statement is ready", "View it any time in your online account", "18 Oct", 0, "BE", "#d0752b"],
+			["Tomás Herrera", "Agenda for Thursday's workshop", "Sharing the draft agenda, comments welcome before Wednesday", "18 Oct", 0, "TH", "#b84a6a"],
+			["Pixel Weekly", "This week in design: colour systems", "Five teams on how they choose and test their palettes", "17 Oct", 0, "PW", "#4a62b8"],
+			["Travel Desk", "Itinerary update for 4 November", "Your train now leaves at 08:40 from platform 6", "17 Oct", 0, "TD", "#2a8fbd"],
+			["Mei Lin", "Community fair: volunteer rota", "Thanks to everyone who signed up for a shift", "16 Oct", 0, "ML", "#5c9a3a"],
+			["Riverside Market", "Weekend offers: fresh produce", "Apples, squash and pears from local farms", "15 Oct", 0, "RM", "#a34a2f"],
+			["Open Source Weekly", "Release notes roundup", "The biggest changes in this month's releases", "15 Oct", 0, "OS", "#596273"],
+			["Lettera", "Your weekly storage summary", "You're using 21% of your storage", "14 Oct", 0, "L", "#c2410c"],
+		],
+		incoming: ["Riverbend Cinema", "This week's films and showtimes", "Three new releases and a classic double bill on Sunday", "10:41", 1, "RC", "#9b3fb5"],
+	},
+	es: {
+		title: "Recibidos – Lettera", menu: "Menú principal", search: "Buscar en el correo", settings: "Configuración", account: "Cuenta: Ana Ruiz", folders: "Carpetas",
+		compose: "Redactar", inbox: "Recibidos", starred: "Destacados", sent: "Enviados", drafts: "Borradores", archive: "Archivar", trash: "Papelera",
+		labels: "Etiquetas", labelHome: "Casa", labelWork: "Trabajo", labelTravel: "Viajes",
+		checking: "Buscando correo nuevo…", storage: "3,1 GB de 15 GB usados",
+		selectAll: "Seleccionar todo", delete: "Eliminar", markRead: "Marcar como leído", markUnread: "Marcar como no leído", refresh: "Actualizar", more: "Más",
+		range: "1–50 de 1284", selected: "{n} seleccionados", star: "Destacar", select: "Seleccionar mensaje de {who}",
+		sendFailed: "No se pudo enviar «Comentarios sobre la agenda».", sendFailedBody: "La dirección tomas.herrera@example no es válida.", editMessage: "Editar mensaje",
+		backToInbox: "Volver a Recibidos", msgPos: "2 de 1284", toMe: "para mí",
+		confirmManyTitle: "¿Eliminar {n} mensajes?", confirmManyBody: "Se moverán a la Papelera y se eliminarán definitivamente en 30 días.",
+		confirmOneTitle: "¿Eliminar este mensaje?", confirmOneBody: "Se moverá a la Papelera y se eliminará definitivamente en 30 días.",
+		cancel: "Cancelar", newFrom: "Mensaje nuevo de {who}",
+		nlIssue: "Número 142", nlHeading: "5 plantas para balcones con sombra",
+		nlIntro: "No todos los balcones reciben sol directo, y no pasa nada. Estas cinco plantas se conforman con unas pocas horas de luz al día.",
+		nlPlants: ["Helechos, por su textura verde y suave", "Hostas, con hojas grandes azules y doradas", "Begonias, para tener color todo el verano", "Fucsias, ideales para cestas colgantes", "Hiedra, para que caiga por la barandilla"],
+		nlMore: "Riégalas por la mañana y agrupa las macetas: así se mantienen húmedas entre ellas.", nlCta: "Leer la guía completa",
+		nlWinter: "También esta semana: cómo mantener las hierbas aromáticas en invierno y por qué ayuda un plato con grava.",
+		nlWinter2: "Nos vemos el próximo sábado. ¡Feliz jardinería!",
+		nlFoot: "Recibes este correo porque te suscribiste a The Weekly Garden.", unsubscribe: "Cancelar suscripción",
+		msgs: [
+			["Greenleaf Digest", "The Weekly Garden: 5 plantas para balcones con sombra", "Además: cómo mantener las hierbas aromáticas en invierno", "10:12", 1, "GD", "#2f6b45"],
+			["Lettera", "Consejo: organiza tu correo con etiquetas", "Las etiquetas te ayudan a encontrar mensajes más rápido", "09:58", 1, "L", "#c2410c"],
+			["Northfield Running Club", "Boletín de octubre: la ruta de 10 km de otoño", "La inscripción para la vuelta al río abre el lunes", "09:31", 1, "NR", "#7c4dc4"],
+			["Biblioteca Municipal", "Tu libro reservado ya está disponible", "Recógelo en el mostrador antes del 26 de octubre", "08:50", 0, "BM", "#3a7bbf"],
+			["Harbor & Pine", "Tu pedido ha sido enviado", "Entrega prevista: jueves. Sigue tu paquete en línea", "08:05", 0, "HP", "#8a6d3b"],
+			["Calendario", "Recordatorio: reunión de equipo a las 15:00", "Este evento empieza dentro de 7 horas", "18 oct", 0, "C", "#1f8a7a"],
+			["Brightwater Energía", "Tu extracto de octubre está listo", "Consúltalo cuando quieras en tu cuenta en línea", "18 oct", 0, "BE", "#d0752b"],
+			["Tomás Herrera", "Agenda del taller del jueves", "Comparto el borrador de la agenda; comentarios antes del miércoles", "18 oct", 0, "TH", "#b84a6a"],
+			["Pixel Weekly", "Esta semana en diseño: sistemas de color", "Cinco equipos cuentan cómo eligen y prueban sus paletas", "17 oct", 0, "PW", "#4a62b8"],
+			["Agencia de viajes", "Cambio en tu itinerario del 4 de noviembre", "Tu tren sale ahora a las 08:40 desde el andén 6", "17 oct", 0, "AV", "#2a8fbd"],
+			["Mei Lin", "Feria del barrio: turnos de voluntarios", "Gracias a todos los que os habéis apuntado a un turno", "16 oct", 0, "ML", "#5c9a3a"],
+			["Mercado Ribera", "Ofertas de fin de semana: producto fresco", "Manzanas, calabazas y peras de granjas locales", "15 oct", 0, "MR", "#a34a2f"],
+			["Open Source Weekly", "Resumen de novedades", "Los cambios más importantes de los lanzamientos del mes", "15 oct", 0, "OS", "#596273"],
+			["Lettera", "Tu resumen semanal de almacenamiento", "Estás usando el 21 % de tu espacio", "14 oct", 0, "L", "#c2410c"],
+		],
+		incoming: ["Cine Riverbend", "Películas y horarios de esta semana", "Tres estrenos y una sesión doble de clásicos el domingo", "10:41", 1, "CR", "#9b3fb5"],
+	},
+};
+
+let unread = 3;
+
+function rowHtml([who, subj, snip, when, isUnread, initials, color], i) {
+	return `<div class="row${isUnread ? " unread" : ""}" role="listitem" data-index="${i}">
+		<input type="checkbox" class="check" aria-label="${t("select", { who })}">
+		<button class="icon-btn star" aria-label="${t("star")}"><i data-icon="star"></i></button>
+		<span class="avatar" style="--c:${color}">${initials}</span>
+		<span class="who">${who}</span>
+		<span class="what"><span class="subj">${subj}</span><span class="sep"> – </span><span class="snip">${snip}</span></span>
+		<span class="when">${when}</span>
+		<span class="hover-actions"><button class="icon-btn" aria-label="${t("archive")}"><i data-icon="archive"></i></button><button class="icon-btn" aria-label="${t("delete")}"><i data-icon="trash"></i></button><button class="icon-btn" aria-label="${t("markRead")}"><i data-icon="mail"></i></button></span>
+	</div>`;
+}
+
+function updateSelection() {
+	const rows = [...document.querySelectorAll(".row")];
+	const n = rows.filter((r) => r.querySelector(".check").checked).length;
+	rows.forEach((r) => r.classList.toggle("selected", r.querySelector(".check").checked));
+	$("bulk").hidden = n === 0;
+	$("idle").hidden = n > 0;
+	$("selCount").textContent = t("selected", { n });
+	return n;
+}
+
+function openDialog(title, body) {
+	$("confirmTitle").textContent = title;
+	$("confirmBody").textContent = body;
+	$("confirm").showModal();
+}
+
+function showMessage(open) {
+	$("listView").hidden = open;
+	$("listView").style.display = open ? "none" : "contents";
+	$("msgView").hidden = !open;
+	$("msgView").style.display = open ? "flex" : "";
+	$("msgBody").scrollTop = 0;
+}
+
+fixture.boot({
+	strings: STRINGS,
+	init() {
+		$("msgSubject").textContent = t("msgs")[0][1];
+		$("nlList").innerHTML = t("nlPlants").map((p) => `<li>${p}</li>`).join("");
+		$("list").innerHTML = t("msgs").map(rowHtml).join("");
+		$("list").addEventListener("change", updateSelection);
+		$("list").addEventListener("click", (e) => {
+			const row = e.target.closest(".row");
+			// Only the newsletter has a body in this fixture; the checkbox and buttons keep their own meaning.
+			if (row && !e.target.closest("input, button") && row.querySelector(".who").textContent === t("msgs")[0][0]) {
+				row.classList.remove("unread");
+				showMessage(true);
+			}
+		});
+		$("deleteSelected").addEventListener("click", () => {
+			const n = updateSelection();
+			if (n) openDialog(t("confirmManyTitle", { n }), t("confirmManyBody"));
+		});
+		$("deleteOpen").addEventListener("click", () => openDialog(t("confirmOneTitle"), t("confirmOneBody")));
+		$("confirmCancel").addEventListener("click", () => $("confirm").close());
+		$("back").addEventListener("click", () => showMessage(false));
+	},
+});
+
+// Timed events: things the user didn't do.
+fixture.on("clock-tick", () => fixture.tickClock($("clock")));
+fixture.on("spinner-frame", () => fixture.stepSpinner($("syncSpinner")));
+fixture.on("new-mail", () => {
+	const msg = t("incoming");
+	$("list").insertAdjacentHTML("afterbegin", rowHtml(msg, -1));
+	fixture.hydrate($("list").firstElementChild);
+	$("inboxCount").textContent = String(++unread);
+	$("toastText").textContent = t("newFrom", { who: msg[0] });
+	$("toast").hidden = false;
+});
+fixture.on("toast-hide", () => ($("toast").hidden = true));
+fixture.on("send-error", () => ($("banner").hidden = false));
+</script>
+</body>
+</html>

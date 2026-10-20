@@ -1,0 +1,6 @@
+node_modules/
+.env
+# Generated screenshot pairs (regenerate with `pnpm capture`) and your own screenshots.
+data/
+# Benchmark results and the API-response cache.
+runs/

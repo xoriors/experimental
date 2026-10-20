@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{{TITLE}}</title>
+<style>
+/*{{STYLE}}*/
+</style>
+</head>
+<body>
+<a class="skip" href="#pairs">Skip to the pair browser</a>
+<header class="masthead">
+	<div class="wrap">
+		<p class="eyebrow">screen-narrator-d1 · benchmark report</p>
+		<h1>Should the narrator speak?</h1>
+		<p class="lede">Every backend saw the same before/after screenshot pairs and answered the same questions. Labels are known by construction; ambiguous ones are shown but left out of every score.</p>
+		<dl class="facts" id="facts"></dl>
+	</div>
+</header>
+
+<main class="wrap">
+	<section aria-labelledby="h-headline">
+		<h2 id="h-headline">The gate: <q>announce</q> per backend</h2>
+		<p class="note">Best value per column is <span class="best-sample">highlighted</span>. Brier and ECE: lower is better. Announcements per minute should be close to the labelled rate, not as low as possible.</p>
+		<div class="scroll" id="headline"></div>
+	</section>
+
+	<section aria-labelledby="h-calibration">
+		<h2 id="h-calibration">Calibration</h2>
+		<p class="note">Each dot is a bin of answers: across = the probability the backend gave, up = how often the answer was actually yes. On the dashed diagonal, a backend's 70 % means 70 %. Below it: overconfident. Dot size and the strip underneath show how many answers fell in each bin.</p>
+		<div class="tabs" role="tablist" aria-label="Question" id="cal-tabs"></div>
+		<div id="cal-panels"></div>
+	</section>
+
+	<section aria-labelledby="h-kind">
+		<h2 id="h-kind">What changed: <q>kind</q></h2>
+		<div class="scroll" id="kind-summary"></div>
+		<p class="note">Rows are the labelled kind, columns what the backend chose; shading is the share of the row. The diagonal is right.</p>
+		<div class="matrices" id="kind-matrices"></div>
+	</section>
+
+	<section aria-labelledby="h-urgency">
+		<h2 id="h-urgency">How urgently: <q>urgency</q></h2>
+		<p class="note">A false interrupt (level 3 for something that is not urgent) talks over the user: the worst mistake a screen reader can make. Rates are out of the pairs that could have had that mistake.</p>
+		<div class="scroll" id="urgency"></div>
+	</section>
+
+	<section aria-labelledby="h-other">
+		<h2 id="h-other">Sensitive content, primary action, fact-checking</h2>
+		<div id="other"></div>
+	</section>
+
+	<section aria-labelledby="h-noise">
+		<h2 id="h-noise">Noise: replaying scripted sessions</h2>
+		<p class="note">Each session is consecutive frames of one scripted use of an app, run through the narrator policy with the default thresholds: what a user would actually have heard.</p>
+		<div id="noise"></div>
+	</section>
+
+	<section aria-labelledby="h-cost">
+		<h2 id="h-cost">Cost and latency</h2>
+		<p class="note">Latency percentiles skip errored calls. Cached answers replay the latency and price stored with them, so totals are what answering every pair costs, not what this run spent.</p>
+		<div class="scroll" id="cost"></div>
+	</section>
+
+	<section aria-labelledby="h-pairs" id="pairs">
+		<h2 id="h-pairs">Pairs</h2>
+		<div class="toolbar">
+			<div class="segmented" role="group" aria-label="Show" id="filters"></div>
+			<label class="field"><span>Backend</span><select id="backend-filter"></select></label>
+			<label class="field grow"><span>Search</span><input type="search" id="search" placeholder="id or scenario" autocomplete="off"></label>
+		</div>
+		<p class="count" id="pair-count" aria-live="polite"></p>
+		<div class="cards" id="cards"></div>
+		<div class="more"><button type="button" class="btn" id="more" hidden>Show more</button></div>
+	</section>
+</main>
+
+<dialog id="detail" aria-labelledby="detail-title">
+	<div class="detail-head">
+		<div>
+			<p class="eyebrow" id="detail-pos"></p>
+			<h2 id="detail-title"></h2>
+			<p class="mono small" id="detail-id"></p>
+		</div>
+		<div class="detail-nav">
+			<button type="button" class="btn" id="detail-prev" aria-label="Previous pair">←</button>
+			<button type="button" class="btn" id="detail-next" aria-label="Next pair">→</button>
+			<button type="button" class="btn" id="detail-close">Close</button>
+		</div>
+	</div>
+	<div id="detail-body"></div>
+</dialog>
+
+<script type="application/json" id="report-data">{{DATA}}</script>
+<script>
+/*{{SCRIPT}}*/
+</script>
+</body>
+</html>

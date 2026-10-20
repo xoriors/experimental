@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Larch Bank</title>
+<link rel="stylesheet" href="common.css">
+<style>
+	:root { --accent: #0b5cad; --accent-soft: #e3eefa; --brand: #0a2540; }
+	[data-theme="dark"] { --accent: #6aa8ec; --accent-soft: #16273b; --on-accent: #08182a; --brand: #0d1b2c; }
+	body { min-height: 100vh; }
+	.header { display: flex; align-items: center; gap: 28px; height: 64px; padding: 0 32px; background: var(--brand); color: #e8eef6; }
+	[data-density="compact"] .header { height: 52px; }
+	.logo { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 18px; white-space: nowrap; }
+	.logo i { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(135deg, #38b27a 0 50%, #2a8a5e 50%); display: inline-block; }
+	.nav { display: flex; gap: 4px; }
+	.nav a { color: #b9c6d6; padding: 8px 12px; border-radius: 6px; font-weight: 600; }
+	.nav a.on { color: #fff; background: rgba(255, 255, 255, 0.12); }
+	.right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+	.clock { text-align: right; line-height: 1.2; }
+	.clock b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
+	.clock span { font-size: 11.5px; color: #9fb0c4; }
+	.header .icon-btn { color: #c9d5e3; }
+	.header .icon-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+	.wrap { max-width: 1180px; margin: 0 auto; padding: 26px 32px 40px; display: grid; gap: 22px; }
+	[data-density="compact"] .wrap { padding-top: 16px; gap: 14px; }
+	.hello h1 { font-size: 25px; font-weight: 700; }
+	.hello p { color: var(--muted); margin-top: 2px; }
+	.accounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+	.acct { padding: 18px 20px; display: grid; gap: 4px; }
+	[data-density="compact"] .acct { padding: 12px 14px; }
+	.acct .type { display: flex; justify-content: space-between; color: var(--muted); font-weight: 600; }
+	.acct .num { font-size: var(--fs-sm); color: var(--faint); letter-spacing: 0.04em; }
+	.acct .bal { font-size: 28px; font-weight: 750; margin-top: 10px; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+	[data-density="compact"] .acct .bal { font-size: 23px; margin-top: 4px; }
+	.acct .sub { font-size: var(--fs-sm); color: var(--muted); }
+	.acct .sub .up { color: var(--success); font-weight: 650; }
+	.acct.primary { background: linear-gradient(135deg, #0b5cad, #0a3d78); color: #fff; border: 0; }
+	.acct.primary .type, .acct.primary .num, .acct.primary .sub { color: #cfe0f5; }
+	.quick { display: flex; gap: 12px; flex-wrap: wrap; }
+	.quick .btn { height: 42px; }
+	.cols { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; align-items: start; }
+	.panel { padding: 18px 20px; }
+	[data-density="compact"] .panel { padding: 12px 14px; }
+	.panel h2 { font-size: 16px; font-weight: 700; display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+	.panel h2 a { font-size: var(--fs-sm); }
+	.tx { display: flex; align-items: center; gap: 14px; padding: calc(var(--pad) - 2px) 0; border-top: 1px solid var(--border); }
+	.tx .ic { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); flex: none; }
+	[data-density="compact"] .tx .ic { width: 30px; height: 30px; }
+	.tx .what { flex: 1; min-width: 0; }
+	.tx .what span { display: block; color: var(--muted); font-size: var(--fs-sm); }
+	.tx .amt { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+	.tx .amt.in { color: var(--success); }
+	.bars { display: grid; gap: 10px; }
+	.bar { display: grid; gap: 4px; font-size: var(--fs-sm); }
+	.bar .l { display: flex; justify-content: space-between; }
+	.bar .track { height: 8px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+	.bar .track i { display: block; height: 100%; border-radius: 4px; background: var(--c); }
+	.notice { display: flex; gap: 10px; padding: 12px 14px; border-radius: 8px; background: var(--accent-soft); color: var(--text); font-size: var(--fs-sm); margin-top: 16px; }
+	.notice .icon { color: var(--accent); }
+	@media (max-width: 1100px) {
+		.nav { display: none; }
+		.cols { grid-template-columns: minmax(0, 1fr); }
+		.side { display: none; }
+	}
+	@media (max-width: 700px) {
+		.header { padding: 0 14px; gap: 10px; }
+		.wrap { padding: 16px 14px 30px; gap: 14px; }
+		.hello h1 { font-size: 21px; }
+		.accounts { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+		.acct .bal { margin-top: 2px; font-size: 24px; }
+		.quick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+		.signout { display: none; }
+	}
+</style>
+</head>
+<body>
+<header class="header">
+	<div class="logo"><i></i>Larch Bank</div>
+	<nav class="nav"><a href="#" class="on" data-i18n="overview"></a><a href="#" data-i18n="payments"></a><a href="#" data-i18n="cards"></a><a href="#" data-i18n="savings"></a><a href="#" data-i18n="help"></a></nav>
+	<div class="right">
+		<div class="clock"><b id="clock">10:41</b><span data-i18n="date"></span></div>
+		<button class="icon-btn" data-i18n-attr="aria-label=alerts"><i data-icon="bell"></i></button>
+		<span class="avatar" style="--c:#38b27a" role="img" aria-label="Ana Ruiz">AR</span>
+		<button class="icon-btn signout" data-i18n-attr="aria-label=signOut"><i data-icon="logout"></i></button>
+	</div>
+</header>
+
+<main class="wrap">
+	<div class="hello"><h1 data-i18n="greeting"></h1><p data-i18n="lastLogin"></p></div>
+	<section class="accounts">
+		<div class="card acct primary"><div class="type"><span data-i18n="everyday"></span><i data-icon="card"></i></div><span class="num">•••• 3392</span><span class="bal" id="bal1"></span><span class="sub" data-i18n="available"></span></div>
+		<div class="card acct"><div class="type"><span data-i18n="savingsAcct"></span><i data-icon="chart"></i></div><span class="num">•••• 8810</span><span class="bal" id="bal2"></span><span class="sub"><span class="up" id="saved"></span> <span data-i18n="thisMonth"></span></span></div>
+		<div class="card acct"><div class="type"><span data-i18n="credit"></span><i data-icon="card"></i></div><span class="num">•••• 5527</span><span class="bal" id="bal3"></span><span class="sub" data-i18n="due"></span></div>
+	</section>
+	<div class="quick">
+		<button class="btn btn-primary"><i data-icon="transfer"></i><span data-i18n="transfer"></span></button>
+		<button class="btn"><i data-icon="file"></i><span data-i18n="payBill"></span></button>
+		<button class="btn"><i data-icon="user"></i><span data-i18n="addPayee"></span></button>
+		<button class="btn"><i data-icon="lock"></i><span data-i18n="freeze"></span></button>
+	</div>
+	<div class="cols">
+		<section class="card panel">
+			<h2><span data-i18n="recent"></span><a href="#" data-i18n="seeAll"></a></h2>
+			<div id="txs"></div>
+		</section>
+		<aside class="card panel side">
+			<h2 data-i18n="spending"></h2>
+			<div class="bars" id="bars"></div>
+			<div class="notice"><i data-icon="info"></i><span data-i18n="notice"></span></div>
+		</aside>
+	</div>
+</main>
+
+<script src="common.js"></script>
+<script>
+const STRINGS = {
+	en: {
+		title: "Overview – Larch Bank", overview: "Overview", payments: "Payments", cards: "Cards", savings: "Savings", help: "Help",
+		date: "Mon 19 Oct", alerts: "Alerts", signOut: "Sign out", greeting: "Good morning, Ana", lastLogin: "Last sign-in: yesterday at 18:22",
+		everyday: "Everyday account", available: "Available balance", savingsAcct: "Savings account", thisMonth: "saved this month", credit: "Credit card", due: "Statement due 3 Nov",
+		transfer: "Transfer", payBill: "Pay a bill", addPayee: "Add payee", freeze: "Freeze card",
+		recent: "Recent transactions", seeAll: "See all", spending: "Spending this month",
+		notice: "Your new card PIN will arrive by post within 5 working days.",
+		txs: [["Riverside Market", "Groceries · Today", -42.18, "cart"], ["Salary – Example Ltd", "Income · 18 Oct", 3250, "chart"], ["Brightwater Energy", "Bills · 17 Oct", -86.4, "file"], ["Transfer to savings", "Transfer · 16 Oct", -120, "transfer"], ["Corner Café", "Eating out · 16 Oct", -4.6, "smile"], ["Harbor & Pine", "Shopping · 15 Oct", -38, "truck"]],
+		bars: [["Groceries", 412, "#38b27a"], ["Bills", 286, "#0b5cad"], ["Eating out", 148, "#e8590c"], ["Shopping", 96, "#ae3ec9"], ["Transport", 64, "#1098ad"]],
+	},
+	es: {
+		title: "Resumen – Larch Bank", overview: "Resumen", payments: "Pagos", cards: "Tarjetas", savings: "Ahorro", help: "Ayuda",
+		date: "lun 19 oct", alerts: "Alertas", signOut: "Cerrar sesión", greeting: "Buenos días, Ana", lastLogin: "Último acceso: ayer a las 18:22",
+		everyday: "Cuenta corriente", available: "Saldo disponible", savingsAcct: "Cuenta de ahorro", thisMonth: "ahorrado este mes", credit: "Tarjeta de crédito", due: "Vencimiento del extracto: 3 nov",
+		transfer: "Transferir", payBill: "Pagar un recibo", addPayee: "Añadir beneficiario", freeze: "Bloquear tarjeta",
+		recent: "Movimientos recientes", seeAll: "Ver todos", spending: "Gastos de este mes",
+		notice: "El PIN de tu nueva tarjeta llegará por correo en un plazo de 5 días laborables.",
+		txs: [["Mercado Ribera", "Supermercado · Hoy", -42.18, "cart"], ["Nómina – Example S. L.", "Ingresos · 18 oct", 3250, "chart"], ["Brightwater Energía", "Recibos · 17 oct", -86.4, "file"], ["Transferencia a ahorro", "Transferencia · 16 oct", -120, "transfer"], ["Café de la Esquina", "Restaurantes · 16 oct", -4.6, "smile"], ["Harbor & Pine", "Compras · 15 oct", -38, "truck"]],
+		bars: [["Supermercado", 412, "#38b27a"], ["Recibos", 286, "#0b5cad"], ["Restaurantes", 148, "#e8590c"], ["Compras", 96, "#ae3ec9"], ["Transporte", 64, "#1098ad"]],
+	},
+};
+
+const money = (n, sign = false) => {
+	const abs = Math.abs(n);
+	const s = fixture.variant.lang === "es"
+		? `${abs.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+		: `$${abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+	return (n < 0 ? "−" : sign ? "+" : "") + s;
+};
+
+fixture.boot({
+	strings: STRINGS,
+	init() {
+		$("bal1").textContent = money(4218.37);
+		$("bal2").textContent = money(12950);
+		$("bal3").textContent = money(-612.45);
+		$("saved").textContent = money(120, true);
+		$("txs").innerHTML = t("txs").map(([who, meta, amt, ic]) => `<div class="tx"><span class="ic"><i data-icon="${ic}"></i></span><div class="what">${who}<span>${meta}</span></div><span class="amt${amt > 0 ? " in" : ""}">${money(amt, true)}</span></div>`).join("");
+		const max = Math.max(...t("bars").map((b) => b[1]));
+		$("bars").innerHTML = t("bars").map(([name, v, c]) => `<div class="bar"><div class="l"><span>${name}</span><b>${money(v)}</b></div><div class="track"><i style="width:${(v / max) * 100}%;--c:${c}"></i></div></div>`).join("");
+	},
+});
+
+fixture.on("clock-tick", () => fixture.tickClock($("clock")));
+</script>
+</body>
+</html>

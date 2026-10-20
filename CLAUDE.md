@@ -39,6 +39,15 @@ LLM-assisted git merge-conflict resolution driven by semantic intent (commit mes
 
 Single-file, dependency-free canvas simulator (`ice-cube-simulator/index.html`) of why ice floats and how it melts: draggable buoyancy tank (91.7 % / 8.3 % split), hexagonal-lattice vs liquid molecular views tied to the melt animation, exact densities (ice Ih 0.9167 vs water 0.9998 g/cm³ at 0 °C). Open the file directly — no build step. The physics constants are load-bearing and documented in its README; keep them exact if you touch it.
 
+### screen-narrator-d1 — working prototype
+
+Tests Liquid AI's d1-ultra decision model as the "should I announce this?" gate of a screen narrator for blind users. TypeScript on Node 22 with pnpm. The README has the design, the quick start and the first results.
+
+- Pipeline: `pnpm capture` (Playwright renders `fixtures/*.html` into before/after pairs, written to `data/pairs/index.json`), then `pnpm bench` (backends × pairs, written to `runs/<id>/results.json`), then `pnpm report`. `pnpm live` is the screen-sharing page that speaks. `pnpm test`, `pnpm typecheck`.
+- `src/types.ts`, `src/questions.ts` and `src/policy.ts` are the shared contracts. Every backend derives its fields from the question set, so a new question key needs no backend edits; map it onto `Prediction` in `toPrediction` (`src/backends/liquid.ts`). Claude settings and pricing live only in `src/anthropic.ts`.
+- `pnpm bench` spends real money on paid backends (Liquid costs cents; the Claude `vlm` backend costs more). Run `--dry-run` first, then `--limit`. Answers are cached in `runs/cache/`.
+- `.env` holds `LIQUID_API_KEY` and is gitignored. A hook blocks any Bash command that names `.env`; `src/env.ts` loads it.
+
 ### ansible — working infra example
 
 Tutorial-scale Ansible + Docker playground: one container runs Apache, another runs the playbook against it. Run with `docker-compose up --build` from `ansible/`.

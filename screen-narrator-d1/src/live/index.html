@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Screen narrator live</title>
+	<link rel="stylesheet" href="/live.css">
+	<script src="/live.js" defer></script>
+</head>
+<body>
+	<a class="skip" href="#log-heading">Skip to the decision log</a>
+	<header>
+		<h1>Screen narrator — live</h1>
+		<p class="lede">Share a screen or tab. When something on it changes, a decision model (Liquid's <strong>d1-ultra</strong> by default, or d1) decides whether a blind user should hear about it, and this page speaks what it decided.</p>
+	</header>
+
+	<main>
+		<section class="privacy" aria-labelledby="privacy-heading">
+			<h2 id="privacy-heading">Privacy: what leaves this machine</h2>
+			<p>Every frame pair this page judges is sent to <strong>Liquid</strong>'s cloud, and to <strong>Claude</strong> when narration is on. Share only a window or tab with nothing private on it: no mail, chats, passwords, banking or documents. The demo targets below are safe to share.</p>
+		</section>
+
+		<section aria-labelledby="capture-heading">
+			<h2 id="capture-heading">Capture</h2>
+			<div class="row">
+				<button type="button" id="share" class="primary">Share a screen or tab</button>
+				<button type="button" id="stop" disabled>Stop sharing</button>
+				<button type="button" id="whats-new" aria-keyshortcuts="Alt+Shift+W">What's new? <span id="whats-new-count">(0)</span></button>
+				<button type="button" id="hush" aria-keyshortcuts="Escape">Stop speaking</button>
+			</div>
+			<p id="status" class="status" role="status">Not sharing.</p>
+			<p class="hint">Keys: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd> reads and clears "What's new?", <kbd>Esc</kbd> stops speech.</p>
+			<video id="video" muted playsinline hidden></video>
+		</section>
+
+		<section aria-labelledby="controls-heading">
+			<h2 id="controls-heading">Controls</h2>
+			<form id="controls" class="controls">
+				<div class="field">
+					<label for="model">Decision model</label>
+					<select id="model" name="model"></select>
+				</div>
+				<div class="field">
+					<label for="interval">Sample every (ms)</label>
+					<input id="interval" name="interval" type="number" min="200" max="5000" step="100" value="500" aria-describedby="interval-help">
+					<small id="interval-help">How often a frame is grabbed for the local check. Free.</small>
+				</div>
+				<div class="field">
+					<label for="gate">Change gate (0–255)</label>
+					<input id="gate" name="gate" type="number" min="1" max="100" step="0.5" value="4" aria-describedby="gate-help">
+					<small id="gate-help">Mean grey-level difference on a 64×40 thumbnail that counts as "something moved". Higher sends fewer pairs.</small>
+				</div>
+				<div class="field">
+					<label for="announce">Announce threshold</label>
+					<input id="announce" name="announce" type="number" min="0" max="1" step="0.05" value="0.5" aria-describedby="announce-help">
+					<small id="announce-help">Speak only when P(announce) is at least this.</small>
+				</div>
+				<div class="field check">
+					<input id="narrate" name="narrate" type="checkbox" aria-describedby="narrate-help">
+					<label for="narrate">Narrate details with Claude</label>
+					<small id="narrate-help">Adds one fact-checked sentence after interrupts and queued announcements.</small>
+				</div>
+				<div class="field check">
+					<input id="mute" name="mute" type="checkbox" aria-describedby="mute-help">
+					<label for="mute">Mute this page's voice</label>
+					<small id="mute-help">Announcements still go to the live regions, so your own screen reader can read them.</small>
+				</div>
+			</form>
+		</section>
+
+		<section aria-labelledby="totals-heading">
+			<h2 id="totals-heading">Totals</h2>
+			<dl class="totals">
+				<div><dt>Calls</dt><dd id="t-calls">0</dd></div>
+				<div><dt>Pairs sent</dt><dd id="t-sent">0</dd></div>
+				<div><dt>Frames skipped by the gate</dt><dd id="t-skipped">0</dd></div>
+				<div><dt>Tokens</dt><dd id="t-tokens">0</dd></div>
+				<div><dt>Cost</dt><dd id="t-cost">$0.00000</dd></div>
+				<div><dt>Announcements / min</dt><dd id="t-rate">0.0</dd></div>
+			</dl>
+		</section>
+
+		<section aria-labelledby="log-heading">
+			<h2 id="log-heading" tabindex="-1">Decision log</h2>
+			<p class="hint">Newest first. Struck-through text is a narration the fact-check rejected, so it was not spoken.</p>
+			<div class="table-wrap" role="region" aria-labelledby="log-heading" tabindex="0">
+				<table id="log">
+					<caption class="sr-only">Every judged frame pair, newest first</caption>
+					<thead>
+						<tr>
+							<th scope="col">Time</th>
+							<th scope="col">Before / after</th>
+							<th scope="col">P(announce)</th>
+							<th scope="col">Kind</th>
+							<th scope="col">Urgency</th>
+							<th scope="col">Sensitive</th>
+							<th scope="col">Action</th>
+							<th scope="col">Spoken</th>
+							<th scope="col">Reason</th>
+							<th scope="col">Latency</th>
+							<th scope="col">Tokens</th>
+							<th scope="col">Cost</th>
+						</tr>
+					</thead>
+					<tbody id="log-body">
+						<tr class="empty"><td colspan="12">Nothing judged yet.</td></tr>
+					</tbody>
+				</table>
+			</div>
+		</section>
+
+		<section aria-labelledby="demo-heading">
+			<h2 id="demo-heading">Demo targets</h2>
+			<p>Open one in a new tab, share that tab here, then make something happen in it from its console (<kbd>F12</kbd>), e.g. <code>fixture.trigger('…')</code>.</p>
+			<ul id="fixtures" class="fixtures"><li>Loading…</li></ul>
+		</section>
+	</main>
+
+	<div class="sr-only" aria-live="polite" id="live-polite"></div>
+	<div class="sr-only" aria-live="assertive" id="live-assertive"></div>
+	<canvas id="small" width="64" height="40" hidden></canvas>
+	<canvas id="full" hidden></canvas>
+</body>
+</html>

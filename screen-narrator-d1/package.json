@@ -9,7 +9,8 @@
     "report": "tsx src/report.ts",
     "live": "tsx src/live/server.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "diagrams": "for f in docs/*.mmd; do PUPPETEER_SKIP_DOWNLOAD=1 npx -y @mermaid-js/mermaid-cli -c docs/mermaid.json -p docs/pptr.json -i \"$f\" -o \"${f%.mmd}.svg\" || exit 1; done"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",

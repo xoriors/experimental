@@ -69,7 +69,7 @@ describe("binary building blocks", () => {
 });
 
 describe("computeMetrics", () => {
-	it("skips ambiguous labels per question but counts them", () => {
+	it("skips ambiguous labels per question and counts ambiguous announce labels", () => {
 		const pairs = [
 			makePair("a", { announce: true, kind: "dialog", urgency: 3 }),
 			makePair("b", { announce: "ambiguous", kind: "ambiguous", urgency: 2 }),
@@ -78,10 +78,9 @@ describe("computeMetrics", () => {
 		const pred = { announce: 0.9, kind: kindAnswer("dialog", 0.7), urgency: { score: 3, probabilities: {} } };
 		const run = makeRun(pairs, pairs.map((p) => makeResult(p.id, "m", pred)));
 		const m = computeMetrics(run);
-		expect(m.ambiguous).toEqual({ announce: 1, kind: 1, urgency: 1 });
+		expect(m.ambiguous).toEqual({ announce: 1 });
 		const b = m.backends.m!;
 		expect(b.announce.n).toBe(2);
-		expect(b.announce.skippedAmbiguous).toBe(1);
 		expect(b.announce.accuracy).toBe(0.5);
 		expect(b.kind.n).toBe(2);
 		expect(b.kind.accuracy).toBe(0.5);
@@ -89,7 +88,6 @@ describe("computeMetrics", () => {
 		expect(b.kind.confusion[6]![0]).toBe(1); // cosmetic → dialog
 		expect(b.kind.meanTrueProb).toBeCloseTo((0.7 + 0.3 / 7) / 2, 10);
 		expect(b.urgency.n).toBe(2);
-		expect(b.urgency.skippedAmbiguous).toBe(1);
 	});
 
 	it("skips errored results and fields a backend doesn't answer", () => {
@@ -187,6 +185,20 @@ describe("computeMetrics", () => {
 		const m = computeMetrics(run, { ...DEFAULT_THRESHOLDS, sensitive: 0.3 }).backends.m!.sensitive;
 		expect(m).toMatchObject({ threshold: 0.3, accuracy: 1 });
 	});
+
+	it("honours the confident and supported thresholds it is given, and reports them", () => {
+		const narrations = { supported: "x", unsupported: "y" };
+		const pairs = [makePair("a", { announce: false }), makePair("b", { narrations })];
+		const run = makeRun(pairs, [makeResult("a", "m", { announce: 0.85 }), makeResult("b", "m", { supported: { supported: 0.4, unsupported: 0.2 } })]);
+		const byDefault = computeMetrics(run);
+		expect(byDefault.verdicts.a!.m!.confidentlyWrong).toBe(true);
+		expect(byDefault.backends.m!.supported.accuracy).toBe(0.5); // 0.4 ✗ at 0.5, 0.2 ✓
+		const thresholds = { ...DEFAULT_THRESHOLDS, confident: 0.9, supported: 0.3 };
+		const m = computeMetrics(run, thresholds);
+		expect(m.thresholds).toEqual(thresholds);
+		expect(m.verdicts.a!.m!.confidentlyWrong).toBe(false);
+		expect(m.backends.m!.supported).toMatchObject({ threshold: 0.3, accuracy: 1 });
+	});
 });
 
 describe("noise", () => {
@@ -226,8 +238,6 @@ describe("noise", () => {
 		const pairs = [0, 1].map((step) => makePair(`f${step}`, { announce: true }, { session: { name: "s", step, tMs: step * 30_000 } }));
 		const results = [makeResult("f0", "m", { announce: 0.9, urgency: { score: 0.2, probabilities: {} } }), makeResult("f1", "m", undefined, { error: "x" })];
 		expect(noiseMetrics(pairs, verdictsFor(pairs, results)).sessions[0]).toMatchObject({ predicted: 0, missedAnnouncements: 2, minutes: 1 });
-		// A frame with no verdict at all is silence too.
-		expect(noiseMetrics(pairs, {}).sessions[0]).toMatchObject({ predicted: 0, missedAnnouncements: 2 });
 		const none = noiseMetrics([makePair("x")], {});
 		expect(none.sessions).toEqual([]);
 		expect(none.total.predictedPerMin).toBeNull();

@@ -28,12 +28,9 @@
 		menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
 		back: '<path d="M15 5l-7 7 7 7"/>',
 		chevron: '<path d="m9 5 7 7-7 7"/>',
-		down: '<path d="m6 9 6 6 6-6"/>',
 		refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
 		more: '<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>',
-		check: '<path d="m5 12.5 4.5 4.5L19 7"/>',
 		"check-circle": '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/>',
-		x: '<path d="M6 6l12 12M18 6 6 18"/>',
 		gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
 		user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/>',
 		lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
@@ -41,17 +38,14 @@
 		palette: '<circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1.2"/><circle cx="12" cy="7.5" r="1.2"/><circle cx="16" cy="10" r="1.2"/>',
 		card: '<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19M6 15h4"/>',
 		eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-		"eye-off": '<path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 		cart: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11.5l2-8H6.2"/>',
 		heart: '<path d="M12 20s-7.5-4.6-9.2-9.2C1.6 7.3 3.9 4 7.3 4c2 0 3.6 1.2 4.7 2.7C13.1 5.2 14.7 4 16.7 4c3.4 0 5.7 3.3 4.5 6.8C19.5 15.4 12 20 12 20z"/>',
 		phone: '<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
 		video: '<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3"/>',
 		clip: '<path d="M20 11.5 12 19.5a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.2a1.7 1.7 0 0 1-2.4-2.4L15 7"/>',
 		smile: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5v.5M15 9.5v.5"/>',
-		home: '<path d="M3 11 12 3l9 8M5 9.5V21h14V9.5"/>',
 		chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
 		transfer: '<path d="M4 8h14l-3-3M20 16H6l3 3"/>',
-		pin: '<path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
 		shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
 		truck: '<path d="M2 6h12v10H2zM14 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
 		clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -111,7 +105,6 @@
 		variant,
 		ready: false,
 		t,
-		icon,
 		hydrate,
 		stepSpinner,
 		/** Advance an HH:MM clock element by one minute. */
@@ -124,10 +117,10 @@
 		on(name, fn) {
 			handlers[name] = fn;
 		},
-		trigger(name, ...args) {
+		trigger(name) {
 			const fn = handlers[name];
 			if (!fn) throw new Error(`fixture: unknown trigger "${name}" (known: ${Object.keys(handlers).join(", ")})`);
-			return fn(...args);
+			return fn();
 		},
 		/** Extra client-only params from the fragment, e.g. `view=checkout`. */
 		param: (key) => params.get(key),

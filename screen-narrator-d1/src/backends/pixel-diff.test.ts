@@ -4,6 +4,7 @@ import { PNG } from "pngjs";
 import { afterAll, describe, expect, it } from "vitest";
 import { announceScore, cachedChangedFraction, changedFraction, DEFAULT_PIXEL_DIFF_THRESHOLD, pixelDiffBackend } from "./pixel-diff.ts";
 import { fromRoot } from "../env.ts";
+import { pngBytesDataUrl } from "../images.ts";
 import type { Pair } from "../types.ts";
 
 // Scratch cache dir under runs/ (gitignored), like cache.test.ts.
@@ -18,7 +19,7 @@ function png(w: number, h: number, dark = 0): string {
 		const v = i < dark ? 0 : 240;
 		p.data.set([v, v, v, 255], i * 4);
 	}
-	return `data:image/png;base64,${PNG.sync.write(p).toString("base64")}`;
+	return pngBytesDataUrl(PNG.sync.write(p));
 }
 
 describe("announceScore", () => {

@@ -74,6 +74,7 @@ export async function scrollToBottom(page: Page): Promise<void> {
 }
 
 const cosmetic: StaticLabels = { announce: false, kind: "cosmetic", urgency: 0, sensitive: false };
+const ambiguous: StaticLabels = { announce: AMBIGUOUS, kind: AMBIGUOUS, urgency: AMBIGUOUS, sensitive: false };
 const unchanged: StaticLabels = { announce: false, kind: "none", urgency: 0, sensitive: false };
 const scrolled: StaticLabels = { announce: false, kind: "scroll", urgency: 0, sensitive: false };
 /** A change worth announcing. */
@@ -240,7 +241,7 @@ export const SCENARIOS: Scenario[] = [
 		app: "news",
 		description: "The sidebar advert rotates to a different advertiser.",
 		run: (page) => trigger(page, "rotate-ad"),
-		labels: { announce: AMBIGUOUS, kind: AMBIGUOUS, urgency: AMBIGUOUS, sensitive: false },
+		labels: ambiguous,
 	},
 	{
 		id: "no-change",
@@ -289,7 +290,7 @@ export const SCENARIOS: Scenario[] = [
 			await page.getByRole("tab").nth(3).click();
 		},
 		run: (page) => page.locator("#darkSwitch").click(),
-		labels: { announce: AMBIGUOUS, kind: AMBIGUOUS, urgency: AMBIGUOUS, sensitive: false },
+		labels: ambiguous,
 	},
 ];
 

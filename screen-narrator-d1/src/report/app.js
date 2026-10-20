@@ -6,9 +6,10 @@ const { run, metrics: M, imageBase } = DATA;
 const MISSING = new Set(DATA.missing || []);
 const BACKENDS = run.backends;
 const B = (name) => M.backends[name];
-const pairById = new Map(run.pairs.map((p) => [p.id, p]));
 const resultFor = new Map(run.results.map((r) => [`${r.pairId}\u0000${r.backend}`, r]));
 const $ = (id) => document.getElementById(id);
+/** A table() column whose highlighted value and cell come from the same accessor. */
+const col = (head, dir, get, format = (v) => v) => ({ head, dir, value: get, cell: (r) => format(get(r)) });
 
 // Colour follows the backend's position in the run, never its rank in a column.
 document.head.insertAdjacentHTML(
@@ -31,7 +32,6 @@ function renderFacts() {
 		["Total cost", `${totalCost.length ? fmt.usd(totalCost.reduce((a, b) => a + b, 0)) : fmt.usd(null)}${unknown.length ? `<span class="sub-n">+ unknown for ${unknown.map(esc).join(", ")}</span>` : ""}`],
 	];
 	$("facts").innerHTML = facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
-	document.title = `Report ${run.id} · screen-narrator-d1`;
 }
 
 // --- headline ----------------------------------------------------------------------------------------------------
@@ -41,18 +41,18 @@ function renderHeadline() {
 	const rows = BACKENDS.map((name) => ({ name, m: B(name) }));
 	const cols = [
 		{ head: "Backend", cell: (r) => backendLabel(r.name, `<span class="sub-n">n ${r.m.announce.n}</span>`) },
-		{ head: 'Accuracy <span class="dir">↑</span>', dir: "high", value: (r) => r.m.announce.accuracy, cell: (r) => fmt.pct(r.m.announce.accuracy) },
-		{ head: 'Brier <span class="dir">↓</span>', dir: "low", value: (r) => r.m.announce.brier, cell: (r) => fmt.num(r.m.announce.brier) },
-		{ head: 'ECE <span class="dir">↓</span>', dir: "low", value: (r) => r.m.announce.ece, cell: (r) => fmt.num(r.m.announce.ece) },
+		col('Accuracy <span class="dir">↑</span>', "high", (r) => r.m.announce.accuracy, fmt.pct),
+		col('Brier <span class="dir">↓</span>', "low", (r) => r.m.announce.brier, fmt.num),
+		col('ECE <span class="dir">↓</span>', "low", (r) => r.m.announce.ece, fmt.num),
 		{ head: 'False interrupts <span class="dir">↓</span>', dir: "low", value: (r) => r.m.urgency.falseInterrupt.rate, cell: (r) => fmt.rate(r.m.urgency.falseInterrupt) },
-		{
-			head: `Announced / min <span class="dir">labelled ${isNum(labelledPerMin) ? labelledPerMin.toFixed(1) : "—"}</span>`,
-			dir: isNum(labelledPerMin) ? (v) => Math.abs(v - labelledPerMin) : undefined,
-			value: (r) => r.m.noise.total.predictedPerMin,
-			cell: (r) => fmt.perMin(r.m.noise.total.predictedPerMin),
-		},
-		{ head: 'p50 latency <span class="dir">↓</span>', dir: "low", value: (r) => r.m.cost.latencyP50, cell: (r) => fmt.ms(r.m.cost.latencyP50) },
-		{ head: 'Cost / pair <span class="dir">↓</span>', dir: "low", value: (r) => r.m.cost.costPerPair, cell: (r) => fmt.usd(r.m.cost.costPerPair) },
+		col(
+			`Announced / min <span class="dir">labelled ${isNum(labelledPerMin) ? labelledPerMin.toFixed(1) : "—"}</span>`,
+			isNum(labelledPerMin) ? (v) => Math.abs(v - labelledPerMin) : undefined,
+			(r) => r.m.noise.total.predictedPerMin,
+			fmt.perMin,
+		),
+		col('p50 latency <span class="dir">↓</span>', "low", (r) => r.m.cost.latencyP50, fmt.ms),
+		col('Cost / pair <span class="dir">↓</span>', "low", (r) => r.m.cost.costPerPair, fmt.usd),
 	];
 	$("headline").innerHTML = table(cols, rows, { caption: "announce: per-backend summary" });
 }
@@ -112,9 +112,9 @@ function renderKind() {
 	$("kind-summary").innerHTML = table(
 		[
 			{ head: "Backend", cell: (r) => backendLabel(r.name, `<span class="sub-n">n ${r.k.n}</span>`) },
-			{ head: 'Top-1 right <span class="dir">↑</span>', dir: "high", value: (r) => r.k.accuracy, cell: (r) => fmt.pct(r.k.accuracy) },
-			{ head: 'Mean P(label) <span class="dir">↑</span>', dir: "high", value: (r) => r.k.meanTrueProb, cell: (r) => fmt.num(r.k.meanTrueProb, 2) },
-			{ head: 'Confidence ECE <span class="dir">↓</span>', dir: "low", value: (r) => r.k.confidence.ece, cell: (r) => fmt.num(r.k.confidence.ece) },
+			col('Top-1 right <span class="dir">↑</span>', "high", (r) => r.k.accuracy, fmt.pct),
+			col('Mean P(label) <span class="dir">↑</span>', "high", (r) => r.k.meanTrueProb, (x) => fmt.num(x, 2)),
+			col('Confidence ECE <span class="dir">↓</span>', "low", (r) => r.k.confidence.ece, fmt.num),
 		],
 		rows,
 		{ caption: "kind summary" },
@@ -128,8 +128,8 @@ function renderUrgency() {
 	$("urgency").innerHTML = table(
 		[
 			{ head: "Backend", cell: (r) => backendLabel(r.name, `<span class="sub-n">n ${r.u.n}</span>`) },
-			{ head: 'Mean abs. error <span class="dir">↓ levels</span>', dir: "low", value: (r) => r.u.mae, cell: (r) => fmt.num(r.u.mae, 2) },
-			{ head: 'Exact level <span class="dir">↑</span>', dir: "high", value: (r) => r.u.levelAccuracy, cell: (r) => fmt.pct(r.u.levelAccuracy) },
+			col('Mean abs. error <span class="dir">↓ levels</span>', "low", (r) => r.u.mae, (x) => fmt.num(x, 2)),
+			col('Exact level <span class="dir">↑</span>', "high", (r) => r.u.levelAccuracy, fmt.pct),
 			{ head: 'False interrupts <span class="dir">↓</span>', dir: "low", value: (r) => r.u.falseInterrupt.rate, cell: (r) => fmt.rate(r.u.falseInterrupt) },
 			{ head: 'Missed interrupts <span class="dir">↓</span>', dir: "low", value: (r) => r.u.missedInterrupt.rate, cell: (r) => fmt.rate(r.u.missedInterrupt) },
 		],
@@ -145,12 +145,12 @@ function renderOther() {
 		return `<h3 class="sub">${title}</h3><p class="note">${blurb}</p><div class="scroll">${table(
 			[
 				{ head: "Backend", cell: (r) => backendLabel(r.name, `<span class="sub-n">n ${r.m.n} · ${r.m.positives} yes</span>`) },
-				{ head: 'Accuracy <span class="dir">↑</span>', dir: "high", value: (r) => r.m.accuracy, cell: (r) => fmt.pct(r.m.accuracy) },
+				col('Accuracy <span class="dir">↑</span>', "high", (r) => r.m.accuracy, fmt.pct),
 				{ head: "Precision", cell: (r) => fmt.pct(r.m.precision) },
 				{ head: "Recall", cell: (r) => fmt.pct(r.m.recall) },
-				{ head: 'Brier <span class="dir">↓</span>', dir: "low", value: (r) => r.m.brier, cell: (r) => fmt.num(r.m.brier) },
-				{ head: 'ECE <span class="dir">↓</span>', dir: "low", value: (r) => r.m.ece, cell: (r) => fmt.num(r.m.ece) },
-				{ head: 'AUROC <span class="dir">↑</span>', dir: "high", value: (r) => r.m.auroc, cell: (r) => fmt.num(r.m.auroc, 2) },
+				col('Brier <span class="dir">↓</span>', "low", (r) => r.m.brier, fmt.num),
+				col('ECE <span class="dir">↓</span>', "low", (r) => r.m.ece, fmt.num),
+				col('AUROC <span class="dir">↑</span>', "high", (r) => r.m.auroc, (x) => fmt.num(x, 2)),
 			],
 			answering.map((name) => ({ name, m: B(name)[key] })),
 			{ caption: title },
@@ -161,7 +161,7 @@ function renderOther() {
 		? `<div class="scroll">${table(
 				[
 					{ head: "Backend", cell: (r) => backendLabel(r.name, `<span class="sub-n">n ${B(r.name).primary.n}</span>`) },
-					{ head: 'Right element <span class="dir">↑</span>', dir: "high", value: (r) => B(r.name).primary.accuracy, cell: (r) => fmt.pct(B(r.name).primary.accuracy) },
+					col('Right element <span class="dir">↑</span>', "high", (r) => B(r.name).primary.accuracy, fmt.pct),
 				],
 				primary.map((name) => ({ name })),
 				{ caption: "primary" },
@@ -188,16 +188,16 @@ function renderNoise() {
 				frames
 					.map((p) => {
 						// The same verdict fields the noise table above counts, so the strip and the numbers can't disagree.
-						const v = M.verdicts[p.id]?.[name];
-						const a = v?.action ?? "drop";
-						const wrong = v ? v.saidWrongly : p.labels.announce === true;
+						const v = M.verdicts[p.id][name];
+						const a = v.action ?? "drop"; // null on error: silence
+						const wrong = v.saidWrongly;
 						return `<span class="frame ${a}${wrong ? " wrong" : ""}" title="${esc(`${(p.session.tMs / 1000).toFixed(0)} s · ${p.scenario}: ${a}${wrong ? " (wrong)" : ""}`)}">${ACTION_MARK[a]}</span>`;
 					})
 					.join("");
 			const labelled = frames
 				.map((p) => {
 					// A labelled announcement without a clear urgency is drawn as decide() would treat it: queued.
-					const a = p.labels.announce === true ? URGENCY_NAMES[p.labels.urgency] ?? URGENCY_NAMES[2] : URGENCY_NAMES[0];
+					const a = p.labels.announce === true ? URGENCY_NAMES[p.labels.urgency] ?? URGENCY_NAMES[NO_URGENCY_LEVEL] : URGENCY_NAMES[0];
 					return `<span class="frame ${a}" title="${esc(`${(p.session.tMs / 1000).toFixed(0)} s · ${p.scenario}: labelled ${a}`)}">${ACTION_MARK[a]}</span>`;
 				})
 				.join("");
@@ -206,8 +206,8 @@ function renderNoise() {
 					[
 						{ head: "Backend", cell: (r) => backendLabel(r.name) },
 						{ head: `Announced <span class="dir">labelled ${s.labelled} (${fmt.perMin(s.labelledPerMin)})</span>`, dir: (v) => Math.abs(v - s.labelled), value: (r) => r.s.predicted, cell: (r) => `${r.s.predicted} <span class="sub-n">${fmt.perMin(r.s.predictedPerMin)}</span>` },
-						{ head: 'False <span class="dir">↓</span>', dir: "low", value: (r) => r.s.falseAnnouncements, cell: (r) => r.s.falseAnnouncements },
-						{ head: 'Missed <span class="dir">↓</span>', dir: "low", value: (r) => r.s.missedAnnouncements, cell: (r) => r.s.missedAnnouncements },
+						col('False <span class="dir">↓</span>', "low", (r) => r.s.falseAnnouncements),
+						col('Missed <span class="dir">↓</span>', "low", (r) => r.s.missedAnnouncements),
 					],
 					rows,
 					{ caption: `${s.name}: announcements per backend` },
@@ -228,13 +228,13 @@ function renderCost() {
 		[
 			{ head: "Backend", cell: (r) => backendLabel(r.name) },
 			{ head: "Results", cell: (r) => r.c.results },
-			{ head: 'Errors <span class="dir">↓</span>', dir: "low", value: (r) => r.c.errors, cell: (r) => r.c.errors },
+			col('Errors <span class="dir">↓</span>', "low", (r) => r.c.errors),
 			{ head: "Cached", cell: (r) => r.c.cached },
-			{ head: 'p50 <span class="dir">↓</span>', dir: "low", value: (r) => r.c.latencyP50, cell: (r) => fmt.ms(r.c.latencyP50) },
-			{ head: 'p95 <span class="dir">↓</span>', dir: "low", value: (r) => r.c.latencyP95, cell: (r) => fmt.ms(r.c.latencyP95) },
+			col('p50 <span class="dir">↓</span>', "low", (r) => r.c.latencyP50, fmt.ms),
+			col('p95 <span class="dir">↓</span>', "low", (r) => r.c.latencyP95, fmt.ms),
 			{ head: "Tokens / pair", cell: (r) => fmt.int(r.c.tokensPerPair) },
 			{ head: "Tokens total", cell: (r) => fmt.int(r.c.inputTokens + r.c.outputTokens) },
-			{ head: 'Cost / pair <span class="dir">↓</span>', dir: "low", value: (r) => r.c.costPerPair, cell: (r) => fmt.usd(r.c.costPerPair) },
+			col('Cost / pair <span class="dir">↓</span>', "low", (r) => r.c.costPerPair, fmt.usd),
 			{ head: "Cost total", cell: (r) => `${fmt.usd(r.c.costUsd)}${isNum(r.c.costUsd) && r.c.priced < r.c.results - r.c.errors ? `<span class="sub-n">${r.c.priced} of ${r.c.results - r.c.errors} priced</span>` : ""}` },
 		],
 		BACKENDS.map((name) => ({ name, c: B(name).cost })),

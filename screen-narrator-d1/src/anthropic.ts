@@ -34,6 +34,8 @@ const PRICES: Record<string, { input: number; output: number }> = {
 	"claude-opus-4-8": { input: 5, output: 25 },
 };
 
+export const claudePriced = (model: string): boolean => model in PRICES;
+
 /** Null for a model not in the table. A response served by a fallback is priced entirely at `model`'s rate. */
 export function claudeCostUsd(model: string, inputTokens: number, outputTokens: number): number | null {
 	const p = PRICES[model];
@@ -45,6 +47,24 @@ export function claudeImageTokens(width: number, height: number): number {
 	const s = Math.min(1, 1568 / Math.max(width, height));
 	return Math.ceil((width * s * (height * s)) / 750);
 }
+
+/** The request fields both callers send: no `thinking` (always on), no temperature, fallbacks on. */
+export const claudeRequestBase = ({ model, effort }: ClaudeSettings) => ({
+	model,
+	max_tokens: CLAUDE_MAX_TOKENS,
+	// Not `as const` on the whole object: the SDK's `betas` is a mutable array type.
+	betas: [FALLBACK_BETA],
+	fallbacks: "default" as const,
+	output_config: { effort },
+});
+
+/** A base64 image content block. */
+export const claudeImageBlock = (mediaType: "image/png" | "image/jpeg", data: string) =>
+	({ type: "image", source: { type: "base64", media_type: mediaType, data } }) as const;
+
+let client: Anthropic | undefined;
+/** One lazily built client. No arguments: the SDK resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login` profile. */
+export const anthropicClient = (): Anthropic => (client ??= new Anthropic());
 
 /** The slice of a response both callers read, so tests can fake it. */
 export interface ClaudeResponse {

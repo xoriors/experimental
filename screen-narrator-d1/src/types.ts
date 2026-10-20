@@ -32,6 +32,9 @@ export interface Variant {
 	lang: "en" | "es";
 }
 
+/** The variant part of a Pair.id, e.g. `dark-1280x800-compact-en`. */
+export const variantSlug = (v: Variant): string => `${v.theme}-${v.viewport.width}x${v.viewport.height}-${v.density}-${v.lang}`;
+
 export interface Pair {
 	/** Unique and filesystem-safe, e.g. `mail-confirm-dialog--dark-1280x800-compact-en`. */
 	id: string;

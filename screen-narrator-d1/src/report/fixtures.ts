@@ -1,11 +1,11 @@
 // Synthetic runs with invented ids: small builders for the metrics tests, and `sampleRun()` for `pnpm report --sample`
 // so the report's layout can be seen (and worked on) before any real benchmark has run. No real data or images.
-import { claudeCostUsd, DEFAULT_CLAUDE_MODEL } from "../anthropic.ts";
-import { liquidPricePerMTok } from "../backends/liquid.ts";
+import { type Scenario, SCENARIOS } from "../../fixtures/scenarios.ts";
+import { claudeCostUsd, claudeImageTokens, DEFAULT_CLAUDE_MODEL } from "../anthropic.ts";
+import { liquidCostUsd, liquidEstimate, type LiquidModel } from "../backends/liquid.ts";
 import { announceScore, DEFAULT_PIXEL_DIFF_THRESHOLD } from "../backends/pixel-diff.ts";
 import {
 	AMBIGUOUS,
-	type Ambiguous,
 	CHANGE_KINDS,
 	type ChangeKind,
 	type Pair,
@@ -13,7 +13,7 @@ import {
 	type PairResult,
 	type Prediction,
 	type RunResult,
-	type Urgency,
+	variantSlug,
 } from "../types.ts";
 
 export function makePair(id: string, labels: Partial<PairLabels> = {}, extra: Partial<Pair> = {}): Pair {
@@ -64,31 +64,43 @@ function rng(seed: number) {
 	};
 }
 
-type Scenario = [name: string, app: string, announce: boolean | Ambiguous, kind: ChangeKind | Ambiguous, urgency: Urgency | Ambiguous, pixels: number];
-// The README's transition table; `pixels` is the share of the screen that changes, which is what fools pixel diff.
-const SCENARIOS: Scenario[] = [
-	["confirm-dialog", "mail", true, "dialog", 3, 0.35],
-	["session-expiry", "dashboard", true, "dialog", 3, 0.3],
-	["validation-error", "settings", true, "error", 3, 0.02],
-	["saved-toast", "settings", true, "notification", 2, 0.015],
-	["new-message", "chat", true, "notification", 2, 0.04],
-	["page-navigation", "shop", true, "navigation", 2, 0.8],
-	["cookie-banner", "shop", true, "dialog", 2, 0.12],
-	["infinite-scroll", "mail", true, "content", 1, 0.25],
-	["user-scroll", "mail", false, "scroll", 0, 0.7],
-	["hover-highlight", "dashboard", false, "cosmetic", 0, 0.2],
-	["spinner-frame", "dashboard", false, "cosmetic", 0, 0.004],
-	["no-change", "chat", false, "none", 0, 0],
-	["rotating-ad", "shop", AMBIGUOUS, AMBIGUOUS, AMBIGUOUS, 0.09],
-];
+// The real scenarios (fixtures/scenarios.ts) with their labels; this is only the share of the screen each one changes,
+// which is what fools pixel diff. Invented, but in proportion; every scenario must have one.
+const PIXEL_SHARE: Record<string, number> = {
+	"confirm-dialog": 0.35,
+	"session-expiry": 0.3,
+	"validation-error": 0.02,
+	"saved-toast": 0.015,
+	"new-message": 0.04,
+	"open-message": 0.8,
+	"cookie-banner": 0.12,
+	"infinite-scroll": 0.25,
+	"user-scroll": 0.7,
+	"hover-card": 0.06,
+	"spinner-frame": 0.004,
+	"clock-tick": 0.001,
+	"rotating-ad": 0.09,
+	"no-change": 0,
+	"card-declined": 0.03,
+	"password-reveal": 0.008,
+	"dark-mode-toggle": 0.95,
+};
+const scenarioById = (id: string): Scenario => {
+	const s = SCENARIOS.find((x) => x.id === id);
+	if (!s) throw new Error(`sample: no scenario "${id}" in fixtures/scenarios.ts`);
+	return s;
+};
+const pixelShare = (id: string): number => {
+	const px = PIXEL_SHARE[id];
+	if (px === undefined) throw new Error(`sample: no pixel share for scenario "${id}"`);
+	return px;
+};
 const VARIANTS: Pair["variant"][] = [
 	{ theme: "light", viewport: { width: 1280, height: 800 }, density: "comfortable", lang: "en" },
 	{ theme: "dark", viewport: { width: 1280, height: 800 }, density: "compact", lang: "en" },
 	{ theme: "light", viewport: { width: 390, height: 844 }, density: "comfortable", lang: "es" },
 	{ theme: "dark", viewport: { width: 768, height: 1024 }, density: "comfortable", lang: "en" },
 ];
-const SENSITIVE = new Set(["new-message", "session-expiry"]);
-const variantId = (v: Pair["variant"]) => `${v.theme}-${v.viewport.width}x${v.viewport.height}-${v.density}-${v.lang}`;
 
 const clamp = (x: number) => Math.min(0.995, Math.max(0.005, x));
 
@@ -102,17 +114,31 @@ interface Persona {
 	/** Pushes probabilities towards 0 / 1 (overconfidence) when > 1. */
 	sharpen: number;
 	latency: [number, number];
-	tokens: number;
-	outputTokens: number;
-	/** The backend's own pricing; d1 stays unpriced so the sample shows that case whatever the env says. */
+	/** Input and output tokens for a pair, before jitter. */
+	tokens: (pair: Pair) => [input: number, output: number];
+	/** The backend's own pricing (d1's is unknown unless LIQUID_D1_USD_PER_MTOK is set). */
 	costUsd: (inputTokens: number, outputTokens: number) => number | null;
 	errorRate: number;
 }
-const d1UltraPrice = liquidPricePerMTok("d1-ultra");
+const liquid = (model: LiquidModel): Pick<Persona, "name" | "tokens" | "costUsd"> => ({
+	name: model,
+	tokens: (pair) => [liquidEstimate(model, pair, "core").inputTokens, 0],
+	costUsd: (input) => liquidCostUsd(model, input),
+});
 const PERSONAS: Persona[] = [
-	{ name: "d1-ultra", skill: 0.86, separation: 3, sharpen: 1, latency: [620, 260], tokens: 12_300, outputTokens: 0, costUsd: (t) => (d1UltraPrice === null ? null : (t * d1UltraPrice) / 1e6), errorRate: 0.01 },
-	{ name: "d1", skill: 0.74, separation: 2, sharpen: 1.6, latency: [310, 140], tokens: 12_300, outputTokens: 0, costUsd: () => null, errorRate: 0.01 },
-	{ name: "vlm", skill: 0.8, separation: 2.5, sharpen: 3, latency: [2900, 1600], tokens: 6_400, outputTokens: 180, costUsd: (i, o) => claudeCostUsd(DEFAULT_CLAUDE_MODEL, i, o), errorRate: 0.04 },
+	{ ...liquid("d1-ultra"), skill: 0.86, separation: 3, sharpen: 1, latency: [620, 260], errorRate: 0.01 },
+	{ ...liquid("d1"), skill: 0.74, separation: 2, sharpen: 1.6, latency: [310, 140], errorRate: 0.01 },
+	{
+		name: "vlm",
+		skill: 0.8,
+		separation: 2.5,
+		sharpen: 3,
+		latency: [2900, 1600],
+		// Both images plus the prompt, and the answer: the shape of vlm.ts's own estimate.
+		tokens: (pair) => [2 * claudeImageTokens(pair.width, pair.height) + 900, 600],
+		costUsd: (input, output) => claudeCostUsd(DEFAULT_CLAUDE_MODEL, input, output),
+		errorRate: 0.04,
+	},
 ];
 
 function sharpenP(p: number, k: number): number {
@@ -146,8 +172,8 @@ function predict(persona: Persona, labels: PairLabels, rand: () => number): Pred
 }
 
 /**
- * 72 invented pairs (13 transitions × 4 variants, plus a 2-minute session) answered by fake d1-ultra, d1, pixel-diff
- * and VLM backends.
+ * 88 invented pairs (the 17 real transitions × 4 variants, plus a 2-minute session) answered by fake d1-ultra, d1,
+ * pixel-diff and VLM backends.
  */
 export function sampleRun(): RunResult {
 	const rand = rng(20261015);
@@ -159,23 +185,26 @@ export function sampleRun(): RunResult {
 function buildSyntheticPairs(rand: () => number): { pairs: Pair[]; pixels: Map<string, number> } {
 	const pairs: Pair[] = [];
 	const pixels = new Map<string, number>();
-	for (const [name, app, announce, kind, urgency, px] of SCENARIOS)
+	for (const { id: name, app, labels } of SCENARIOS)
 		for (const variant of VARIANTS) {
-			const id = `${app}-${name}--${variantId(variant)}`;
+			const id = `${app}-${name}--${variantSlug(variant)}`;
 			pairs.push({
-				...makePair(id, { announce, kind, urgency, sensitive: SENSITIVE.has(name) }, { scenario: name, app, variant }),
+				...makePair(id, { ...labels }, { scenario: name, app, variant }),
 				width: variant.viewport.width,
 				height: variant.viewport.height,
-				focused: kind === "dialog" ? 'button "Cancel"' : undefined,
+				focused: labels.kind === "dialog" ? 'button "Cancel"' : undefined,
 			});
-			pixels.set(id, px * (0.7 + rand() * 0.6));
+			pixels.set(id, pixelShare(name) * (0.7 + rand() * 0.6));
 		}
 	// A scripted session: mostly quiet frames with a few events, 6 s apart.
-	const script: Scenario[] = Array.from({ length: 20 }, (_, i) => SCENARIOS[[11, 10, 11, 9, 3, 11, 10, 8, 8, 0, 11, 10, 4, 11, 9, 10, 11, 5, 8, 2][i]!]!);
-	script.forEach(([name, app, announce, kind, urgency, px], step) => {
+	const script = [
+		"no-change", "spinner-frame", "no-change", "hover-card", "saved-toast", "no-change", "spinner-frame", "user-scroll", "user-scroll", "confirm-dialog",
+		"no-change", "spinner-frame", "new-message", "no-change", "hover-card", "spinner-frame", "no-change", "open-message", "user-scroll", "validation-error",
+	].map(scenarioById);
+	script.forEach(({ id: name, app, labels }, step) => {
 		const id = `session-mail-morning--${String(step).padStart(2, "0")}-${name}`;
-		pairs.push(makePair(id, { announce, kind, urgency, sensitive: false }, { scenario: name, app, session: { name: "mail-morning", step, tMs: step * 6000 } }));
-		pixels.set(id, px * (0.7 + rand() * 0.6));
+		pairs.push(makePair(id, { ...labels }, { scenario: name, app, session: { name: "mail-morning", step, tMs: step * 6000 } }));
+		pixels.set(id, pixelShare(name) * (0.7 + rand() * 0.6));
 	});
 	return { pairs, pixels };
 }
@@ -189,13 +218,14 @@ function answerAll(pairs: Pair[], pixels: Map<string, number>, rand: () => numbe
 				results.push(makeResult(pair.id, persona.name, undefined, { error: "HTTP 503: upstream timed out", latencyMs: 30_000 }));
 				continue;
 			}
-			const tokens = Math.round(persona.tokens * (0.9 + rand() * 0.2));
+			const [input, outputTokens] = persona.tokens(pair);
+			const inputTokens = Math.round(input * (0.9 + rand() * 0.2));
 			results.push(
 				makeResult(pair.id, persona.name, predict(persona, pair.labels, rand), {
 					latencyMs,
-					inputTokens: tokens,
-					outputTokens: persona.outputTokens,
-					costUsd: persona.costUsd(tokens, persona.outputTokens),
+					inputTokens,
+					outputTokens,
+					costUsd: persona.costUsd(inputTokens, outputTokens),
 					cached: rand() < 0.15,
 				}),
 			);

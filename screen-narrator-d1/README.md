@@ -36,28 +36,16 @@ There are two ways to use it: an offline **benchmark** that scores the models on
 mode** that shows what a narrator built on d1-ultra would actually say. The Mermaid sources for every diagram
 are in [`docs/`](docs/diagrams.md).
 
-**1. Capture** (`pnpm capture`)
-- Six small fake web apps (`fixtures/*.html`: mail, settings, chat, shop, bank, news) and 17 scripted
-  changes (`fixtures/scenarios.ts`): a dialog opens, an error appears, a toast slides in, a card is hovered,
-  a clock ticks, and so on.
-- Playwright opens each app, takes a screenshot, makes the change, takes a second screenshot. Because the
-  script made the change, the right answer is known ("dialog opened → announce, interrupt now").
-- Each change runs in 6 variants (light/dark × 3 screen sizes, with density and language rotated), plus a
-  40-step "2 minutes in the mail app" session for the noise metric: **142 labelled pairs** in `data/pairs/`.
+**1. Capture** (`pnpm capture`). Playwright screenshots six small fake web apps before and after 17 scripted
+changes (a dialog opens, a toast slides in, a card is hovered…). The script made the change, so the right answer
+is known: **142 labelled pairs** in `data/pairs/`. See [Dataset](#dataset-synthetic-screens-labels-known-by-construction).
 
-**2. Benchmark** (`pnpm bench`)
-- Every backend gets the same before/after pair and the same questions from `src/questions.ts`: should a
-  blind user hear about this? What kind of change? How urgent? Is private information visible? Which button
-  is the main action? Is this spoken description true?
-- Backends: **d1-ultra** (under test), **d1** (Liquid's smaller model), **pixel diff** ("speak if enough pixels
-  changed", free) and a **Claude VLM** asked the same questions as JSON.
-- Answers go to `runs/<id>/results.json`. Paid answers are cached, so re-runs cost nothing until the question
-  wording, the images or a backend's settings change.
+**2. Benchmark** (`pnpm bench`). Every backend (d1-ultra, d1, pixel diff, a Claude VLM) gets the same pair and
+the same questions, and the answers go to `runs/<id>/results.json`. See
+[the question set](#what-we-test-the-question-set) and [Baselines](#baselines-what-helps-is-measured-against).
 
-**3. Report** (`pnpm report`)
-- One self-contained HTML page per run: accuracy, **calibration** (does "90 % sure" mean right 90 % of the
-  time?), false interrupts, how chatty each backend would be over the session, cost and latency, and a
-  browser of every pair with each backend's answer.
+**3. Report** (`pnpm report`). One self-contained HTML page per run with the [Metrics](#metrics), and a browser
+of every pair: its label, each backend's probability bars, and filters for "wrong" and "confidently wrong".
 
 What the benchmark is designed to expose:
 
@@ -78,14 +66,23 @@ benchmark's noise metric and live mode use it:
 
 ![Decision policy](docs/decision.svg)
 
-- **drop:** stay silent. **mention:** keep it for when the user asks "What's new?". **queue:** say it after
-  the current speech. **interrupt:** say it now.
-- When the model isn't sure what kind of change it is, the phrase is hedged ("Probably: dialog opened").
-- A screen that looks sensitive is announced but never described.
+Text version of the diagram:
+
+- Below `thresholds.announce` on P(announce): **drop**, stay silent.
+- Otherwise the rounded urgency level picks the action: 0 **drop**, 1 **mention** (keep it for when the user
+  asks "What's new?"), 2 **queue** (say it after the current speech), 3 **interrupt** (say it now). A backend
+  with no urgency answer (pixel diff) queues.
+- The phrase comes from the kind ("Dialog opened"). Below `thresholds.confident` it is hedged ("Probably:
+  dialog opened"); with no kind answer (pixel diff) it is "Screen changed".
+- At or above `thresholds.sensitive` on P(sensitive), it appends "Sensitive content, not read aloud" and adds
+  no generated detail. Otherwise a queued or interrupting announcement may get a Claude detail sentence,
+  spoken only if it passes the fact-check.
 
 ### Live mode
 
 ![Live mode: one change from screen to speech](docs/live-mode.svg)
+
+Text version of the diagram:
 
 - The page watches a shared tab or screen and does a cheap local comparison every 500 ms. It only asks
   d1-ultra when something actually moved and the screen has settled, which keeps the cost low.
@@ -94,6 +91,8 @@ benchmark's noise metric and live mode use it:
 - With narration on, Claude writes one detailed sentence ("Dialog: Delete 3 messages? Buttons Cancel and
   Delete") and d1-ultra fact-checks it against the screen. The detail is spoken only if it passes; a
   rejected one is shown struck through in the log.
+
+**Live mode sends your screen to Liquid's cloud.** Only point it at windows with nothing private on them.
 
 ## First results (run 20261019-142237)
 
@@ -116,9 +115,9 @@ clear `announce` label; 12 are ambiguous and left out of the scores.
 How to read this:
 
 - **The gate works on these fixtures.** d1-ultra separated "worth announcing" from "not" perfectly. It wasn't
-  fooled by large cosmetic changes (a 30–46 % pixel change on hover) or by small important ones (a 1–4 % toast),
-  and it matched the labelled rate exactly on the session. Pixel diff is about as good on the session only
-  because most idle frames there are byte-identical.
+  fooled by large cosmetic changes (the hover card) or by small important ones (the toast), and it matched the
+  labelled rate exactly on the session. Pixel diff is about as good on the session only because most idle
+  frames there are byte-identical.
 - **d1-ultra's mistakes are defensible.** Every `kind` miss calls a near-invisible change (a spinner frame or a
   clock tick, about 0.01 % of pixels) `none` instead of `cosmetic`. Its only `sensitive` misses are a partly masked
   card number (`•••• 4242`), a label people could argue about. d1 instead missed the private chat messages.
@@ -178,7 +177,7 @@ The questions (wording is a first draft; the benchmark exists to tune it):
 | `primary` | choice | Which of these elements is the main action? — `criteria` built from the accessibility tree (`e0: "button 'Save'"`, …) | Works around no bounding boxes |
 | `supported` | noul | Is every claim in `narration` visibly supported by `images[1]`? | Fact-checks a generative narrator |
 
-The last two need extra inputs (accessibility candidates, a narration), so they come after the core three.
+The last two need extra inputs (accessibility candidates, a narration), so they come after the four core ones.
 
 `sensitive` on hosted d1-ultra is only a capability test: asking the question already sends the screen
 to the cloud. It only protects anything when it runs on-device (d1-3B).
@@ -208,10 +207,10 @@ No real screenshots: they leak private data, and hand-labelling them is slow and
 - **Playwright** opens each fixture, captures "before", runs the transition, captures "after".
   Variants multiply the set: light/dark theme × 3 viewports (1280×800, 1024×768, 390×844), with text
   density and language (en/es) rotated across them, so 17 transitions × 6 = 102 pairs. A scripted
-  40-step "2 minutes in the mail app" session adds 40 more for the noise metric. Small-region changes (a
-  toast in a corner, 1–4 % of pixels) and large cosmetic ones (hovering a big card, 30–46 %) are both in
-  there on purpose: they're what fools pixel diffs. The variant goes in the fixture URL's fragment
-  (`mail.html#theme=dark&lang=es`), and each app exposes `window.fixture.trigger(name)` for timed events.
+  40-step "2 minutes in the mail app" session adds 40 more for the noise metric. Small important changes (a
+  toast in a corner) and large cosmetic ones (hovering a big card) are both in there on purpose: they're what
+  fools pixel diffs. The variant goes in the fixture URL's fragment (`mail.html#theme=dark&lang=es`), and
+  each app exposes `window.fixture.trigger(name)` for timed events.
 - Debatable cases (a rotating ad, a dark-mode toggle) are labelled `ambiguous`: shown in the report, left
   out of accuracy.
 - Capture writes `data/pairs/<id>/{before,after}.png` and `data/pairs/index.json` (`Pair[]`, see
@@ -243,19 +242,6 @@ Per backend, per question:
 - **Noise:** replay a scripted 2-minute session of frames and count announcements per minute per backend.
 - **Cost and latency:** tokens and dollars per pair from `usage.input_tokens`, plus p50/p95 latency.
 
-## Seeing it
-
-- **`report.html`:** one self-contained file per run (`pnpm report`), with the results and metrics inlined.
-  It shows each pair side by side with its label and every backend's probability bars, filters for
-  "wrong" and "confidently wrong", and has the reliability diagrams and a cost/latency table.
-- **Live mode** (`pnpm live`): a local page shares your screen (`getDisplayMedia`), samples a frame every
-  ~500 ms, sends a pair only when a cheap pixel diff says something moved, asks d1-ultra the four core
-  questions through a local proxy (the API key stays server-side), and **speaks** a templated
-  announcement with the browser's `speechSynthesis` ("Dialog opened", "Error on the screen"). A decision log
-  shows every probability and why it spoke or stayed quiet. An optional generative step adds detail
-  ("Dialog: Delete 3 files? Cancel, Delete"), fact-checked by `supported`.
-  **Live mode sends your screen to Liquid's cloud.** Only point it at windows with nothing private on them.
-
 ## Costs
 
 Liquid charges d1-ultra at $0.042 per million input tokens and nothing for output. The docs say images are
@@ -274,7 +260,8 @@ billed again for every question, but measured `usage.input_tokens` counts them *
 ```
 screen-narrator-d1/
   .env.example         LIQUID_API_KEY, ANTHROPIC_API_KEY, NARRATOR_VLM_MODEL / _EFFORT, PIXEL_DIFF_THRESHOLD, …
-  docs/                Mermaid diagrams (*.mmd) + pre-rendered *.svg, embedded in docs/diagrams.md
+  docs/                Mermaid diagrams (*.mmd) → *.svg via `pnpm diagrams` (mermaid.json: Arial, no embedded font),
+                       shown in docs/diagrams.md
   fixtures/            6 HTML apps (+ common.js/css) and scenarios.ts: transitions, variants, labels, the session
   src/
     types.ts           the shared contracts: Pair, Prediction, PairResult, RunResult
@@ -306,7 +293,7 @@ Done:
 
 - Fixtures, capture, all six questions, the d1 / d1-ultra / pixel-diff backends, the cached runner, metrics,
   the report and live mode.
-- 123 offline tests.
+- 135 offline tests.
 - A full real run (above).
 - Live mode's `/api/decide` checked with a real d1-ultra call (a test dialog → "interrupt: Dialog opened").
 

@@ -4,11 +4,12 @@ import { readdir, readFile, realpath } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import { z } from "zod";
-import { claudeCostUsd } from "../anthropic.ts";
-import { LIQUID_MODELS, type LiquidRequest, type LiquidResponse, liquidCostUsd, liquidPricePerMTok, toPrediction } from "../backends/liquid.ts";
+import { claudeCostUsd, claudePriced } from "../anthropic.ts";
+import { LIQUID_MODELS, type LiquidRequest, type LiquidResponse, liquidCostUsd, liquidPricePerMTok } from "../backends/liquid.ts";
 import { parseDataUrl } from "../images.ts";
 import { DEFAULT_THRESHOLDS, decide } from "../policy.ts";
-import { CORE_QUESTIONS, pairState, supportedQuestion } from "../questions.ts";
+import { CORE_QUESTIONS, noulOf, pairState, supportedQuestion, toPrediction } from "../questions.ts";
+import { errorMessage, zodIssues } from "../util.ts";
 import { type FrameImage, type Narrator, NarratorUnavailableError } from "./narrate.ts";
 
 export interface LiveDeps {
@@ -28,14 +29,11 @@ export interface LiveDeps {
  */
 export const MAX_BODY_BYTES = 4_500_000;
 
-const PAGE_FILES: Record<string, { file: string; type: string }> = {
-	"/": { file: "index.html", type: "text/html; charset=utf-8" },
-	"/index.html": { file: "index.html", type: "text/html; charset=utf-8" },
-	"/live.css": { file: "live.css", type: "text/css; charset=utf-8" },
-	"/live.js": { file: "live.js", type: "text/javascript; charset=utf-8" },
-};
+/** URL path → file in staticDir; its content type comes from CONTENT_TYPES, as a fixture's does. */
+const PAGE_FILES: Record<string, string> = { "/": "index.html", "/index.html": "index.html", "/live.css": "live.css", "/live.js": "live.js" };
 
-const FIXTURE_TYPES: Record<string, string> = {
+/** By extension, for the page's files and the fixtures; a fixture of any other type is not served. */
+const CONTENT_TYPES: Record<string, string> = {
 	".html": "text/html; charset=utf-8",
 	".css": "text/css; charset=utf-8",
 	".js": "text/javascript; charset=utf-8",
@@ -54,10 +52,7 @@ const PAGE_CSP = "default-src 'self'; img-src 'self' data: blob:; media-src 'sel
 const FRAME_TYPES: readonly string[] = ["image/jpeg", "image/png"] satisfies FrameImage["mediaType"][];
 
 /** A base64 JPEG or PNG data URL, parsed once: `url` goes to the decision model as it came, `mediaType` and `data` to Claude. */
-const frame = z
-	.string()
-	.max(MAX_BODY_BYTES)
-	.transform((url, ctx) => {
+const frame = z.string().transform((url, ctx) => {
 		const parsed = parseDataUrl(url);
 		if (!parsed || !FRAME_TYPES.includes(parsed.mediaType) || !/^[A-Za-z0-9+/]+={0,2}$/.test(parsed.data)) {
 			ctx.addIssue({ code: "custom", message: "must be a base64 JPEG or PNG data URL" });
@@ -134,7 +129,7 @@ function parse<T>(schema: z.ZodType<T>, body: unknown): T {
 	const r = schema.safeParse(body);
 	if (r.success) return r.data;
 	// Only paths and messages: never echo the submitted values, which are screen images.
-	throw new HttpError(400, r.error.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; "));
+	throw new HttpError(400, zodIssues(r.error, "body"));
 }
 
 function send(res: ServerResponse, status: number, body: string | Buffer, type: string, extra: Record<string, string> = {}): void {
@@ -183,7 +178,7 @@ export function createApp(deps: LiveDeps) {
 				// Models whose calls come back with a null cost, so the page can say what its total leaves out.
 				unpricedModels: [
 					...LIQUID_MODELS.filter((m) => liquidPricePerMTok(m) === null),
-					...(claudeCostUsd(deps.narrator.config.model, 0, 0) === null ? [deps.narrator.config.model] : []),
+					...(claudePriced(deps.narrator.config.model) ? [] : [deps.narrator.config.model]),
 				],
 			}),
 
@@ -230,12 +225,12 @@ export function createApp(deps: LiveDeps) {
 				});
 			} catch (err) {
 				// The narration was already paid for, so a failed fact-check still reports its usage.
-				const message = err instanceof Error ? err.message : String(err);
+				const message = errorMessage(err);
 				console.error(`${req.method} ${req.url}: fact-check failed: ${message}`);
 				return json(res, 502, { error: message, ...usage });
 			}
-			const supported = (check.answers.supported as { noul?: unknown } | undefined)?.noul;
-			if (typeof supported !== "number") return json(res, 502, { error: `${body.model} answered the fact-check without a probability`, ...usage });
+			const supported = noulOf(check.answers, "supported");
+			if (supported === undefined) return json(res, 502, { error: `${body.model} answered the fact-check without a probability`, ...usage });
 			json(res, 200, {
 				narration: narration.text,
 				refused: false,
@@ -257,7 +252,7 @@ export function createApp(deps: LiveDeps) {
 		} catch {
 			throw new HttpError(400, "bad path");
 		}
-		const type = FIXTURE_TYPES[path.extname(decoded).toLowerCase()];
+		const type = CONTENT_TYPES[path.extname(decoded).toLowerCase()];
 		const file = type && (await resolveInside(deps.fixturesDir, decoded));
 		if (!type || !file) throw new HttpError(404, "not found");
 		const data = await readFile(file).catch(() => {
@@ -283,7 +278,7 @@ export function createApp(deps: LiveDeps) {
 
 			if (req.method === "GET" || req.method === "HEAD") {
 				const page = PAGE_FILES[url.pathname];
-				if (page) return send(res, 200, await readFile(path.join(deps.staticDir, page.file)), page.type, { "Content-Security-Policy": PAGE_CSP });
+				if (page) return send(res, 200, await readFile(path.join(deps.staticDir, page)), CONTENT_TYPES[path.extname(page)]!, { "Content-Security-Policy": PAGE_CSP });
 				if (url.pathname.startsWith("/fixtures/")) return await serveFixture(url.pathname.slice("/fixtures/".length), res);
 			}
 			throw new HttpError(404, "not found");
@@ -291,7 +286,7 @@ export function createApp(deps: LiveDeps) {
 			if (err instanceof HttpError) return json(res, err.status, { error: err.message });
 			if (err instanceof NarratorUnavailableError) return json(res, 501, { error: `narration unavailable: ${err.message}` });
 			// Upstream failure (a decision model or Claude). The message is safe to show; request bodies are never logged.
-			const message = err instanceof Error ? err.message : String(err);
+			const message = errorMessage(err);
 			console.error(`${req.method} ${req.url}: ${message}`);
 			if (!res.headersSent) json(res, 502, { error: message });
 		}

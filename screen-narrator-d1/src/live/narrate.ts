@@ -5,8 +5,9 @@ import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
-import { CLAUDE_MAX_TOKENS, type ClaudeResponse, type ClaudeSettings, FALLBACK_BETA, isCredentialError, responseText } from "../anthropic.ts";
+import { anthropicClient, claudeImageBlock, claudeRequestBase, type ClaudeResponse, type ClaudeSettings, isCredentialError, responseText } from "../anthropic.ts";
 import type { Decision } from "../policy.ts";
+import { errorMessage } from "../util.ts";
 
 /**
  * A guess, without any network call, at whether `new Anthropic()` will find credentials: an env var, or an
@@ -58,7 +59,6 @@ const MAX_CHARS = 300;
 export function createNarrator(opts: { config: ClaudeSettings; client?: Anthropic; available?: boolean }): Narrator {
 	const { config } = opts;
 	let available = opts.available ?? credentialsLikelyPresent();
-	let client = opts.client;
 
 	return {
 		config,
@@ -67,23 +67,17 @@ export function createNarrator(opts: { config: ClaudeSettings; client?: Anthropi
 		},
 		async narrate(after, decision) {
 			if (!available) throw new NarratorUnavailableError("no Claude credentials");
-			client ??= new Anthropic();
 			let res: Anthropic.Beta.BetaMessage;
 			try {
-				// No `thinking`, temperature or prefill, and a server-side fallback: see anthropic.ts.
-				res = await client.beta.messages.create(
+				res = await (opts.client ?? anthropicClient()).beta.messages.create(
 					{
-						model: config.model,
-						max_tokens: CLAUDE_MAX_TOKENS,
-						betas: [FALLBACK_BETA],
-						fallbacks: "default",
-						output_config: { effort: config.effort },
+						...claudeRequestBase(config),
 						system: SYSTEM,
 						messages: [
 							{
 								role: "user",
 								content: [
-									{ type: "image", source: { type: "base64", media_type: after.mediaType, data: after.data } },
+									claudeImageBlock(after.mediaType, after.data),
 									{ type: "text", text: `The narrator's template announcement was: "${decision.speech || "Screen changed"}". Describe the main change.` },
 								],
 							},
@@ -94,7 +88,7 @@ export function createNarrator(opts: { config: ClaudeSettings; client?: Anthropi
 			} catch (err) {
 				if (isCredentialError(err)) {
 					available = false;
-					throw new NarratorUnavailableError(err instanceof Error ? err.message : String(err));
+					throw new NarratorUnavailableError(errorMessage(err));
 				}
 				throw err;
 			}

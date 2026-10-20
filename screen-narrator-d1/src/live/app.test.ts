@@ -73,6 +73,7 @@ describe("static and fixtures", () => {
 		expect(page.headers.get("content-type")).toMatch(/^text\/html/);
 		expect(page.headers.get("content-security-policy")).toContain("default-src 'self'");
 		expect((await fetch(`${base}/live.js`)).headers.get("content-type")).toMatch(/javascript/);
+		expect((await fetch(`${base}/live.css`)).headers.get("content-type")).toBe("text/css; charset=utf-8");
 		expect((await fetch(`${base}/server.ts`)).status).toBe(404);
 	});
 
@@ -296,10 +297,15 @@ describe("POST /api/narrate", () => {
 		expect(unknown.narratorCostUsd).toBeNull();
 	});
 
-	it("is 502 when the fact-check answer has no probability", async () => {
+	it("is 502 when the fact-check answer has no usable probability", async () => {
 		narrate.mockResolvedValue(narration("Something"));
-		askLiquid.mockResolvedValue({ answers: { supported: {} }, inputTokens: 1 });
-		expect((await post("/api/narrate", { after: PNG, decision: { speech: "x" } })).status).toBe(502);
+		// Missing, a string, NaN: none may decide whether a narration is spoken.
+		for (const supported of [{}, { noul: "0.9" }, { noul: Number.NaN }]) {
+			askLiquid.mockResolvedValue({ answers: { supported }, inputTokens: 1 });
+			const res = await post("/api/narrate", { after: PNG, decision: { speech: "x" } });
+			expect(res.status).toBe(502);
+			expect(await res.json()).toMatchObject({ error: "d1-ultra answered the fact-check without a probability", narratorInputTokens: 1500 });
+		}
 	});
 
 	it("still reports the paid narration's usage when the fact-check call fails", async () => {

@@ -8,7 +8,7 @@ import { parseArgs } from "node:util";
 import { type Browser, type BrowserContext, chromium, type Locator, type Page } from "playwright";
 import { type AppName, SCENARIOS, type Scenario, SESSION, settle } from "../fixtures/scenarios.ts";
 import { fromRoot } from "./env.ts";
-import type { Pair, PairLabels, Variant } from "./types.ts";
+import { type Pair, type PairLabels, type Variant, variantSlug } from "./types.ts";
 import { errorMessage, isEntryPoint, pool } from "./util.ts";
 
 const PAIRS_DIR = "data/pairs";
@@ -43,7 +43,6 @@ export function variantsFor(s: number): Variant[] {
 	}));
 }
 
-const variantSlug = (v: Variant) => `${v.theme}-${v.viewport.width}x${v.viewport.height}-${v.density}-${v.lang}`;
 export const pairId = (app: string, scenario: string, v: Variant) => `${app}-${scenario}--${variantSlug(v)}`;
 
 function fixtureUrl(app: AppName, v: Variant, params: Record<string, string> = {}): string {

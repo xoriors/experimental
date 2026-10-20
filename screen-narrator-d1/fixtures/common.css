@@ -1,0 +1,368 @@
+/* Shared look for the fixture apps: tokens for theme × density, and the handful of components every app uses.
+   Each app sets its own --accent so the six apps don't look like one. */
+:root {
+	color-scheme: light;
+	--bg: #f4f5f7;
+	--surface: #ffffff;
+	--surface-2: #f0f2f5;
+	--surface-3: #e6e9ee;
+	--text: #1b1f27;
+	--muted: #5c6472;
+	--faint: #8a919c;
+	--border: #dde1e7;
+	--accent: #2f6fde;
+	--accent-soft: #e5eefc;
+	--on-accent: #ffffff;
+	--danger: #c42b2b;
+	--danger-soft: #fdeaea;
+	--success: #18794a;
+	--success-soft: #e3f5ea;
+	--warn: #a15c00;
+	--shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 2px 6px rgba(16, 24, 40, 0.06);
+	--shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.18), 0 2px 8px rgba(16, 24, 40, 0.08);
+	--backdrop: rgba(15, 20, 30, 0.45);
+	--radius: 8px;
+	--fs: 14px;
+	--fs-sm: 12.5px;
+	--pad: 12px;
+	--gap: 16px;
+	--row: 44px;
+	--font: system-ui, -apple-system, "Segoe UI", "Noto Sans", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+[data-theme="dark"] {
+	color-scheme: dark;
+	--bg: #121418;
+	--surface: #1b1e24;
+	--surface-2: #23272e;
+	--surface-3: #2d323a;
+	--text: #e7e9ed;
+	--muted: #a2a9b4;
+	--faint: #7b828d;
+	--border: #31363f;
+	--accent-soft: #1f2d45;
+	--danger: #f06a6a;
+	--danger-soft: #3a1f22;
+	--success: #4cc38a;
+	--success-soft: #17301f;
+	--warn: #e0a54a;
+	--shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+	--shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+	--backdrop: rgba(0, 0, 0, 0.6);
+}
+[data-density="compact"] {
+	--fs: 13px;
+	--fs-sm: 11.5px;
+	--pad: 7px;
+	--gap: 10px;
+	--row: 34px;
+}
+
+/* Captures must be deterministic: every state change is a jump, never a tween. */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	transition: none !important;
+	animation: none !important;
+	scroll-behavior: auto !important;
+}
+
+html,
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font: var(--fs) / 1.45 var(--font);
+	-webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+a {
+	color: var(--accent);
+	text-decoration: none;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+	margin: 0;
+}
+[hidden] {
+	display: none !important;
+}
+
+.icon {
+	width: 1.15em;
+	height: 1.15em;
+	flex: none;
+	stroke: currentColor;
+	fill: none;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	vertical-align: -0.2em;
+}
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: calc(var(--row) - 6px);
+	padding: 0 calc(var(--pad) + 4px);
+	border-radius: 6px;
+	border: 1px solid var(--border);
+	background: var(--surface);
+	color: var(--text);
+	font-weight: 550;
+	cursor: pointer;
+	white-space: nowrap;
+}
+.btn:hover {
+	background: var(--surface-2);
+}
+.btn-primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--on-accent);
+}
+.btn-primary:hover {
+	background: var(--accent);
+	filter: brightness(1.08);
+}
+.btn-danger {
+	background: var(--danger);
+	border-color: var(--danger);
+	color: #fff;
+}
+.btn-danger:hover {
+	background: var(--danger);
+	filter: brightness(1.08);
+}
+.btn-ghost {
+	background: transparent;
+	border-color: transparent;
+}
+.btn:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+.icon-btn {
+	display: inline-grid;
+	place-items: center;
+	width: calc(var(--row) - 6px);
+	height: calc(var(--row) - 6px);
+	border-radius: 50%;
+	border: 0;
+	background: transparent;
+	color: var(--muted);
+	cursor: pointer;
+	flex: none;
+}
+.icon-btn:hover {
+	background: var(--surface-2);
+	color: var(--text);
+}
+.icon-btn .icon {
+	width: 20px;
+	height: 20px;
+}
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+.badge {
+	display: inline-grid;
+	place-items: center;
+	min-width: 20px;
+	height: 20px;
+	padding: 0 6px;
+	border-radius: 10px;
+	background: var(--accent);
+	color: var(--on-accent);
+	font-size: 11.5px;
+	font-weight: 700;
+}
+.avatar {
+	display: inline-grid;
+	place-items: center;
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	flex: none;
+	color: #fff;
+	font-size: 13px;
+	font-weight: 650;
+	background: var(--c, #6b7a99);
+}
+[data-density="compact"] .avatar {
+	width: 28px;
+	height: 28px;
+	font-size: 11.5px;
+}
+
+.card {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+.field {
+	display: grid;
+	gap: 5px;
+}
+.field label {
+	font-weight: 600;
+	font-size: var(--fs-sm);
+	color: var(--muted);
+}
+.input {
+	height: var(--row);
+	padding: 0 var(--pad);
+	border-radius: 6px;
+	border: 1px solid var(--border);
+	background: var(--surface);
+	min-width: 0;
+	width: 100%;
+}
+.input:focus {
+	outline: 2px solid var(--accent);
+	outline-offset: -1px;
+	border-color: var(--accent);
+}
+.input[aria-invalid="true"] {
+	border-color: var(--danger);
+	outline-color: var(--danger);
+}
+.error-text {
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	color: var(--danger);
+	font-size: var(--fs-sm);
+	font-weight: 600;
+}
+
+.switch {
+	position: relative;
+	width: 40px;
+	height: 22px;
+	border-radius: 11px;
+	border: 0;
+	padding: 0;
+	background: var(--surface-3);
+	cursor: pointer;
+	flex: none;
+}
+.switch::after {
+	content: "";
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.switch[aria-checked="true"] {
+	background: var(--accent);
+}
+.switch[aria-checked="true"]::after {
+	left: 21px;
+}
+
+/* Native <dialog> + showModal(): real modal semantics (inert background, focus moves in). */
+dialog.modal {
+	border: 0;
+	padding: 0;
+	border-radius: 12px;
+	background: var(--surface);
+	color: var(--text);
+	box-shadow: var(--shadow-lg);
+	width: min(440px, calc(100vw - 32px));
+}
+dialog.modal::backdrop {
+	background: var(--backdrop);
+}
+.modal-body {
+	padding: 22px 24px 8px;
+	display: grid;
+	gap: 8px;
+}
+.modal-body h2 {
+	font-size: 18px;
+	font-weight: 650;
+}
+.modal-body p {
+	color: var(--muted);
+}
+.modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 16px 24px 20px;
+}
+
+.toast {
+	position: fixed;
+	z-index: 50;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	border-radius: 8px;
+	background: #262a31;
+	color: #f3f4f6;
+	box-shadow: var(--shadow-lg);
+	font-size: var(--fs-sm);
+	font-weight: 550;
+}
+[data-theme="dark"] .toast {
+	background: #e9ebef;
+	color: #1b1f27;
+}
+
+/* Spinner frames are set by JS (data-frame 0–7), so a capture can step it exactly one frame. */
+.spinner {
+	position: relative;
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	flex: none;
+	vertical-align: middle;
+}
+.spinner i {
+	position: absolute;
+	left: 50%;
+	top: 0;
+	width: 2.5px;
+	height: 30%;
+	margin-left: -1.25px;
+	border-radius: 2px;
+	background: currentColor;
+	transform-origin: 50% 166%;
+}
+.spinner.lg {
+	width: 28px;
+	height: 28px;
+}
+
+@media (max-width: 700px) {
+	.hide-mobile {
+		display: none !important;
+	}
+}
+@media (min-width: 701px) {
+	.only-mobile {
+		display: none !important;
+	}
+}

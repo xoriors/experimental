@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parley</title>
+<link rel="stylesheet" href="common.css">
+<style>
+	:root { --accent: #0d9488; --accent-soft: #dcf3f0; --mine: #0d9488; --mine-text: #fff; --theirs: #ffffff; --chat-bg: #eef1f3; }
+	[data-theme="dark"] { --accent: #2dd4bf; --accent-soft: #123532; --on-accent: #062522; --mine: #127c72; --mine-text: #eafffb; --theirs: #262b33; --chat-bg: #15181d; }
+	body { height: 100vh; display: flex; overflow: hidden; }
+	.rail { width: 68px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 0; background: var(--surface-2); border-right: 1px solid var(--border); }
+	.rail .logo { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); margin-bottom: 10px; }
+	.rail .icon-btn { position: relative; border-radius: 12px; width: 44px; height: 44px; }
+	.rail .icon-btn.on { background: var(--accent-soft); color: var(--accent); }
+	.rail .badge { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; font-size: 10.5px; padding: 0 5px; background: #e5484d; color: #fff; }
+	.rail .me { margin-top: auto; }
+	.convs { width: 330px; flex: none; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--border); }
+	.convs header { padding: 16px 16px 10px; display: grid; gap: 12px; }
+	.convs h1 { font-size: 21px; font-weight: 750; display: flex; align-items: center; justify-content: space-between; }
+	.search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border-radius: 10px; background: var(--surface-2); color: var(--muted); }
+	[data-density="compact"] .search { height: 32px; }
+	.search input { border: 0; background: transparent; outline: none; flex: 1; min-width: 0; }
+	.filters { display: flex; gap: 6px; }
+	.filters span { padding: 4px 12px; border-radius: 14px; background: var(--surface-2); color: var(--muted); font-weight: 600; font-size: var(--fs-sm); }
+	.filters span.on { background: var(--accent-soft); color: var(--accent); }
+	.list { overflow: auto; flex: 1; }
+	.conv { display: flex; gap: 12px; align-items: center; padding: calc(var(--pad) - 2px) 16px; cursor: pointer; }
+	.conv:hover { background: var(--surface-2); }
+	.conv.active { background: var(--accent-soft); }
+	.conv .avatar { width: 44px; height: 44px; font-size: 15px; }
+	[data-density="compact"] .conv .avatar { width: 36px; height: 36px; font-size: 13px; }
+	.conv .body { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+	.conv .line { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+	.conv .badge { flex: none; }
+	.conv .name { font-weight: 650; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.conv .time { font-size: var(--fs-sm); color: var(--muted); }
+	.conv .prev { flex: 1; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.conv.unread .prev { color: var(--text); font-weight: 600; }
+	.conv.unread .time { color: var(--accent); font-weight: 700; }
+	.thread { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--chat-bg); }
+	.thread-head { display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex: none; }
+	[data-density="compact"] .thread-head { height: 54px; }
+	.thread-head .who { flex: 1; min-width: 0; }
+	.thread-head .who b { display: block; }
+	.thread-head .status { font-size: var(--fs-sm); color: var(--success); }
+	.back { position: relative; }
+	.back .badge { position: absolute; top: 0; right: -6px; min-width: 18px; height: 18px; font-size: 10.5px; padding: 0 5px; }
+	.messages { flex: 1; overflow: auto; padding: 18px 8% 10px; display: flex; flex-direction: column; gap: 6px; }
+	.day { align-self: center; margin: 8px 0; padding: 3px 12px; border-radius: 10px; background: var(--surface); color: var(--muted); font-size: var(--fs-sm); font-weight: 600; box-shadow: var(--shadow); }
+	.bubble { max-width: min(68%, 520px); padding: 8px 12px 6px; border-radius: 14px; background: var(--theirs); box-shadow: var(--shadow); align-self: flex-start; }
+	.bubble.mine { align-self: flex-end; background: var(--mine); color: var(--mine-text); border-bottom-right-radius: 4px; }
+	.bubble:not(.mine) { border-bottom-left-radius: 4px; }
+	.bubble .meta { display: block; text-align: right; font-size: 11px; opacity: 0.7; margin-top: 2px; }
+	.bubble.photo { padding: 4px; }
+	.bubble.photo .img { width: 260px; max-width: 100%; height: 150px; border-radius: 11px; background: linear-gradient(160deg, #f6c38a 0 35%, #e88a5a 35% 55%, #6c8fb3 55%); }
+	.bubble.photo .meta { padding: 0 8px 2px; }
+	.new-divider { align-self: stretch; display: flex; align-items: center; gap: 10px; color: var(--accent); font-size: var(--fs-sm); font-weight: 700; margin: 6px 0; }
+	.new-divider::before, .new-divider::after { content: ""; flex: 1; height: 1px; background: var(--accent); opacity: 0.5; }
+	.composer { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--border); flex: none; }
+	.composer .input { border-radius: 20px; background: var(--surface-2); border-color: transparent; }
+	.send { background: var(--accent); color: var(--on-accent); }
+	.send:hover { background: var(--accent); color: var(--on-accent); }
+	@media (max-width: 700px) {
+		.rail, .convs { display: none; }
+		.messages { padding: 12px 10px 8px; }
+		.bubble { max-width: 82%; }
+		.composer { padding: 8px 10px; }
+	}
+</style>
+</head>
+<body>
+<nav class="rail" data-i18n-attr="aria-label=mainNav">
+	<span class="logo"><i data-icon="smile"></i></span>
+	<button class="icon-btn on" data-i18n-attr="aria-label=chats"><i data-icon="mail"></i><span class="badge" id="railBadge">3</span></button>
+	<button class="icon-btn" data-i18n-attr="aria-label=calls"><i data-icon="phone"></i></button>
+	<button class="icon-btn" data-i18n-attr="aria-label=settings"><i data-icon="gear"></i></button>
+	<span class="avatar me" style="--c:#5b6bd6" role="img" aria-label="Ana Ruiz">AR</span>
+</nav>
+
+<aside class="convs">
+	<header>
+		<h1><span data-i18n="chats"></span><button class="icon-btn" data-i18n-attr="aria-label=newChat"><i data-icon="edit"></i></button></h1>
+		<label class="search"><i data-icon="search"></i><input data-i18n-attr="placeholder=search;aria-label=search"></label>
+		<div class="filters"><span class="on" data-i18n="all"></span><span data-i18n="unreadF"></span><span data-i18n="groups"></span></div>
+	</header>
+	<div class="list" id="convList"></div>
+</aside>
+
+<main class="thread">
+	<div class="thread-head">
+		<button class="icon-btn back only-mobile" data-i18n-attr="aria-label=backToChats"><i data-icon="back"></i><span class="badge" id="backBadge">3</span></button>
+		<span class="avatar" style="--c:#c2255c">MO</span>
+		<div class="who"><b>Mira Okafor</b><span class="status" data-i18n="online"></span></div>
+		<button class="icon-btn" data-i18n-attr="aria-label=call"><i data-icon="phone"></i></button>
+		<button class="icon-btn" data-i18n-attr="aria-label=video"><i data-icon="video"></i></button>
+		<button class="icon-btn hide-mobile" data-i18n-attr="aria-label=more"><i data-icon="more"></i></button>
+	</div>
+	<div class="messages" id="messages"></div>
+	<div class="composer">
+		<button class="icon-btn" data-i18n-attr="aria-label=attach"><i data-icon="clip"></i></button>
+		<input class="input" data-i18n-attr="placeholder=messagePh;aria-label=messagePh">
+		<button class="icon-btn" data-i18n-attr="aria-label=emoji"><i data-icon="smile"></i></button>
+		<button class="icon-btn send" data-i18n-attr="aria-label=send"><i data-icon="send"></i></button>
+	</div>
+</main>
+
+<script src="common.js"></script>
+<script>
+const STRINGS = {
+	en: {
+		title: "Mira Okafor – Parley", mainNav: "Main navigation", chats: "Chats", calls: "Calls", settings: "Settings", newChat: "New chat",
+		search: "Search chats", all: "All", unreadF: "Unread", groups: "Groups", backToChats: "Back to chats",
+		online: "online", call: "Voice call", video: "Video call", more: "More options", attach: "Attach a file", emoji: "Emoji", send: "Send",
+		messagePh: "Message Mira", today: "Today", newMessages: "1 new message",
+		convs: [
+			["Mira Okafor", "MO", "#c2255c", "You: Still on for Friday?", "10:31", 0],
+			["Book club", "BC", "#7048e8", "Jonas: I'm halfway through, no spoilers!", "10:05", 2],
+			["Jonas Weber", "JW", "#1c7ed6", "Sending you the photos tonight", "09:12", 1],
+			["Priya Nandakumar", "PN", "#e8590c", "You: Thanks, see you then", "Yesterday", 0],
+			["Climbing crew", "CC", "#2b8a3e", "Leo: Thursday at 7, same wall?", "Yesterday", 0],
+			["Sofia Grant", "SG", "#ae3ec9", "Haha that's brilliant", "Mon", 0],
+			["Leo Martins", "LM", "#0b7285", "Voice message (0:42)", "Sun", 0],
+			["Hannah Kim", "HK", "#d6336c", "Can you send me the recipe?", "Sat", 0],
+		],
+		thread: [
+			[0, "Hey! Did you get home OK last night?", "09:58"],
+			[1, "Yes, thanks! The tram was packed though", "10:02"],
+			[0, "Ha, Saturday nights are always like that", "10:03"],
+			[0, "PHOTO", "10:04"],
+			[0, "View from the new flat. Still boxes everywhere", "10:04"],
+			[1, "It looks lovely! Let me know if you need help unpacking", "10:20"],
+			[0, "I might take you up on that. I talked to my landlord about the leak, someone's coming on Monday", "10:27"],
+			[1, "Good, about time", "10:30"],
+			[1, "Still on for Friday?", "10:31"],
+		],
+		incoming: "Yes! I booked the table for 8. Can you bring the board game?",
+	},
+	es: {
+		title: "Mira Okafor – Parley", mainNav: "Navegación principal", chats: "Chats", calls: "Llamadas", settings: "Ajustes", newChat: "Nuevo chat",
+		search: "Buscar chats", all: "Todos", unreadF: "No leídos", groups: "Grupos", backToChats: "Volver a los chats",
+		online: "en línea", call: "Llamada de voz", video: "Videollamada", more: "Más opciones", attach: "Adjuntar un archivo", emoji: "Emoji", send: "Enviar",
+		messagePh: "Mensaje para Mira", today: "Hoy", newMessages: "1 mensaje nuevo",
+		convs: [
+			["Mira Okafor", "MO", "#c2255c", "Tú: ¿Sigue en pie lo del viernes?", "10:31", 0],
+			["Club de lectura", "CL", "#7048e8", "Jonas: Voy por la mitad, ¡sin spoilers!", "10:05", 2],
+			["Jonas Weber", "JW", "#1c7ed6", "Te mando las fotos esta noche", "09:12", 1],
+			["Priya Nandakumar", "PN", "#e8590c", "Tú: Gracias, nos vemos", "Ayer", 0],
+			["Grupo de escalada", "GE", "#2b8a3e", "Leo: ¿El jueves a las 7, en el mismo rocódromo?", "Ayer", 0],
+			["Sofia Grant", "SG", "#ae3ec9", "Jaja, es genial", "lun", 0],
+			["Leo Martins", "LM", "#0b7285", "Mensaje de voz (0:42)", "dom", 0],
+			["Hannah Kim", "HK", "#d6336c", "¿Me pasas la receta?", "sáb", 0],
+		],
+		thread: [
+			[0, "¡Hola! ¿Llegaste bien a casa anoche?", "09:58"],
+			[1, "¡Sí, gracias! Aunque el tranvía iba llenísimo", "10:02"],
+			[0, "Ja, los sábados por la noche siempre es así", "10:03"],
+			[0, "PHOTO", "10:04"],
+			[0, "La vista desde el piso nuevo. Todavía hay cajas por todas partes", "10:04"],
+			[1, "¡Qué bonito! Avísame si necesitas ayuda para desembalar", "10:20"],
+			[0, "Puede que te tome la palabra. Hablé con el casero por la gotera, el lunes viene alguien", "10:27"],
+			[1, "Bien, ya era hora", "10:30"],
+			[1, "¿Sigue en pie lo del viernes?", "10:31"],
+		],
+		incoming: "¡Sí! Reservé mesa para las 8. ¿Puedes traer el juego de mesa?",
+	},
+};
+
+let unread = 3;
+
+const convHtml = ([name, initials, color, prev, time, count], i) => `
+	<div class="conv${i === 0 ? " active" : ""}${count ? " unread" : ""}" role="link" tabindex="0" aria-label="${name}">
+		<span class="avatar" style="--c:${color}">${initials}</span>
+		<div class="body">
+			<div class="line"><span class="name">${name}</span><span class="time">${time}</span></div>
+			<div class="line"><span class="prev">${prev}</span>${count ? `<span class="badge">${count}</span>` : ""}</div>
+		</div>
+	</div>`;
+
+const bubbleHtml = ([mine, text, time]) =>
+	text === "PHOTO"
+		? `<div class="bubble photo"><div class="img" role="img" aria-label="Photo"></div><span class="meta">${time}</span></div>`
+		: `<div class="bubble${mine ? " mine" : ""}">${text}<span class="meta">${time}${mine ? " ✓✓" : ""}</span></div>`;
+
+const scrollToEnd = () => ($("messages").scrollTop = $("messages").scrollHeight);
+
+fixture.boot({
+	strings: STRINGS,
+	init() {
+		$("convList").innerHTML = t("convs").map(convHtml).join("");
+		$("messages").innerHTML = `<span class="day">${t("today")}</span>` + t("thread").map(bubbleHtml).join("");
+		scrollToEnd();
+	},
+});
+
+fixture.on("incoming", () => {
+	$("messages").insertAdjacentHTML("beforeend", `<div class="new-divider">${t("newMessages")}</div>` + bubbleHtml([0, t("incoming"), "10:42"]));
+	scrollToEnd();
+	const conv = t("convs")[0];
+	const first = $("convList").firstElementChild;
+	first.outerHTML = convHtml([conv[0], conv[1], conv[2], t("incoming"), "10:42", 1], 0);
+	unread += 1;
+	$("railBadge").textContent = String(unread);
+	$("backBadge").textContent = String(unread);
+});
+</script>
+</body>
+</html>

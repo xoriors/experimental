@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit</title>
+<link rel="stylesheet" href="common.css">
+<style>
+	:root { --accent: #4f46e5; --accent-soft: #ecebfd; }
+	[data-theme="dark"] { --accent: #8b85ff; --accent-soft: #26244a; --on-accent: #12102a; }
+	body { min-height: 100vh; }
+	.topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; height: 58px; padding: 0 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
+	[data-density="compact"] .topbar { height: 48px; }
+	.brand { display: flex; align-items: center; gap: 9px; font-weight: 750; font-size: 17px; }
+	.logo { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff 0 18%, transparent 19%), conic-gradient(from 40deg, var(--accent), #22b8cf, var(--accent)); }
+	.crumbs { color: var(--muted); display: flex; align-items: center; gap: 6px; }
+	.top-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+	.page { display: grid; grid-template-columns: 230px minmax(0, 760px); gap: 32px; padding: 28px 32px 110px; justify-content: center; }
+	[data-density="compact"] .page { gap: 20px; padding-top: 18px; }
+	.nav { display: grid; gap: 2px; align-content: start; }
+	.nav button { display: flex; align-items: center; gap: 12px; height: calc(var(--row) - 4px); padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-weight: 550; cursor: pointer; text-align: left; }
+	.nav button:hover { background: var(--surface-2); color: var(--text); }
+	.nav button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+	.nav .divider { height: 1px; background: var(--border); margin: 10px 4px; }
+	.panel h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+	[data-density="compact"] .panel h1 { font-size: 20px; }
+	.panel > .sub { color: var(--muted); margin: 4px 0 20px; }
+	[data-density="compact"] .panel > .sub { margin-bottom: 12px; }
+	.section { padding: 22px 24px; display: grid; gap: 18px; margin-bottom: 18px; }
+	[data-density="compact"] .section { padding: 14px 16px; gap: 12px; margin-bottom: 12px; }
+	.section h2 { font-size: 15.5px; font-weight: 700; }
+	.section .hint { color: var(--muted); font-size: var(--fs-sm); }
+	.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+	[data-density="compact"] .grid2 { gap: 10px; }
+	.photo { display: flex; align-items: center; gap: 16px; }
+	.photo .avatar { width: 64px; height: 64px; font-size: 22px; }
+	select.input { appearance: auto; }
+	.pw { display: flex; gap: 8px; }
+	.pw .input { flex: 1; letter-spacing: 0.02em; }
+	.strength { display: flex; gap: 4px; }
+	.strength i { flex: 1; height: 4px; border-radius: 2px; background: var(--surface-3); }
+	.strength i.on { background: var(--success); }
+	.setting { display: flex; align-items: center; gap: 16px; }
+	.setting .text { flex: 1; }
+	.setting .text b { display: block; font-weight: 650; }
+	.setting .text span { color: var(--muted); font-size: var(--fs-sm); }
+	.device { display: flex; align-items: center; gap: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+	.device .ic { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 8px; background: var(--surface-2); color: var(--muted); }
+	.device .text { flex: 1; }
+	.device .text span { display: block; color: var(--muted); font-size: var(--fs-sm); }
+	.tag { font-size: 11px; font-weight: 700; color: var(--success); background: var(--success-soft); padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+	.swatches { display: flex; gap: 10px; }
+	.swatches span { width: 28px; height: 28px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--border); }
+	.swatches span.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--c); }
+	.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+	.seg span { padding: 6px 14px; font-weight: 600; color: var(--muted); }
+	.seg span.on { background: var(--accent-soft); color: var(--accent); }
+	.footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; justify-content: flex-end; gap: 10px; padding: 14px 32px; background: var(--surface); border-top: 1px solid var(--border); }
+	[data-density="compact"] .footer { padding: 9px 24px; }
+	.footer .note { margin-right: auto; color: var(--muted); align-self: center; font-size: var(--fs-sm); }
+	.toast { right: 28px; bottom: 84px; }
+	.toast .icon { color: var(--success); }
+	[data-theme="dark"] .toast .icon { color: #18794a; }
+	.warn-ic { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fff2dc; color: #a15c00; }
+	.warn-ic .icon { width: 24px; height: 24px; }
+	[data-theme="dark"] .warn-ic { background: #3a2a10; color: var(--warn); }
+	@media (max-width: 700px) {
+		.topbar { padding: 0 14px; }
+		.crumbs { display: none; }
+		.page { grid-template-columns: minmax(0, 1fr); padding: 0 14px 110px; gap: 14px; }
+		.nav { display: flex; overflow-x: auto; gap: 4px; margin: 0 -14px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface); }
+		.nav button { flex: none; height: 34px; }
+		.nav button .icon, .nav .divider { display: none; }
+		.grid2 { grid-template-columns: 1fr; }
+		.section { padding: 16px; }
+		.footer { padding: 12px 14px; }
+		.footer .note { display: none; }
+		.footer .btn { flex: 1; }
+		.toast { left: 50%; right: auto; transform: translateX(-50%); bottom: 82px; }
+	}
+</style>
+</head>
+<body>
+<header class="topbar">
+	<div class="brand"><span class="logo"></span>Orbit</div>
+	<div class="crumbs"><i data-icon="chevron"></i><span data-i18n="account"></span></div>
+	<div class="top-right">
+		<button class="icon-btn" data-i18n-attr="aria-label=help"><i data-icon="info"></i></button>
+		<span class="avatar" style="--c:#0f8b8d" role="img" aria-label="Ana Ruiz">AR</span>
+	</div>
+</header>
+
+<div class="page">
+	<nav class="nav" role="tablist" data-i18n-attr="aria-label=sections">
+		<button role="tab" data-tab="profile" aria-selected="true"><i data-icon="user"></i><span data-i18n="profile"></span></button>
+		<button role="tab" data-tab="security" aria-selected="false"><i data-icon="lock"></i><span data-i18n="security"></span></button>
+		<button role="tab" data-tab="notifications" aria-selected="false"><i data-icon="bell"></i><span data-i18n="notifications"></span></button>
+		<button role="tab" data-tab="appearance" aria-selected="false"><i data-icon="palette"></i><span data-i18n="appearance"></span></button>
+		<div class="divider"></div>
+		<button role="tab" data-tab="billing" aria-selected="false"><i data-icon="card"></i><span data-i18n="billing"></span></button>
+	</nav>
+
+	<main>
+		<section class="panel" id="tab-profile">
+			<h1 data-i18n="profile"></h1>
+			<p class="sub" data-i18n="profileSub"></p>
+			<form class="card section" id="profileForm" novalidate>
+				<div class="photo">
+					<span class="avatar" style="--c:#0f8b8d">AR</span>
+					<div style="display:grid;gap:6px"><b data-i18n="photo"></b><span class="hint" data-i18n="photoHint"></span></div>
+					<button type="button" class="btn" style="margin-left:auto" data-i18n="changePhoto"></button>
+				</div>
+				<div class="grid2">
+					<div class="field"><label for="name" data-i18n="fullName"></label><input class="input" id="name" value="Ana Ruiz" autocomplete="off"></div>
+					<div class="field"><label for="phone" data-i18n="phone"></label><input class="input" id="phone" value="+1 555 0142" autocomplete="off"></div>
+				</div>
+				<div class="field">
+					<label for="email" data-i18n="email"></label>
+					<input class="input" id="email" type="email" value="ana.ruiz@example.com" autocomplete="off" aria-describedby="emailHint emailError">
+					<span class="hint" id="emailHint" data-i18n="emailHint"></span>
+					<span class="error-text" id="emailError" hidden><i data-icon="alert"></i><span data-i18n="emailError"></span></span>
+				</div>
+				<div class="grid2">
+					<div class="field"><label for="lang" data-i18n="language"></label><select class="input" id="lang"><option data-i18n="langName"></option></select></div>
+					<div class="field"><label for="tz" data-i18n="timezone"></label><select class="input" id="tz"><option>(UTC+01:00) Central European Time</option></select></div>
+				</div>
+			</form>
+			<div class="card section">
+				<h2 data-i18n="danger"></h2>
+				<div class="setting"><div class="text"><b data-i18n="deleteAccount"></b><span data-i18n="deleteHint"></span></div><button class="btn" style="color:var(--danger)" data-i18n="deleteBtn"></button></div>
+			</div>
+		</section>
+
+		<section class="panel" id="tab-security" hidden>
+			<h1 data-i18n="security"></h1>
+			<p class="sub" data-i18n="securitySub"></p>
+			<div class="card section">
+				<h2 data-i18n="changePassword"></h2>
+				<div class="field">
+					<label for="newPw" data-i18n="newPassword"></label>
+					<div class="pw">
+						<input class="input" id="newPw" type="password" autocomplete="new-password">
+						<button type="button" class="btn" id="togglePw"><i data-icon="eye"></i><span id="togglePwText" data-i18n="showPassword"></span></button>
+					</div>
+					<div class="strength" id="strength"><i></i><i></i><i></i><i></i></div>
+					<span class="hint" data-i18n="pwHint"></span>
+				</div>
+			</div>
+			<div class="card section">
+				<div class="setting"><div class="text"><b data-i18n="twoStep"></b><span data-i18n="twoStepHint"></span></div><button class="switch" role="switch" aria-checked="true" data-i18n-attr="aria-label=twoStep"></button></div>
+			</div>
+			<div class="card section">
+				<h2 data-i18n="devices"></h2>
+				<div class="device"><span class="ic"><i data-icon="globe"></i></span><div class="text"><b data-i18n="device1Name"></b><span data-i18n="device1"></span></div><span class="tag" data-i18n="thisDevice"></span></div>
+				<div class="device"><span class="ic"><i data-icon="phone"></i></span><div class="text"><b data-i18n="device2Name"></b><span data-i18n="device2"></span></div><button class="btn" data-i18n="signOut"></button></div>
+			</div>
+		</section>
+
+		<section class="panel" id="tab-appearance" hidden>
+			<h1 data-i18n="appearance"></h1>
+			<p class="sub" data-i18n="appearanceSub"></p>
+			<div class="card section">
+				<div class="setting"><div class="text"><b data-i18n="darkMode"></b><span data-i18n="darkModeHint"></span></div><button class="switch" id="darkSwitch" role="switch" data-i18n-attr="aria-label=darkMode"></button></div>
+				<div class="setting"><div class="text"><b data-i18n="compactLayout"></b><span data-i18n="compactHint"></span></div><button class="switch" id="compactSwitch" role="switch" data-i18n-attr="aria-label=compactLayout"></button></div>
+			</div>
+			<div class="card section">
+				<div class="setting"><div class="text"><b data-i18n="textSize"></b><span data-i18n="textSizeHint"></span></div><span class="seg"><span>A−</span><span class="on">A</span><span>A+</span></span></div>
+				<div class="setting"><div class="text"><b data-i18n="accentColour"></b><span data-i18n="accentHint"></span></div><span class="swatches"><span class="on" style="--c:#4f46e5"></span><span style="--c:#0f8b8d"></span><span style="--c:#d9480f"></span><span style="--c:#c2255c"></span></span></div>
+			</div>
+		</section>
+
+		<section class="panel" id="tab-notifications" hidden><h1 data-i18n="notifications"></h1></section>
+		<section class="panel" id="tab-billing" hidden><h1 data-i18n="billing"></h1></section>
+	</main>
+</div>
+
+<div class="footer" id="footer">
+	<span class="note" data-i18n="lastSaved"></span>
+	<button class="btn" data-i18n="cancel"></button>
+	<button class="btn btn-primary" id="save" data-i18n="save"></button>
+</div>
+
+<div class="toast" id="toast" role="status" hidden><i data-icon="check-circle"></i><span data-i18n="saved"></span></div>
+
+<dialog class="modal" id="expiry" aria-labelledby="expiryTitle" tabindex="-1">
+	<div class="modal-body">
+		<span class="warn-ic"><i data-icon="clock"></i></span>
+		<h2 id="expiryTitle" data-i18n="expiryTitle"></h2>
+		<p data-i18n="expiryBody"></p>
+	</div>
+	<div class="modal-actions">
+		<button class="btn" data-i18n="signOutNow"></button>
+		<button class="btn btn-primary" data-primary data-i18n="staySignedIn"></button>
+	</div>
+</dialog>
+
+<script src="common.js"></script>
+<script>
+const STRINGS = {
+	en: {
+		title: "Account settings – Orbit", account: "Account settings", help: "Help", sections: "Settings sections",
+		profile: "Profile", security: "Security", notifications: "Notifications", appearance: "Appearance", billing: "Billing",
+		profileSub: "This information appears on your account and on your receipts.",
+		photo: "Profile photo", photoHint: "JPG or PNG, at least 200 × 200 px.", changePhoto: "Change photo",
+		fullName: "Full name", phone: "Phone", email: "Email", emailHint: "We'll send receipts and sign-in codes here.",
+		emailError: "Enter a valid email address, like name@example.com.",
+		language: "Language", langName: "English", timezone: "Time zone",
+		danger: "Delete account", deleteAccount: "Delete your account", deleteHint: "Removes your profile and all your files. This can't be undone.", deleteBtn: "Delete account",
+		securitySub: "Keep your account safe with a strong password and 2-step verification.",
+		changePassword: "Change password", newPassword: "New password", showPassword: "Show password", hidePassword: "Hide password",
+		pwHint: "Use at least 12 characters with a mix of letters, numbers and symbols.",
+		twoStep: "2-step verification", twoStepHint: "Ask for a code from your phone when signing in on a new device.",
+		devices: "Signed-in devices", device1Name: "Laptop · Web browser", device1: "Last active now", thisDevice: "This device", device2Name: "Phone app", device2: "Last active 2 days ago", signOut: "Sign out",
+		appearanceSub: "Choose how Orbit looks on this device.",
+		darkMode: "Dark mode", darkModeHint: "Use a dark background for less glare at night.",
+		compactLayout: "Compact layout", compactHint: "Fit more on the screen with tighter spacing.",
+		textSize: "Text size", textSizeHint: "Make text larger or smaller across Orbit.", accentColour: "Accent colour", accentHint: "Used for buttons and highlights.",
+		lastSaved: "Last saved 3 days ago", cancel: "Cancel", save: "Save changes", saved: "Settings saved",
+		expiryTitle: "You'll be signed out in 60 seconds", expiryBody: "For your security, we sign you out after 15 minutes without activity. Any unsaved changes will be lost.",
+		signOutNow: "Sign out now", staySignedIn: "Stay signed in",
+	},
+	es: {
+		title: "Configuración de la cuenta – Orbit", account: "Configuración de la cuenta", help: "Ayuda", sections: "Secciones de configuración",
+		profile: "Perfil", security: "Seguridad", notifications: "Notificaciones", appearance: "Apariencia", billing: "Facturación",
+		profileSub: "Esta información aparece en tu cuenta y en tus recibos.",
+		photo: "Foto de perfil", photoHint: "JPG o PNG, de al menos 200 × 200 px.", changePhoto: "Cambiar foto",
+		fullName: "Nombre completo", phone: "Teléfono", email: "Correo electrónico", emailHint: "Aquí enviaremos los recibos y los códigos de acceso.",
+		emailError: "Introduce un correo electrónico válido, como nombre@example.com.",
+		language: "Idioma", langName: "Español", timezone: "Zona horaria",
+		danger: "Eliminar cuenta", deleteAccount: "Eliminar tu cuenta", deleteHint: "Borra tu perfil y todos tus archivos. No se puede deshacer.", deleteBtn: "Eliminar cuenta",
+		securitySub: "Protege tu cuenta con una contraseña segura y la verificación en dos pasos.",
+		changePassword: "Cambiar contraseña", newPassword: "Nueva contraseña", showPassword: "Mostrar contraseña", hidePassword: "Ocultar contraseña",
+		pwHint: "Usa al menos 12 caracteres con letras, números y símbolos.",
+		twoStep: "Verificación en dos pasos", twoStepHint: "Pide un código del teléfono al iniciar sesión en un dispositivo nuevo.",
+		devices: "Dispositivos con sesión iniciada", device1Name: "Portátil · Navegador web", device1: "Activo ahora", thisDevice: "Este dispositivo", device2Name: "App del teléfono", device2: "Activo hace 2 días", signOut: "Cerrar sesión",
+		appearanceSub: "Elige cómo se ve Orbit en este dispositivo.",
+		darkMode: "Modo oscuro", darkModeHint: "Usa un fondo oscuro para deslumbrar menos de noche.",
+		compactLayout: "Diseño compacto", compactHint: "Muestra más contenido con menos espacio entre elementos.",
+		textSize: "Tamaño del texto", textSizeHint: "Agranda o reduce el texto en todo Orbit.", accentColour: "Color de acento", accentHint: "Se usa en botones y elementos destacados.",
+		lastSaved: "Guardado por última vez hace 3 días", cancel: "Cancelar", save: "Guardar cambios", saved: "Configuración guardada",
+		expiryTitle: "Se cerrará tu sesión en 60 segundos", expiryBody: "Por seguridad, cerramos la sesión tras 15 minutos sin actividad. Se perderán los cambios que no hayas guardado.",
+		signOutNow: "Cerrar sesión ahora", staySignedIn: "Seguir conectado",
+	},
+};
+
+const root = document.documentElement;
+
+function showTab(name) {
+	for (const b of document.querySelectorAll(".nav [role=tab]")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+	for (const p of document.querySelectorAll(".panel")) p.hidden = p.id !== `tab-${name}`;
+	$("footer").hidden = !["profile", "security"].includes(name);
+}
+
+fixture.boot({
+	strings: STRINGS,
+	init() {
+		for (const b of document.querySelectorAll(".nav [role=tab]")) b.addEventListener("click", () => showTab(b.dataset.tab));
+		const syncSwitches = () => {
+			$("darkSwitch").setAttribute("aria-checked", String(root.dataset.theme === "dark"));
+			$("compactSwitch").setAttribute("aria-checked", String(root.dataset.density === "compact"));
+		};
+		syncSwitches();
+		$("darkSwitch").addEventListener("click", () => {
+			root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+			syncSwitches();
+		});
+		$("save").addEventListener("click", () => {
+			const email = $("email");
+			const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value);
+			email.setAttribute("aria-invalid", String(!ok));
+			$("emailError").hidden = ok;
+			$("emailHint").hidden = !ok;
+			if (!ok) {
+				email.focus();
+				return;
+			}
+			$("toast").hidden = false;
+		});
+		// Keep focus in the field while toggling, as most password fields do, so typing can carry on.
+		$("togglePw").addEventListener("mousedown", (e) => e.preventDefault());
+		$("togglePw").addEventListener("click", () => {
+			const pw = $("newPw");
+			const show = pw.type === "password";
+			pw.type = show ? "text" : "password";
+			$("togglePwText").textContent = t(show ? "hidePassword" : "showPassword");
+			$("togglePw").setAttribute("aria-pressed", String(show));
+		});
+		$("newPw").addEventListener("input", (e) => {
+			const n = Math.min(4, Math.floor(e.target.value.length / 4));
+			[...$("strength").children].forEach((bar, i) => bar.classList.toggle("on", i < n));
+		});
+	},
+});
+
+// Focus the dialog itself (it is announced by its title) rather than a button, so `focused` doesn't give away `primary`.
+fixture.on("session-expiry", () => {
+	$("expiry").showModal();
+	$("expiry").focus();
+});
+</script>
+</body>
+</html>

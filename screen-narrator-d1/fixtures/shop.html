@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hearth &amp; Field</title>
+<link rel="stylesheet" href="common.css">
+<style>
+	:root { --accent: #1f5c46; --accent-soft: #e2efe8; --tile: #f1ebe2; }
+	[data-theme="dark"] { --accent: #6cc59c; --accent-soft: #183126; --on-accent: #0b1f16; --tile: #2a2622; }
+	body { min-height: 100vh; }
+	.serif { font-family: Georgia, "Noto Serif", "Times New Roman", serif; }
+	.header { display: flex; align-items: center; gap: 22px; height: 66px; padding: 0 32px; background: var(--surface); border-bottom: 1px solid var(--border); }
+	[data-density="compact"] .header { height: 54px; }
+	.logo { font-size: 22px; font-weight: 700; color: var(--text); white-space: nowrap; }
+	.logo span { color: var(--accent); }
+	.search { flex: 1; max-width: 420px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border: 1px solid var(--border); border-radius: 20px; color: var(--muted); }
+	.search input { flex: 1; border: 0; outline: none; background: transparent; min-width: 0; }
+	.nav { display: flex; gap: 18px; font-weight: 600; }
+	.nav a { color: var(--text); }
+	.nav a.sale { color: #c92a2a; }
+	[data-theme="dark"] .nav a.sale { color: #ff8787; }
+	.actions { margin-left: auto; display: flex; gap: 4px; }
+	.cart { position: relative; }
+	.cart .badge { position: absolute; top: 0; right: -2px; min-width: 17px; height: 17px; font-size: 10px; padding: 0 4px; }
+	.stock { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 16px; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: var(--fs-sm); }
+	.wrap { max-width: 1180px; margin: 0 auto; padding: 22px 32px 40px; }
+	[data-density="compact"] .wrap { padding-top: 14px; }
+	.crumbs { color: var(--muted); font-size: var(--fs-sm); }
+	.titlebar { display: flex; align-items: end; gap: 16px; margin: 6px 0 18px; }
+	.titlebar h1 { font-size: 30px; font-weight: 700; }
+	[data-density="compact"] .titlebar h1 { font-size: 25px; }
+	.titlebar .count { color: var(--muted); padding-bottom: 5px; }
+	.titlebar select { margin-left: auto; width: auto; height: 36px; }
+	.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+	[data-density="compact"] .grid { gap: 12px; }
+	.product { display: flex; flex-direction: column; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
+	.product .img { --bg: var(--tile); background: var(--bg); aspect-ratio: 5 / 4; display: grid; place-items: center; }
+	.product .img svg { width: 72%; height: 72%; }
+	.product .info { padding: 12px 14px 14px; display: grid; gap: 4px; }
+	[data-density="compact"] .product .info { padding: 8px 10px 10px; gap: 2px; }
+	.product .name { font-weight: 650; }
+	.product .rating { color: #d08c00; font-size: var(--fs-sm); }
+	.product .rating span { color: var(--muted); }
+	.product .row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+	.product .price { font-size: 17px; font-weight: 750; }
+	.product .tag { position: absolute; margin: 12px; padding: 3px 10px; border-radius: 12px; background: var(--surface); color: var(--text); font-size: 11.5px; font-weight: 700; box-shadow: var(--shadow); }
+	.featured { grid-column: span 2; grid-row: span 2; position: relative; }
+	.featured .img { aspect-ratio: auto; flex: 1; min-height: 300px; }
+	.featured .name { font-size: 20px; }
+	.featured .price { font-size: 22px; }
+	/* The hover is deliberately loud: a big pixel change that means nothing to a screen reader user. */
+	.featured:hover { transform: scale(1.025); box-shadow: 0 24px 50px rgba(20, 40, 30, 0.35); border-color: var(--accent); z-index: 2; }
+	.featured:hover .img { --bg: #24493a; }
+	.featured:hover .img svg { --p: #f2c14e; --p2: #fff3d1; }
+	.featured:hover .info { background: var(--accent-soft); }
+	.featured:hover .btn { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+	.featured:hover .tag { background: #f2c14e; color: #2b2410; }
+	/* Checkout */
+	.secure { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; }
+	.steps { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: var(--fs-sm); font-weight: 600; margin-bottom: 18px; flex-wrap: wrap; }
+	.steps .on { color: var(--accent); }
+	.checkout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+	.box { padding: 18px 20px; display: grid; gap: 12px; margin-bottom: 16px; }
+	[data-density="compact"] .box { padding: 12px 14px; gap: 8px; margin-bottom: 10px; }
+	.box h2 { font-size: 16px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+	.box h2 .btn { height: 30px; font-size: var(--fs-sm); }
+	.muted { color: var(--muted); }
+	.option { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; }
+	.option.on { border-color: var(--accent); background: var(--accent-soft); }
+	.option.bad { border-color: var(--danger); background: var(--danger-soft); }
+	.option .radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--muted); flex: none; }
+	.option.on .radio, .option.bad .radio { border: 5px solid var(--accent); }
+	.option.bad .radio { border-color: var(--danger); }
+	.option .grow { flex: 1; }
+	.option .grow span { display: block; color: var(--muted); font-size: var(--fs-sm); }
+	.cardchip { width: 46px; height: 30px; border-radius: 5px; background: linear-gradient(135deg, #3d4c6b, #22293a); position: relative; flex: none; }
+	.cardchip::after { content: ""; position: absolute; left: 7px; top: 9px; width: 11px; height: 9px; border-radius: 2px; background: #d9b65c; }
+	.declined { display: grid; gap: 10px; padding: 14px 16px; border-radius: 10px; background: var(--danger-soft); border: 1px solid var(--danger); }
+	.declined:focus { outline: none; }
+	.declined h3 { display: flex; align-items: center; gap: 8px; color: var(--danger); font-size: 15px; }
+	.declined .btn { justify-self: start; border-color: var(--accent); color: var(--accent); }
+	.pay { height: 48px; font-size: 16px; width: 100%; }
+	.small { font-size: var(--fs-sm); color: var(--muted); display: flex; gap: 6px; align-items: center; justify-content: center; }
+	.line { display: flex; justify-content: space-between; gap: 10px; }
+	.line.total { font-size: 17px; font-weight: 750; border-top: 1px solid var(--border); padding-top: 10px; }
+	.item { display: flex; gap: 12px; align-items: center; }
+	.thumb { width: 52px; height: 52px; border-radius: 8px; background: var(--tile); display: grid; place-items: center; flex: none; }
+	.thumb svg { width: 80%; height: 80%; }
+	.item .grow { flex: 1; }
+	.item .grow span { display: block; color: var(--muted); font-size: var(--fs-sm); }
+	@media (max-width: 1100px) {
+		.nav { display: none; }
+		.grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+	}
+	@media (max-width: 700px) {
+		.header { gap: 10px; padding: 0 12px; }
+		.logo { font-size: 19px; }
+		.search { display: none; }
+		.wrap { padding: 14px 14px 30px; }
+		.titlebar h1 { font-size: 23px; }
+		.titlebar select { display: none; }
+		.grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+		.featured { grid-column: span 2; grid-row: auto; }
+		.featured .img { min-height: 230px; }
+		.product .info { padding: 8px 10px 10px; }
+		.product:not(.featured) .row .btn { display: none; }
+		.checkout { grid-template-columns: minmax(0, 1fr); }
+		.secure span { display: none; }
+	}
+</style>
+</head>
+<body>
+<header class="header">
+	<a class="logo serif" href="#">Hearth <span>&amp;</span> Field</a>
+	<label class="search"><i data-icon="search"></i><input data-i18n-attr="placeholder=search;aria-label=search"></label>
+	<nav class="nav" id="shopNav">
+		<a href="#" data-i18n="navNew"></a><a href="#" data-i18n="navKitchen"></a><a href="#" data-i18n="navHome"></a><a href="#" data-i18n="navGarden"></a><a href="#" class="sale" data-i18n="navSale"></a>
+	</nav>
+	<div class="actions" id="shopActions">
+		<button class="icon-btn" data-i18n-attr="aria-label=account"><i data-icon="user"></i></button>
+		<button class="icon-btn" data-i18n-attr="aria-label=wishlist"><i data-icon="heart"></i></button>
+		<button class="icon-btn cart" data-i18n-attr="aria-label=cart"><i data-icon="cart"></i><span class="badge">2</span></button>
+	</div>
+	<div class="secure actions" id="secure" hidden><i data-icon="lock"></i><span data-i18n="secure"></span></div>
+</header>
+
+<div id="gridView">
+	<div class="stock"><span class="spinner" id="stockSpinner"></span><span data-i18n="checkingStock"></span></div>
+	<div class="wrap">
+		<div class="crumbs" data-i18n="crumbs"></div>
+		<div class="titlebar"><h1 class="serif" data-i18n="category"></h1><span class="count" data-i18n="count"></span>
+			<select class="input" data-i18n-attr="aria-label=sort"><option data-i18n="sortPopular"></option></select></div>
+		<div class="grid" id="grid"></div>
+	</div>
+</div>
+
+<div id="checkoutView" hidden>
+	<div class="wrap">
+		<div class="steps"><span data-i18n="stepCart"></span><i data-icon="chevron"></i><span data-i18n="stepShipping"></span><i data-icon="chevron"></i><span class="on" data-i18n="stepPayment"></span><i data-icon="chevron"></i><span data-i18n="stepReview"></span></div>
+		<div class="checkout">
+			<div>
+				<section class="card box">
+					<h2><span data-i18n="shipTo"></span><button class="btn btn-ghost" data-i18n="edit"></button></h2>
+					<div>Ana Ruiz<br><span class="muted">12 Sample Street, Apt 4B, Springfield 01234</span></div>
+					<div class="muted" data-i18n="delivery"></div>
+				</section>
+				<section class="card box">
+					<h2 data-i18n="payment"></h2>
+					<div class="option on" id="savedCard"><span class="radio"></span><span class="cardchip"></span><div class="grow"><b data-i18n="cardEnding"></b><span data-i18n="cardExp"></span></div></div>
+					<div class="option"><span class="radio"></span><i data-icon="plus"></i><div class="grow"><b data-i18n="newCard"></b></div></div>
+					<div class="declined" id="declined" role="alert" tabindex="-1" aria-labelledby="declinedTitle" hidden>
+						<h3 id="declinedTitle"><i data-icon="alert"></i><span data-i18n="declinedTitle"></span></h3>
+						<p data-i18n="declinedBody"></p>
+						<button class="btn" data-primary data-i18n="useAnother"></button>
+					</div>
+					<button class="btn btn-primary pay" id="pay"></button>
+					<div class="small"><i data-icon="shield"></i><span data-i18n="encrypted"></span></div>
+				</section>
+			</div>
+			<aside class="card box">
+				<h2 data-i18n="summary"></h2>
+				<div id="items" style="display:grid;gap:12px"></div>
+				<div class="line"><span data-i18n="subtotal"></span><span id="subtotal"></span></div>
+				<div class="line"><span data-i18n="shipping"></span><span id="shipping"></span></div>
+				<div class="line"><span data-i18n="tax"></span><span id="tax"></span></div>
+				<div class="line total"><span data-i18n="total"></span><span id="total"></span></div>
+				<a href="#" class="small" data-i18n="backToCart"></a>
+			</aside>
+		</div>
+	</div>
+</div>
+
+<script src="common.js"></script>
+<script>
+const STRINGS = {
+	en: {
+		title: "Kitchen & dining – Hearth & Field", search: "Search products", navNew: "New in", navKitchen: "Kitchen", navHome: "Home", navGarden: "Garden", navSale: "Sale",
+		account: "Account", wishlist: "Wishlist", cart: "Cart, 2 items", secure: "Secure checkout",
+		checkingStock: "Checking stock at stores near you…", crumbs: "Home / Kitchen / Kitchen & dining", category: "Kitchen & dining", count: "128 products",
+		sort: "Sort by", sortPopular: "Most popular", addToCart: "Add to cart", bestseller: "Bestseller", reviews: "reviews",
+		products: [
+			["teapot", "Stoneware teapot, 1.2 L", 54, 4.8, 312],
+			["mug", "Speckled mug, set of 4", 38, 4.6, 208],
+			["vase", "Bud vase, sage", 18, 4.7, 96],
+			["bowl", "Glazed serving bowl", 29, 4.5, 141],
+			["board", "Oak cutting board", 42, 4.9, 87],
+			["kettle", "Enamel kettle", 46, 4.4, 63],
+			["towel", "Linen tea towels, pair", 14, 4.6, 175],
+			["mug", "Espresso cups, set of 2", 22, 4.3, 54],
+		],
+		stepCart: "Cart", stepShipping: "Shipping", stepPayment: "Payment", stepReview: "Review",
+		shipTo: "Ship to", edit: "Edit address", delivery: "Standard delivery (3–5 working days)", payment: "Payment method",
+		cardEnding: "Card ending in 4821", cardExp: "Ana Ruiz · Expires 08/29", newCard: "Add a new card",
+		declinedTitle: "Card declined", declinedBody: "Your bank declined the payment with the card ending in 4821. Try another card or contact your bank.",
+		useAnother: "Use another card", pay: "Pay {amount}", encrypted: "Payments are encrypted and processed securely",
+		summary: "Order summary", subtotal: "Subtotal", shipping: "Shipping", tax: "Tax", total: "Total", backToCart: "Back to cart", qty: "Qty {n}",
+	},
+	es: {
+		title: "Cocina y mesa – Hearth & Field", search: "Buscar productos", navNew: "Novedades", navKitchen: "Cocina", navHome: "Hogar", navGarden: "Jardín", navSale: "Rebajas",
+		account: "Cuenta", wishlist: "Favoritos", cart: "Carrito, 2 artículos", secure: "Pago seguro",
+		checkingStock: "Comprobando el stock en tiendas cercanas…", crumbs: "Inicio / Cocina / Cocina y mesa", category: "Cocina y mesa", count: "128 productos",
+		sort: "Ordenar por", sortPopular: "Más populares", addToCart: "Añadir al carrito", bestseller: "Más vendido", reviews: "opiniones",
+		products: [
+			["teapot", "Tetera de gres, 1,2 l", 54, 4.8, 312],
+			["mug", "Tazas moteadas, juego de 4", 38, 4.6, 208],
+			["vase", "Florero pequeño, salvia", 18, 4.7, 96],
+			["bowl", "Ensaladera esmaltada", 29, 4.5, 141],
+			["board", "Tabla de cortar de roble", 42, 4.9, 87],
+			["kettle", "Hervidor esmaltado", 46, 4.4, 63],
+			["towel", "Paños de cocina de lino, 2 uds.", 14, 4.6, 175],
+			["mug", "Tazas de café, juego de 2", 22, 4.3, 54],
+		],
+		stepCart: "Carrito", stepShipping: "Envío", stepPayment: "Pago", stepReview: "Revisión",
+		shipTo: "Enviar a", edit: "Editar dirección", delivery: "Envío estándar (3–5 días laborables)", payment: "Método de pago",
+		cardEnding: "Tarjeta terminada en 4821", cardExp: "Ana Ruiz · Caduca 08/29", newCard: "Añadir una tarjeta nueva",
+		declinedTitle: "Tarjeta rechazada", declinedBody: "Tu banco ha rechazado el pago con la tarjeta terminada en 4821. Prueba con otra tarjeta o contacta con tu banco.",
+		useAnother: "Usar otra tarjeta", pay: "Pagar {amount}", encrypted: "Los pagos se cifran y se procesan de forma segura",
+		summary: "Resumen del pedido", subtotal: "Subtotal", shipping: "Envío", tax: "Impuestos", total: "Total", backToCart: "Volver al carrito", qty: "Cant. {n}",
+	},
+};
+
+// Simple flat drawings instead of photos: --p is the product colour, --p2 its highlight.
+const ART = {
+	teapot: '<ellipse cx="100" cy="102" rx="54" ry="42" fill="var(--p)"/><ellipse cx="100" cy="62" rx="27" ry="8" fill="var(--p2)"/><circle cx="100" cy="51" r="7" fill="var(--p)"/><path d="M150 96 Q186 82 183 58 L173 60 Q171 84 146 108Z" fill="var(--p)"/><path d="M50 78 Q14 96 50 126" stroke="var(--p)" stroke-width="9" fill="none"/><ellipse cx="82" cy="92" rx="12" ry="20" fill="var(--p2)" opacity=".35"/>',
+	mug: '<rect x="66" y="50" width="62" height="80" rx="10" fill="var(--p)"/><path d="M128 68 q30 0 30 26 q0 26 -30 26" stroke="var(--p)" stroke-width="10" fill="none"/><circle cx="84" cy="74" r="3" fill="var(--p2)"/><circle cx="104" cy="96" r="3" fill="var(--p2)"/><circle cx="90" cy="112" r="2.5" fill="var(--p2)"/><circle cx="112" cy="66" r="2.5" fill="var(--p2)"/>',
+	vase: '<path d="M88 30 h24 v18 q34 26 24 66 q-7 26 -36 26 q-29 0 -36 -26 q-10 -40 24 -66z" fill="var(--p)"/><path d="M100 30 C98 12 112 6 120 2" stroke="#5f8a4a" stroke-width="3" fill="none"/>',
+	bowl: '<path d="M38 80 h124 q0 58 -62 58 q-62 0 -62 -58z" fill="var(--p)"/><ellipse cx="100" cy="80" rx="62" ry="11" fill="var(--p2)"/>',
+	board: '<rect x="40" y="40" width="112" height="96" rx="14" fill="var(--p)"/><rect x="146" y="76" width="30" height="24" rx="10" fill="var(--p)"/><circle cx="166" cy="88" r="5" fill="var(--bg)"/><path d="M58 64 h70 M58 88 h80 M58 112 h60" stroke="var(--p2)" stroke-width="2" opacity=".5"/>',
+	kettle: '<path d="M52 136 q-6 -64 48 -68 q54 4 48 68z" fill="var(--p)"/><path d="M62 74 Q100 20 138 74" stroke="#333" stroke-width="6" fill="none"/><path d="M146 112 l30 -26 l4 6 l-26 30z" fill="var(--p)"/><ellipse cx="100" cy="70" rx="20" ry="6" fill="var(--p2)"/>',
+	towel: '<rect x="44" y="36" width="64" height="104" rx="4" fill="var(--p)"/><rect x="92" y="44" width="64" height="96" rx="4" fill="var(--p2)"/><path d="M92 60 h64 M92 66 h64 M92 120 h64 M92 126 h64" stroke="var(--p)" stroke-width="3"/>',
+};
+const COLOURS = [["#3f6e8c", "#d8e6ef"], ["#b45f3c", "#f3d9c9"], ["#7d9a6b", "#e1ead9"], ["#2f4858", "#c7d6df"], ["#a87a4a", "#e3c9a6"], ["#c8423b", "#f7d2cf"], ["#8a8f6a", "#e6e2c8"], ["#6a5a8c", "#ddd5ec"]];
+
+const money = (n) => (fixture.variant.lang === "es" ? `${n.toFixed(2).replace(".", ",")} €` : `$${n.toFixed(2)}`);
+const art = (kind, [p, p2], size = "") => `<svg viewBox="0 0 200 160" ${size} aria-hidden="true" style="--p:${p};--p2:${p2}">${ART[kind]}</svg>`;
+const stars = (r) => "★★★★★".slice(0, Math.round(r)) + "☆☆☆☆☆".slice(0, 5 - Math.round(r));
+
+function renderGrid() {
+	$("grid").innerHTML = t("products").map(([kind, name, price, rating, n], i) => `
+		<article class="product${i === 0 ? " featured" : ""}">
+			${i === 0 ? `<span class="tag">${t("bestseller")}</span>` : ""}
+			<div class="img">${art(kind, COLOURS[i])}</div>
+			<div class="info">
+				<span class="name">${name}</span>
+				<span class="rating">${stars(rating)} <span>${rating.toFixed(1)} · ${n} ${t("reviews")}</span></span>
+				<div class="row"><span class="price">${money(price)}</span><button class="btn">${t("addToCart")}</button></div>
+			</div>
+		</article>`).join("");
+}
+
+function renderCheckout() {
+	$("gridView").hidden = true;
+	$("checkoutView").hidden = false;
+	$("shopNav").hidden = true;
+	$("shopActions").hidden = true;
+	$("secure").hidden = false;
+	const products = t("products");
+	const lines = [[1, 1], [6, 2]];
+	$("items").innerHTML = lines.map(([i, q]) => `<div class="item"><span class="thumb">${art(products[i][0], COLOURS[i])}</span><div class="grow">${products[i][1]}<span>${t("qty", { n: q })}</span></div><b>${money(products[i][2] * q)}</b></div>`).join("");
+	const subtotal = lines.reduce((s, [i, q]) => s + products[i][2] * q, 0);
+	const total = subtotal + 6.5 + 12;
+	$("subtotal").textContent = money(subtotal);
+	$("shipping").textContent = money(6.5);
+	$("tax").textContent = money(12);
+	$("total").textContent = money(total);
+	$("pay").textContent = t("pay", { amount: money(total) });
+	$("pay").addEventListener("click", () => {
+		// Declined: the saved card is marked bad and Pay waits for a different card, so the next step is clear.
+		$("declined").hidden = false;
+		$("savedCard").classList.replace("on", "bad");
+		$("pay").disabled = true;
+		$("declined").focus();
+	});
+}
+
+fixture.boot({
+	strings: STRINGS,
+	init() {
+		if (fixture.param("view") === "checkout") renderCheckout();
+		else renderGrid();
+	},
+});
+
+fixture.on("spinner-frame", () => fixture.stepSpinner($("stockSpinner")));
+</script>
+</body>
+</html>

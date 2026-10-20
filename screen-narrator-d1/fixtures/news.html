@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Daily Meridian</title>
+<link rel="stylesheet" href="common.css">
+<style>
+	:root { --accent: #b3261e; --accent-soft: #fbe9e7; --paper: #fbfaf7; }
+	[data-theme="dark"] { --accent: #ff8a80; --accent-soft: #3a1d1b; --on-accent: #2a0b09; --paper: #15161a; }
+	body { background: var(--paper); }
+	.serif { font-family: Georgia, "Noto Serif", "Times New Roman", serif; }
+	.strip { display: flex; align-items: center; gap: 14px; max-width: 1200px; margin: 0 auto; padding: 8px 32px; font-size: var(--fs-sm); color: var(--muted); }
+	.strip .grow { flex: 1; }
+	.strip .btn { height: 30px; font-size: var(--fs-sm); }
+	.mast { text-align: center; padding: 6px 16px 12px; border-bottom: 1px solid var(--border); }
+	.mast h1 { font: 700 46px/1.1 Georgia, "Noto Serif", serif; letter-spacing: -0.01em; }
+	[data-density="compact"] .mast h1 { font-size: 38px; }
+	.sections { display: flex; justify-content: center; gap: 22px; padding: 10px 16px; border-bottom: 3px double var(--border); font-weight: 650; flex-wrap: wrap; }
+	.sections a { color: var(--text); }
+	.layout { max-width: 1200px; margin: 0 auto; padding: 24px 32px 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-areas: "main ad" "main trending"; grid-template-rows: auto 1fr; column-gap: 36px; row-gap: 22px; align-items: start; }
+	[data-density="compact"] .layout { padding-top: 14px; row-gap: 14px; column-gap: 24px; }
+	main { grid-area: main; }
+	.ad { grid-area: ad; }
+	.trending { grid-area: trending; }
+	.lead { display: grid; gap: 10px; padding-bottom: 22px; border-bottom: 1px solid var(--border); }
+	.pic { border-radius: 4px; background: var(--g); }
+	.lead .pic { height: 300px; }
+	[data-density="compact"] .lead .pic { height: 230px; }
+	.kicker { color: var(--accent); font-weight: 750; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; }
+	.lead h2 { font: 700 32px/1.15 Georgia, "Noto Serif", serif; }
+	[data-density="compact"] .lead h2 { font-size: 27px; }
+	.lead h2 a, .story h3 a { color: var(--text); }
+	.stand { color: var(--muted); font-size: 16px; }
+	.byline { color: var(--faint); font-size: var(--fs-sm); }
+	.story { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 18px; padding: 20px 0; border-bottom: 1px solid var(--border); }
+	[data-density="compact"] .story { grid-template-columns: 150px minmax(0, 1fr); padding: 12px 0; gap: 12px; }
+	.story .pic { aspect-ratio: 4 / 3; }
+	.story .txt { display: grid; gap: 6px; align-content: start; }
+	.story h3 { font: 700 21px/1.2 Georgia, "Noto Serif", serif; }
+	[data-density="compact"] .story h3 { font-size: 18px; }
+	.story p { color: var(--muted); }
+	.more { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 26px 0 40px; color: var(--muted); font-weight: 600; }
+	.ad-label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: center; margin-bottom: 4px; }
+	.ad-box { position: relative; display: block; height: 250px; border-radius: 4px; overflow: hidden; color: #fff; padding: 22px; }
+	.ad-box b { display: block; font: 700 25px/1.15 Georgia, "Noto Serif", serif; }
+	.ad-box p { margin-top: 8px; max-width: 190px; }
+	.ad-box .cta { position: absolute; left: 22px; bottom: 20px; background: #fff; color: #222; padding: 7px 14px; border-radius: 16px; font-weight: 700; font-size: 13px; }
+	.ad-box .brand { position: absolute; right: 16px; bottom: 22px; font-weight: 750; font-size: 12px; opacity: 0.9; }
+	.ad-a { background: radial-gradient(circle at 80% 30%, #c98b4f 0 16%, transparent 17%), radial-gradient(circle at 70% 55%, #8a5a33 0 12%, transparent 13%), linear-gradient(150deg, #3b2416, #6b3f22); }
+	.ad-b { background: radial-gradient(circle at 78% 26%, #ffe08a 0 14%, transparent 15%), linear-gradient(180deg, #2f80c9 0 58%, #f2d28c 58% 66%, #2a9d8f 66%); }
+	.trending h2 { font: 700 18px Georgia, "Noto Serif", serif; padding-bottom: 8px; border-bottom: 2px solid var(--text); }
+	.trending ol { list-style: none; margin: 0; padding: 0; counter-reset: t; }
+	.trending li { counter-increment: t; display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-weight: 600; }
+	.trending li::before { content: counter(t); font: 700 24px/1 Georgia, "Noto Serif", serif; color: var(--accent); width: 18px; }
+	.trending a { color: var(--text); }
+	/* Article view */
+	.article { display: grid; gap: 14px; padding-bottom: 60px; }
+	.article h2 { font: 700 38px/1.15 Georgia, "Noto Serif", serif; }
+	[data-density="compact"] .article h2 { font-size: 31px; }
+	.article .pic { height: 340px; }
+	.caption { font-size: var(--fs-sm); color: var(--faint); }
+	.article .body p { font: 18px/1.65 Georgia, "Noto Serif", serif; margin-bottom: 16px; }
+	[data-density="compact"] .article .body p { font-size: 16px; margin-bottom: 10px; }
+	.share { display: flex; gap: 6px; }
+	.cookie { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 20px; padding: 20px 32px; background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15); }
+	.cookie .ic { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+	.cookie .ic .icon { width: 24px; height: 24px; }
+	.cookie .txt { flex: 1; display: grid; gap: 4px; }
+	.cookie .txt b { font-size: 16px; }
+	.cookie .txt p { color: var(--muted); }
+	.cookie .btns { display: flex; gap: 10px; align-items: center; }
+	.cookie .btn-primary { height: 44px; padding: 0 26px; font-size: 15px; }
+	@media (max-width: 1100px) {
+		.layout { grid-template-columns: minmax(0, 1fr) 260px; }
+		.cookie { flex-wrap: wrap; }
+		.cookie .btns { margin-left: 64px; }
+	}
+	@media (max-width: 700px) {
+		.strip { padding: 8px 14px; }
+		.strip .date { display: none; }
+		.mast h1 { font-size: 32px; }
+		.sections { justify-content: flex-start; flex-wrap: nowrap; overflow: hidden; gap: 16px; padding: 8px 14px; }
+		.layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "ad" "main" "trending"; grid-template-rows: none; padding: 14px 14px 0; }
+		.ad-box { height: 120px; padding: 14px 16px; }
+		.ad-box b { font-size: 19px; }
+		.ad-box p { display: none; }
+		.ad-box .cta { left: auto; right: 16px; bottom: 14px; }
+		.ad-box .brand { right: auto; left: 16px; bottom: 14px; }
+		.lead .pic { height: 190px; }
+		.lead h2 { font-size: 25px; }
+		.story { grid-template-columns: minmax(0, 1fr) 110px; }
+		.story .pic { order: 2; }
+		.story h3 { font-size: 17px; }
+		.story p { display: none; }
+		.article h2 { font-size: 27px; }
+		.article .pic { height: 200px; }
+		.trending { display: none; }
+		.cookie { padding: 16px; gap: 12px; }
+		.cookie .ic { display: none; }
+		.cookie .btns { margin-left: 0; width: 100%; flex-wrap: wrap; }
+		.cookie .btn-primary { order: -1; width: 100%; }
+		.cookie .btns .btn:not(.btn-primary) { flex: 1; }
+	}
+</style>
+</head>
+<body>
+<div class="strip"><span class="date" data-i18n="date"></span><span class="grow"></span><a href="#" data-i18n="signIn"></a><button class="btn btn-primary" data-i18n="subscribe"></button></div>
+<header class="mast"><h1>The Daily Meridian</h1></header>
+<nav class="sections" id="sections"></nav>
+
+<div class="layout">
+	<main id="main"></main>
+	<aside class="ad">
+		<div class="ad-label" data-i18n="advert"></div>
+		<a class="ad-box" id="adBox" href="#"></a>
+	</aside>
+	<aside class="trending"><h2 data-i18n="mostRead"></h2><ol id="trending"></ol></aside>
+</div>
+
+<section class="cookie" id="cookie" role="dialog" aria-modal="false" aria-labelledby="cookieTitle" hidden>
+	<span class="ic"><i data-icon="cookie"></i></span>
+	<div class="txt"><b id="cookieTitle" data-i18n="cookieTitle"></b><p data-i18n="cookieBody"></p></div>
+	<div class="btns">
+		<button class="btn btn-ghost" data-i18n="manage"></button>
+		<button class="btn" data-i18n="reject"></button>
+		<button class="btn btn-primary" data-primary data-i18n="accept"></button>
+	</div>
+</section>
+
+<script src="common.js"></script>
+<script>
+const STRINGS = {
+	en: {
+		title: "The Daily Meridian – News, analysis and opinion", date: "Monday, 19 October", signIn: "Sign in", subscribe: "Subscribe",
+		sections: ["World", "Politics", "Business", "Science", "Culture", "Sport", "Opinion"],
+		advert: "Advertisement", share: "Share", save: "Save for later", mostRead: "Most read", loading: "Loading more stories…", by: "By",
+		lead: ["City", "City council approves plan for 40 km of new cycle lanes", "The network will link every district to the centre by 2029, with the first routes opening next spring.", "Clara Mendes · 2 hours ago"],
+		stories: [
+			["Science", "Researchers map the deep-sea currents that carry heat around the planet", "A ten-year survey with drifting floats shows the currents are slower than models assumed.", "Tom Avery · 3 hours ago"],
+			["Culture", "Local bakery wins national award for its rye loaf", "The family-run shop has used the same sourdough starter since it opened in 1987.", "Inés Ferrer · 4 hours ago"],
+			["Business", "Rail operator adds late-night trains on weekend routes", "Services will run until 2 am on Fridays and Saturdays from next month.", "Ravi Shah · 5 hours ago"],
+			["Culture", "Museum reopens east wing after two-year restoration", "Visitors can see the restored ceiling paintings for the first time in a decade.", "Lena Park · 6 hours ago"],
+			["Sport", "Under-18 team reaches regional final after penalty shoot-out", "The goalkeeper saved two penalties as the side came back from a goal down.", "Marco Bell · 7 hours ago"],
+			["Opinion", "Why every neighbourhood needs a tool library", "Borrowing a drill for an afternoon beats buying one that sits in a drawer.", "Ada Quinn · 8 hours ago"],
+		],
+		moreStories: [
+			["City", "Volunteers plant 5,000 trees along the river path", "The planting weekend drew more than 600 people of all ages.", "Clara Mendes · 9 hours ago"],
+			["Business", "Small firms report a rise in export orders", "A quarterly survey found orders up for the third quarter in a row.", "Ravi Shah · 10 hours ago"],
+			["Culture", "Night market returns to the old harbour this weekend", "Forty stalls, live music and a lantern parade on Saturday evening.", "Inés Ferrer · 11 hours ago"],
+			["Science", "How a school garden became a science lab", "Pupils measure soil moisture and rainfall to learn statistics.", "Tom Avery · 12 hours ago"],
+		],
+		trending: ["City council approves plan for 40 km of new cycle lanes", "Storm season forecast: what the new models say", "Night market returns to the old harbour", "Five easy autumn soups", "Rail operator adds late-night trains"],
+		ads: [["Autumn blend is back", "Slow-roasted beans with notes of hazelnut and dark cocoa.", "Try it today", "Cedar Lane Coffee", "ad-a"], ["Winter breaks by the sea", "Three nights, sea views and breakfast included.", "See offers", "Sunpath Travel", "ad-b"]],
+		cookieTitle: "We value your privacy", cookieBody: "We use cookies to keep the site working, measure traffic and show you relevant ads. Accept all cookies or choose which ones to allow.",
+		manage: "Manage choices", reject: "Reject all", accept: "Accept all",
+		articleStand: "A ten-year survey with drifting floats shows the currents are slower than models assumed, which changes how fast the deep ocean takes up heat.",
+		caption: "A research float is lowered into the water at the start of its two-year drift.",
+		articleBody: [
+			"For ten years, more than three hundred robotic floats have drifted through the deep ocean, sinking to two thousand metres and rising again every ten days to send their measurements home.",
+			"The result, published this week, is the most detailed map yet of the slow currents that move heat from the tropics towards the poles. Some of them are up to a fifth slower than the climate models had assumed.",
+			"“We expected small differences,” said the project's lead oceanographer. “What surprised us was how consistent the slowdown was across three different ocean basins.”",
+			"Slower currents mean that heat stays near the surface for longer before it is carried down into the deep ocean. That matters for forecasts of sea temperature, and for the coral reefs and fisheries that depend on them.",
+			"The floats are cheap by the standards of ocean science. Each one costs about as much as a small car and runs on batteries that last for around four years.",
+			"Collecting the data was the easy part, the team says. Turning millions of readings into a consistent map took a further three years of work, much of it checking for floats that had drifted into ice or been caught by fishing nets.",
+			"Other groups are now testing the new map against their own models. Early results suggest that the corrected currents improve forecasts of marine heatwaves by several days.",
+			"The project will continue for at least another five years, with a new generation of floats able to dive to six thousand metres.",
+			"The researchers hope the data, which is free to download, will be used by schools as well as scientists. A teaching pack is planned for next year.",
+		],
+	},
+	es: {
+		title: "The Daily Meridian – Noticias, análisis y opinión", date: "Lunes, 19 de octubre", signIn: "Iniciar sesión", subscribe: "Suscríbete",
+		sections: ["Mundo", "Política", "Economía", "Ciencia", "Cultura", "Deportes", "Opinión"],
+		advert: "Publicidad", share: "Compartir", save: "Guardar para más tarde", mostRead: "Lo más leído", loading: "Cargando más noticias…", by: "Por",
+		lead: ["Ciudad", "El ayuntamiento aprueba 40 km de nuevos carriles bici", "La red unirá todos los barrios con el centro en 2029, y las primeras rutas abrirán la próxima primavera.", "Clara Mendes · hace 2 horas"],
+		stories: [
+			["Ciencia", "Investigadores cartografían las corrientes profundas que reparten el calor del planeta", "Un estudio de diez años con boyas a la deriva muestra que las corrientes son más lentas de lo que suponían los modelos.", "Tom Avery · hace 3 horas"],
+			["Cultura", "Una panadería del barrio gana un premio nacional por su pan de centeno", "La tienda familiar usa la misma masa madre desde que abrió en 1987.", "Inés Ferrer · hace 4 horas"],
+			["Economía", "La operadora ferroviaria añade trenes nocturnos los fines de semana", "Los servicios funcionarán hasta las 2 de la madrugada los viernes y sábados desde el mes que viene.", "Ravi Shah · hace 5 horas"],
+			["Cultura", "El museo reabre el ala este tras dos años de restauración", "Los visitantes podrán ver los techos pintados restaurados por primera vez en una década.", "Lena Park · hace 6 horas"],
+			["Deportes", "El equipo sub-18 llega a la final regional tras la tanda de penaltis", "El portero detuvo dos penaltis después de que el equipo remontara un gol en contra.", "Marco Bell · hace 7 horas"],
+			["Opinión", "Por qué cada barrio necesita una biblioteca de herramientas", "Pedir prestado un taladro una tarde es mejor que comprar uno que se queda en un cajón.", "Ada Quinn · hace 8 horas"],
+		],
+		moreStories: [
+			["Ciudad", "Voluntarios plantan 5.000 árboles junto al paseo del río", "La jornada de plantación reunió a más de 600 personas de todas las edades.", "Clara Mendes · hace 9 horas"],
+			["Economía", "Las pequeñas empresas registran más pedidos de exportación", "Una encuesta trimestral muestra un aumento por tercer trimestre consecutivo.", "Ravi Shah · hace 10 horas"],
+			["Cultura", "El mercado nocturno vuelve al puerto viejo este fin de semana", "Cuarenta puestos, música en directo y un desfile de farolillos el sábado por la noche.", "Inés Ferrer · hace 11 horas"],
+			["Ciencia", "Cómo el huerto de un colegio se convirtió en un laboratorio", "Los alumnos miden la humedad del suelo y la lluvia para aprender estadística.", "Tom Avery · hace 12 horas"],
+		],
+		trending: ["El ayuntamiento aprueba 40 km de nuevos carriles bici", "Previsión de tormentas: qué dicen los nuevos modelos", "El mercado nocturno vuelve al puerto viejo", "Cinco sopas fáciles de otoño", "Más trenes nocturnos los fines de semana"],
+		ads: [["Vuelve la mezcla de otoño", "Café tostado lentamente con notas de avellana y cacao.", "Pruébalo hoy", "Cedar Lane Coffee", "ad-a"], ["Escapadas de invierno junto al mar", "Tres noches con vistas al mar y desayuno incluido.", "Ver ofertas", "Sunpath Travel", "ad-b"]],
+		cookieTitle: "Tu privacidad nos importa", cookieBody: "Usamos cookies para que el sitio funcione, medir el tráfico y mostrarte anuncios relevantes. Acepta todas las cookies o elige cuáles permitir.",
+		manage: "Gestionar opciones", reject: "Rechazar todas", accept: "Aceptar todas",
+		articleStand: "Un estudio de diez años con boyas a la deriva muestra que las corrientes son más lentas de lo que suponían los modelos, lo que cambia la rapidez con la que el océano profundo absorbe calor.",
+		caption: "Una boya de investigación se sumerge al comienzo de sus dos años a la deriva.",
+		articleBody: [
+			"Durante diez años, más de trescientas boyas robóticas han recorrido el océano profundo: bajan a dos mil metros y vuelven a subir cada diez días para enviar sus mediciones.",
+			"El resultado, publicado esta semana, es el mapa más detallado hasta ahora de las corrientes lentas que llevan el calor de los trópicos hacia los polos. Algunas son hasta una quinta parte más lentas de lo que suponían los modelos climáticos.",
+			"«Esperábamos pequeñas diferencias», explicó la oceanógrafa que dirige el proyecto. «Lo que nos sorprendió fue lo constante que era la desaceleración en tres cuencas oceánicas distintas».",
+			"Si las corrientes son más lentas, el calor permanece más tiempo cerca de la superficie antes de bajar al océano profundo. Eso importa para prever la temperatura del mar y para los arrecifes de coral y las pesquerías que dependen de ella.",
+			"Las boyas son baratas para lo que suele costar la ciencia oceánica. Cada una cuesta más o menos lo que un coche pequeño y funciona con baterías que duran unos cuatro años.",
+			"Recoger los datos fue lo fácil, dice el equipo. Convertir millones de lecturas en un mapa coherente llevó otros tres años de trabajo, en buena parte para descartar boyas atrapadas en el hielo o en redes de pesca.",
+			"Otros grupos ya están comparando el nuevo mapa con sus propios modelos. Los primeros resultados indican que las corrientes corregidas adelantan varios días la predicción de olas de calor marinas.",
+			"El proyecto continuará al menos cinco años más, con una nueva generación de boyas capaces de bajar a seis mil metros.",
+			"Los investigadores esperan que los datos, que se pueden descargar gratis, se usen tanto en colegios como en laboratorios. El año que viene publicarán material didáctico.",
+		],
+	},
+};
+
+const GRADS = [
+	"linear-gradient(160deg, #9ec5e8 0 45%, #6f8f5a 45% 60%, #4d6b40 60%)",
+	"linear-gradient(200deg, #0b3954 0 30%, #087e8b 30% 70%, #bfd7ea 70%)",
+	"radial-gradient(circle at 30% 40%, #e8c07d 0 22%, transparent 23%), linear-gradient(#8c5e3c, #5a3a24)",
+	"linear-gradient(170deg, #2b2d42 0 50%, #8d99ae 50% 56%, #edf2f4 56%)",
+	"linear-gradient(135deg, #d4a373 0 40%, #faedcd 40% 70%, #ccd5ae 70%)",
+	"linear-gradient(180deg, #74c69d 0 60%, #ffffff 60% 62%, #40916c 62%)",
+	"linear-gradient(120deg, #e76f51 0 35%, #f4a261 35% 60%, #2a9d8f 60%)",
+	"linear-gradient(200deg, #264653 0 40%, #2a9d8f 40% 75%, #e9c46a 75%)",
+	"radial-gradient(circle at 70% 30%, #ffd166 0 14%, transparent 15%), linear-gradient(#073b4c, #118ab2)",
+	"linear-gradient(160deg, #a7c957 0 50%, #6a994e 50% 80%, #386641 80%)",
+	"linear-gradient(150deg, #ffcdb2 0 40%, #e5989b 40% 70%, #6d6875 70%)",
+];
+
+let adIndex = 0;
+
+const storyHtml = ([kicker, title, summary, by], i) => `
+	<article class="story">
+		<div class="pic" style="--g:${GRADS[(i + 1) % GRADS.length]}"></div>
+		<div class="txt"><span class="kicker">${kicker}</span><h3><a href="#">${title}</a></h3><p>${summary}</p><span class="byline">${t("by")} ${by}</span></div>
+	</article>`;
+
+function renderAd() {
+	const [head, body, cta, brand, cls] = t("ads")[adIndex];
+	const box = $("adBox");
+	box.className = `ad-box ${cls}`;
+	box.innerHTML = `<b>${head}</b><p>${body}</p><span class="cta">${cta}</span><span class="brand">${brand}</span>`;
+	box.setAttribute("aria-label", `${t("advert")}: ${brand}, ${head}`);
+}
+
+function renderHome() {
+	const [kicker, title, stand, by] = t("lead");
+	$("main").innerHTML = `
+		<article class="lead"><div class="pic" style="--g:${GRADS[0]}"></div><span class="kicker">${kicker}</span><h2><a href="#">${title}</a></h2><p class="stand">${stand}</p><span class="byline">${t("by")} ${by}</span></article>
+		<div id="stories">${t("stories").map(storyHtml).join("")}</div>
+		<div class="more" id="more"><span class="spinner" id="moreSpinner"></span><span>${t("loading")}</span></div>`;
+}
+
+function renderArticle() {
+	const [kicker, title, , by] = t("stories")[0];
+	$("main").innerHTML = `
+		<article class="article">
+			<span class="kicker">${kicker}</span><h2>${title}</h2><p class="stand">${t("articleStand")}</p>
+			<div style="display:flex;justify-content:space-between;align-items:center"><span class="byline">${t("by")} ${by}</span>
+				<span class="share"><button class="icon-btn" aria-label="${t("share")}"><i data-icon="share"></i></button><button class="icon-btn" aria-label="${t("save")}"><i data-icon="bookmark"></i></button></span></div>
+			<div class="pic" style="--g:${GRADS[1]}"></div><span class="caption">${t("caption")}</span>
+			<div class="body">${t("articleBody").map((p) => `<p>${p}</p>`).join("")}</div>
+		</article>`;
+}
+
+fixture.boot({
+	strings: STRINGS,
+	init() {
+		$("sections").innerHTML = t("sections").map((s) => `<a href="#">${s}</a>`).join("");
+		$("trending").innerHTML = t("trending").map((s) => `<li><a href="#">${s}</a></li>`).join("");
+		renderAd();
+		if (fixture.param("view") === "article") renderArticle();
+		else renderHome();
+	},
+});
+
+fixture.on("cookie-banner", () => ($("cookie").hidden = false));
+fixture.on("rotate-ad", () => {
+	adIndex = (adIndex + 1) % t("ads").length;
+	renderAd();
+});
+fixture.on("load-more", () => {
+	const offset = t("stories").length;
+	$("stories").insertAdjacentHTML("beforeend", t("moreStories").map((s, i) => storyHtml(s, offset + i)).join(""));
+});
+</script>
+</body>
+</html>

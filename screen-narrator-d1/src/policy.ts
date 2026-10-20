@@ -39,17 +39,25 @@ const PHRASES: Record<ChangeKind, string> = {
 	none: "",
 };
 
-/** Urgency score (0–3, expected value) → level, rounding to the nearest. A non-number (bad model output) is 0. */
-export const urgencyLevel = (score: number): Urgency =>
-	(Number.isFinite(score) ? Math.max(0, Math.min(3, Math.round(score))) : 0) as Urgency;
+/** The highest urgency level (interrupt). */
+export const TOP_URGENCY = URGENCY_LEVELS.length - 1;
+
+/** Nearest integer level in 0..top. A non-number (bad model output) is 0. */
+export const nearestLevel = (x: unknown, top: number): number =>
+	typeof x === "number" && Number.isFinite(x) ? Math.max(0, Math.min(top, Math.round(x))) : 0;
+
+/** The level used when a backend gives no urgency answer (pixel diff): anything worth announcing is queued. */
+export const NO_URGENCY_LEVEL: Urgency = 2;
+
+/** Urgency score (expected value over the levels) → level. */
+export const urgencyLevel = (score: number): Urgency => nearestLevel(score, TOP_URGENCY) as Urgency;
 
 export function decide(p: Prediction, t: Thresholds = DEFAULT_THRESHOLDS): Decision {
 	const announce = p.announce ?? 0;
 	if (announce < t.announce)
 		return { action: "drop", narratable: false, speech: "", reason: `P(announce)=${announce.toFixed(2)} < ${t.announce}` };
 
-	// Without an urgency answer (pixel diff), anything worth announcing is queued.
-	const action = URGENCY_LEVELS[p.urgency ? urgencyLevel(p.urgency.score) : 2];
+	const action = URGENCY_LEVELS[p.urgency ? urgencyLevel(p.urgency.score) : NO_URGENCY_LEVEL];
 	if (action === "drop")
 		return { action, narratable: false, speech: "", reason: `announce but urgency ${p.urgency?.score.toFixed(2)} → drop` };
 

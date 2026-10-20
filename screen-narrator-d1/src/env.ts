@@ -2,10 +2,9 @@
 // Import this first in every entry point (capture, run, report, live).
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 /** Absolute path of the project root (the folder holding package.json). */
-export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+export const ROOT = path.resolve(import.meta.dirname, "..");
 
 const envFile = path.join(ROOT, ".env");
 if (existsSync(envFile)) process.loadEnvFile(envFile);

@@ -4,11 +4,10 @@
 //   `compression: false`), and its docs drop the /decisions path from the base URL — re-check both before upgrading.
 // - `images` is not in 0.6's request type, but the SDK forwards unknown request properties as-is.
 // - The API key is passed explicitly: without it the SDK falls back to TYPESAFE_API_KEY and would send that key here.
-import { type ChoiceResponse, type NoulResponse, type Questions, type ResultFor, TypeSafeClient } from "@typesafe-ai/sdk";
+import { type Questions, TypeSafeClient } from "@typesafe-ai/sdk";
 import type { Backend, BackendEstimate, BackendOutput } from "./types.ts";
-import { imageTokens } from "../images.ts";
-import { CORE_QUESTIONS, pairState, questionsFor } from "../questions.ts";
-import type { Pair, Prediction, QuestionSet } from "../types.ts";
+import { pairState, questionsFor, toPrediction } from "../questions.ts";
+import type { Pair, QuestionSet } from "../types.ts";
 
 export const LIQUID_BASE_URL = "https://api.liquid.ai/decisions";
 export const LIQUID_MODELS = ["d1-ultra", "d1"] as const;
@@ -17,8 +16,11 @@ export type LiquidModel = (typeof LIQUID_MODELS)[number];
 /** USD per million input tokens (output is free). d1's price isn't hardcoded: set LIQUID_D1_USD_PER_MTOK to get costs. */
 export function liquidPricePerMTok(model: LiquidModel): number | null {
 	if (model === "d1-ultra") return 0.042;
-	const fromEnv = Number(process.env.LIQUID_D1_USD_PER_MTOK);
-	return process.env.LIQUID_D1_USD_PER_MTOK && Number.isFinite(fromEnv) ? fromEnv : null;
+	const raw = process.env.LIQUID_D1_USD_PER_MTOK?.trim();
+	if (!raw) return null;
+	const price = Number(raw);
+	if (!Number.isFinite(price) || price < 0) throw new Error(`LIQUID_D1_USD_PER_MTOK must be a non-negative number, got "${raw}"`);
+	return price;
 }
 
 /** Null when the model's price is unknown. */
@@ -56,27 +58,12 @@ export async function askLiquid(req: LiquidRequest): Promise<LiquidResponse> {
 	return { answers: res.answers as Record<string, unknown>, inputTokens: res.usage.input_tokens };
 }
 
-/** Answers keyed as in questions.ts; the core ones typed by their question, so kind / urgency keep their label types. */
-type Answers = Partial<
-	{ [K in keyof typeof CORE_QUESTIONS]: ResultFor<(typeof CORE_QUESTIONS)[K]> } & {
-		primary: ChoiceResponse;
-		supportedTrue: NoulResponse;
-		supportedFalse: NoulResponse;
-	}
->;
-
-/** Map answers keyed as in questions.ts onto a Prediction. Unknown keys are ignored; absent ones stay absent. */
-export function toPrediction(answers: Record<string, unknown>): Prediction {
-	const a = answers as Answers;
-	const p: Prediction = {};
-	if (a.announce) p.announce = a.announce.noul;
-	if (a.kind) p.kind = { choice: a.kind.choice, probabilities: a.kind.probabilities };
-	if (a.urgency) p.urgency = { score: a.urgency.score, probabilities: a.urgency.probabilities };
-	if (a.sensitive) p.sensitive = a.sensitive.noul;
-	if (a.primary) p.primary = { choice: a.primary.choice, probabilities: a.primary.probabilities };
-	if (a.supportedTrue && a.supportedFalse) p.supported = { supported: a.supportedTrue.noul, unsupported: a.supportedFalse.noul };
-	return p;
-}
+/**
+ * Liquid's image tokens: 1.5 per 32×32 patch, rounded up per image. The docs say images are charged again for every
+ * question, but measured `usage.input_tokens` counts them once per request (see liquidEstimate).
+ */
+export const liquidImageTokens = (width: number, height: number): number =>
+	Math.ceil(Math.ceil(width / 32) * Math.ceil(height / 32) * 1.5);
 
 /** Text tokens per question (state + question wording); fitted to the first full run's usage. */
 const TEXT_TOKENS_PER_QUESTION = 110;
@@ -87,7 +74,7 @@ export function liquidEstimate(model: LiquidModel, pair: Pair, questionSet: Ques
 	// (2026-10-19, 142 pairs × ~4.7 questions) reported 2,877 input tokens per pair in `usage.input_tokens`,
 	// about the two images once; the per-question formula over-estimated it ~4×. Re-check if billing changes.
 	const questions = Object.keys(questionsFor(pair, questionSet)).length;
-	const inputTokens = 2 * imageTokens(pair.width, pair.height) + questions * TEXT_TOKENS_PER_QUESTION;
+	const inputTokens = 2 * liquidImageTokens(pair.width, pair.height) + questions * TEXT_TOKENS_PER_QUESTION;
 	return { inputTokens, outputTokens: 0, costUsd: liquidCostUsd(model, inputTokens) };
 }
 

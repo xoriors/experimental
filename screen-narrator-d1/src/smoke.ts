@@ -2,8 +2,9 @@
 // Two 64×48 images ≈ 2 × 9 tokens per question, so the whole check costs a fraction of a cent.
 import "./env.ts";
 import { PNG } from "pngjs";
-import { askLiquid, LIQUID_MODELS, toPrediction } from "./backends/liquid.ts";
-import { CORE_QUESTIONS, pairState } from "./questions.ts";
+import { askLiquid, LIQUID_MODELS } from "./backends/liquid.ts";
+import { pngBytesDataUrl } from "./images.ts";
+import { CORE_QUESTIONS, pairState, toPrediction } from "./questions.ts";
 
 function solid(r: number, g: number, b: number, box?: [number, number, number, number]): string {
 	const png = new PNG({ width: 64, height: 48 });
@@ -16,7 +17,7 @@ function solid(r: number, g: number, b: number, box?: [number, number, number, n
 			png.data[i + 2] = inBox ? 30 : b;
 			png.data[i + 3] = 255;
 		}
-	return `data:image/png;base64,${PNG.sync.write(png).toString("base64")}`;
+	return pngBytesDataUrl(PNG.sync.write(png));
 }
 
 const before = solid(240, 240, 240);

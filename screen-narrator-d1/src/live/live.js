@@ -6,6 +6,8 @@
 const $ = (id) => document.getElementById(id);
 const STORE_KEY = "screen-narrator-live";
 const MAX_LOG_ROWS = 100;
+/** "What's new" keeps only the latest mentions; older ones are stale by the time anyone asks. */
+const MAX_WHATS_NEW = 20;
 /** If the screen is still changing after this many samples (a video, an endless animation), judge it anyway. */
 const MAX_SETTLE_SAMPLES = 8;
 const SEND_MAX_WIDTH = 1280;
@@ -20,9 +22,11 @@ const state = {
 	/** A changed frame waiting to settle: { small, samples }. */
 	moving: null,
 	inFlight: false,
+	/** The AbortController of the /api/narrate call in flight, if any. */
+	narration: null,
 	whatsNew: [],
 	sharingSince: 0,
-	totals: { calls: 0, sent: 0, skipped: 0, tokens: 0, cost: 0, costUnknown: false, announcements: 0 },
+	totals: { calls: 0, sent: 0, skipped: 0, tokens: 0, cost: 0, costUnknown: false, cancelled: 0, announcements: 0 },
 };
 
 // ---- controls & persistence ----
@@ -138,12 +142,8 @@ async function startSharing() {
 	await video.play().catch(() => {});
 	// The browser's own "Stop sharing" button ends the track without going through this page.
 	stream.getVideoTracks()[0]?.addEventListener("ended", stopSharing);
-	state.stable = null;
-	state.moving = null;
 	state.sharingSince = Date.now();
-	$("share").disabled = true;
-	$("stop").disabled = false;
-	setStatus("Sharing. Watching for changes.");
+	setSharing(true);
 	schedule();
 }
 
@@ -153,11 +153,16 @@ function stopSharing() {
 	for (const t of state.stream?.getTracks() ?? []) t.stop();
 	state.stream = null;
 	$("video").srcObject = null;
+	setSharing(false);
+}
+
+/** What starting and stopping a share have in common: a fresh baseline frame, the buttons, the status line. */
+function setSharing(on) {
 	state.stable = null;
 	state.moving = null;
-	$("share").disabled = false;
-	$("stop").disabled = true;
-	setStatus("Not sharing.");
+	$("share").disabled = on;
+	$("stop").disabled = !on;
+	setStatus(on ? "Sharing. Watching for changes." : "Not sharing.");
 }
 
 function schedule() {
@@ -235,9 +240,13 @@ function tick() {
 
 // ---- judging ----
 
-async function postJson(url, body) {
-	const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-	const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+async function postJson(url, body, signal) {
+	const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
+	const data = await res.json().catch((err) => {
+		// An abort while the body is read is still an abort, not an unreadable answer.
+		if (signal?.aborted) throw err;
+		return { error: `HTTP ${res.status}` };
+	});
 	if (!res.ok) throw Object.assign(new Error(data.error || `HTTP ${res.status}`), { status: res.status, data });
 	return data;
 }
@@ -282,33 +291,62 @@ function act(r, row) {
 		state.totals.announcements++;
 	} else if (action === "mention") {
 		state.whatsNew.push(speech);
+		if (state.whatsNew.length > MAX_WHATS_NEW) state.whatsNew.splice(0, state.whatsNew.length - MAX_WHATS_NEW);
 		updateWhatsNew();
 		row.spoken = "(added to What's new)";
 	}
 }
 
+const SUPERSEDED = "superseded by a newer change, not spoken";
+
 async function narrate(before, after, decision, row) {
+	// At most one narration in flight: a newer change makes this one's detail stale, so its call is cancelled.
+	state.narration?.abort();
+	const controller = new AbortController();
+	state.narration = controller;
 	row.narration = { pending: true };
 	try {
-		const r = await postJson("/api/narrate", { before: before.jpeg, after: after.jpeg, decision: { speech: decision.speech }, model: settings().model });
-		// Two paid calls: Claude's narration (even when refused), then the decision model's fact-check when there was text to check.
-		addUsage(r.narratorInputTokens + r.narratorOutputTokens, r.narratorCostUsd);
-		if (r.supported !== null) addUsage(r.inputTokens, r.costUsd);
-		row.narration = r;
-		// The hallucination guard: the server sets `speak` only when the fact-check supports the narration.
-		if (r.speak) speak(r.narration, "queue");
+		const r = await postJson(
+			"/api/narrate",
+			{ before: before.jpeg, after: after.jpeg, decision: { speech: decision.speech }, model: settings().model },
+			controller.signal,
+		);
+		addNarrationUsage(r);
+		// An answer that arrived just as a newer narration started is paid for (counted above) but never spoken.
+		if (state.narration !== controller) row.narration = { error: SUPERSEDED };
+		else {
+			row.narration = r;
+			// The hallucination guard: the server sets `speak` only when the fact-check supports the narration.
+			if (r.speak) speak(r.narration, "queue");
+		}
 	} catch (err) {
-		row.narration = { error: err.message };
-		// A failed fact-check still cost a Claude call; the server reports its usage on the error.
-		if (err.data && err.data.narratorInputTokens !== undefined) addUsage(err.data.narratorInputTokens + err.data.narratorOutputTokens, err.data.narratorCostUsd);
+		// Aborted before any answer came back, so the browser never learns this call's usage; the server still pays
+		// for the Claude call if it had started. Counted, so the total says it is incomplete rather than being silently low.
+		if (err.name === "AbortError") {
+			row.narration = { error: SUPERSEDED };
+			state.totals.cancelled++;
+		} else {
+			row.narration = { error: err.message };
+			// A failed fact-check still cost a Claude call; the server reports its usage on the error.
+			if (err.data) addNarrationUsage(err.data);
+		}
 		if (err.status === 501) {
 			controls.narrate.checked = false;
 			controls.narrate.disabled = true;
 			$("narrate-help").textContent = `Unavailable: ${err.message}`;
 		}
+	} finally {
+		if (state.narration === controller) state.narration = null;
 	}
 	updateRow(row);
 	renderTotals();
+}
+
+/** An /api/narrate answer's (or error's) paid calls: Claude's narration, even when refused, then the fact-check if it ran. */
+function addNarrationUsage(r) {
+	if (r.narratorInputTokens === undefined) return;
+	addUsage(r.narratorInputTokens + r.narratorOutputTokens, r.narratorCostUsd);
+	if (typeof r.supported === "number") addUsage(r.inputTokens, r.costUsd);
 }
 
 function addUsage(tokens, cost) {
@@ -405,7 +443,8 @@ function renderTotals() {
 	$("t-skipped").textContent = String(t.skipped);
 	$("t-tokens").textContent = t.tokens.toLocaleString();
 	const unpriced = state.config?.unpricedModels ?? [];
-	$("t-cost").textContent = `$${t.cost.toFixed(5)}${t.costUnknown ? ` + ${unpriced.length ? unpriced.join(", ") : "some calls"} (price unset)` : ""}`;
+	const cancelled = t.cancelled ? ` + ${t.cancelled} cancelled narration${t.cancelled === 1 ? "" : "s"} (cost not reported)` : "";
+	$("t-cost").textContent = `$${t.cost.toFixed(5)}${t.costUnknown ? ` + ${unpriced.length ? unpriced.join(", ") : "some calls"} (price unset)` : ""}${cancelled}`;
 	const minutes = state.sharingSince ? (Date.now() - state.sharingSince) / 60000 : 0;
 	$("t-rate").textContent = minutes > 0.05 ? (t.announcements / minutes).toFixed(1) : "0.0";
 }

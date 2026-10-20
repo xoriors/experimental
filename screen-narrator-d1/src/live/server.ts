@@ -2,8 +2,6 @@
 // Liquid (and Claude) credentials out of the browser. Bound to 127.0.0.1 only.
 import "../env.ts";
 import { createServer } from "node:http";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { claudeSettingsFromEnv } from "../anthropic.ts";
 import { askLiquid } from "../backends/liquid.ts";
 import { fromRoot } from "../env.ts";
@@ -25,7 +23,7 @@ console.log(
 const app = createApp({
 	askLiquid,
 	narrator,
-	staticDir: path.dirname(fileURLToPath(import.meta.url)),
+	staticDir: import.meta.dirname,
 	fixturesDir: fromRoot("fixtures"),
 	port: () => port,
 });

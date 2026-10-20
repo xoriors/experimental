@@ -1,4 +1,5 @@
 // Small helpers shared by the CLIs (capture, bench, report) and the live server.
+import type { z } from "zod";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,3 +23,7 @@ export const errorMessage = (err: unknown): string => (err instanceof Error ? er
 /** True when the module at `importMetaUrl` is the script node was started with (`tsx src/run.ts`), not an import. */
 export const isEntryPoint = (importMetaUrl: string): boolean =>
 	process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(importMetaUrl);
+
+/** A zod error as one line: `path: message; …` (a root-level issue is named `fallback`). */
+export const zodIssues = (err: z.ZodError, fallback = "value"): string =>
+	err.issues.map((i) => `${i.path.join(".") || fallback}: ${i.message}`).join("; ");

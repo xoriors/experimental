@@ -12,22 +12,24 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { ChoiceResponse, NoulResponse, Question, Questions, ScoreResponse } from "@typesafe-ai/sdk";
 import { z } from "zod";
-import { toPrediction } from "./liquid.ts";
 import type { Backend, BackendOutput } from "./types.ts";
 import {
-	CLAUDE_MAX_TOKENS,
+	anthropicClient,
 	type ClaudeEffort,
 	claudeCostUsd,
+	claudeImageBlock,
 	claudeImageTokens,
+	claudeRequestBase,
 	type ClaudeResponse,
 	claudeSettingsFromEnv,
 	describeClaudeError,
-	FALLBACK_BETA,
 	responseText,
 } from "../anthropic.ts";
 import { parseDataUrl } from "../images.ts";
-import { pairState, questionsFor } from "../questions.ts";
+import { nearestLevel } from "../policy.ts";
+import { pairState, questionsFor, toPrediction } from "../questions.ts";
 import type { Pair, QuestionSet } from "../types.ts";
+import { zodIssues } from "../util.ts";
 
 /** An answer shaped like Liquid's, so toPrediction maps both backends. Scores carry no legend or confidence. */
 export type VlmAnswer = NoulResponse | ChoiceResponse | Pick<ScoreResponse, "type" | "score" | "probabilities">;
@@ -57,10 +59,6 @@ function criteria(q: Question): string {
 const PROBABILITY = "the probability (0 to 1) that the answer is yes";
 
 const clamp01 = (x: unknown): number => (typeof x === "number" && Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0.5);
-
-/** Nearest level in 0..top; a non-number is 0. For urgency (top 3) this is policy.ts's urgencyLevel. */
-const clampLevel = (x: unknown, top: number): number =>
-	typeof x === "number" && Number.isFinite(x) ? Math.min(top, Math.max(0, Math.round(x))) : 0;
 
 interface Fields {
 	/** JSON field → its type in the schema. */
@@ -99,7 +97,7 @@ function fieldsFor(key: string, q: Question): Fields {
 				shape: { [f]: z.int() },
 				line: `${f}: one integer level from 0 to ${top}. ${about}`,
 				answer: (j) => {
-					const level = clampLevel(j[f], top);
+					const level = nearestLevel(j[f], top);
 					return { type: "score", score: level, probabilities: { [level]: 1 } };
 				},
 			};
@@ -107,16 +105,15 @@ function fieldsFor(key: string, q: Question): Fields {
 	}
 }
 
-const allFields = (questions: Questions): [string, Fields][] => Object.entries(questions).map(([k, q]) => [k, fieldsFor(k, q)]);
+type AllFields = [string, Fields][];
 
-/** The schema for one pair: every field is required, so a pair's extra questions add fields rather than optional ones. */
-export function vlmSchema(questions: Questions): z.ZodObject {
-	return z.object(Object.assign({}, ...allFields(questions).map(([, f]) => f.shape)));
-}
+const allFields = (questions: Questions): AllFields => Object.entries(questions).map(([k, q]) => [k, fieldsFor(k, q)]);
 
-/** The text that follows the two images: which image is which, the pair's state, and every question. */
-export function vlmPrompt(state: Record<string, string>, questions: Questions): string {
-	return [
+// The exported vlmSchema / vlmPrompt / vlmAnswers take a question set; vlmPlan derives the fields once and uses these.
+const schemaOf = (fields: AllFields): z.ZodObject => z.object(Object.assign({}, ...fields.map(([, f]) => f.shape)));
+
+const promptOf = (state: Record<string, string>, fields: AllFields): string =>
+	[
 		"The first image above is images[0], the screen before. The second image is images[1], the same screen about one second later.",
 		"",
 		"Situation:",
@@ -124,48 +121,52 @@ export function vlmPrompt(state: Record<string, string>, questions: Questions): 
 		"",
 		"Answer each question in the JSON field it names. Probabilities are numbers from 0 to 1 that say how sure you are, not just 0 or 1.",
 		"",
-		...allFields(questions).map(([, f]) => `- ${f.line}`),
+		...fields.map(([, f]) => `- ${f.line}`),
 	].join("\n");
-}
+
+const answersOf = (json: Json, fields: AllFields): Record<string, VlmAnswer> => Object.fromEntries(fields.map(([k, f]) => [k, f.answer(json)]));
+
+/** The schema for one pair: every field is required, so a pair's extra questions add fields rather than optional ones. */
+export const vlmSchema = (questions: Questions): z.ZodObject => schemaOf(allFields(questions));
+
+/** The text that follows the two images: which image is which, the pair's state, and every question. */
+export const vlmPrompt = (state: Record<string, string>, questions: Questions): string => promptOf(state, allFields(questions));
 
 /** Validated JSON → one answer per question key, clamped. */
-export function vlmAnswers(json: Json, questions: Questions): Record<string, VlmAnswer> {
-	return Object.fromEntries(allFields(questions).map(([k, f]) => [k, f.answer(json)]));
-}
-
-type MediaType = Anthropic.Beta.BetaBase64ImageSource["media_type"];
+export const vlmAnswers = (json: Json, questions: Questions): Record<string, VlmAnswer> => answersOf(json, allFields(questions));
 
 const imageBlock = (dataUrl: string) => {
 	const img = parseDataUrl(dataUrl);
 	if (!img) throw new Error("vlm: an image is not a base64 data URL");
-	return { type: "image", source: { type: "base64", media_type: img.mediaType as MediaType, data: img.data } } as const;
+	return claudeImageBlock(img.mediaType as Parameters<typeof claudeImageBlock>[0], img.data);
 };
 
-/** The request for one pair, built separately so tests can inspect it without a client. */
-export function vlmRequest(pair: Pair, questionSet: QuestionSet, images: [string, string], model: string, effort: ClaudeEffort) {
-	const questions = questionsFor(pair, questionSet);
-	return {
-		model,
-		max_tokens: CLAUDE_MAX_TOKENS,
-		betas: [FALLBACK_BETA],
-		fallbacks: "default",
-		output_config: { effort, format: betaZodOutputFormat(vlmSchema(questions)) },
+/** One pair's request, and the schema and mapper that read its answer: the question set is resolved once for all three. */
+export function vlmPlan(pair: Pair, questionSet: QuestionSet, images: [string, string], model: string, effort: ClaudeEffort) {
+	const fields = allFields(questionsFor(pair, questionSet));
+	const schema = schemaOf(fields);
+	const base = claudeRequestBase({ model, effort });
+	const request = {
+		...base,
+		output_config: { ...base.output_config, format: betaZodOutputFormat(schema) },
 		messages: [
 			{
 				role: "user",
-				content: [imageBlock(images[0]), imageBlock(images[1]), { type: "text", text: vlmPrompt(pairState(pair.focused), questions) }],
+				content: [imageBlock(images[0]), imageBlock(images[1]), { type: "text", text: promptOf(pairState(pair.focused), fields) }],
 			},
 		],
 	} satisfies Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
+	return { request, schema, answers: (json: Json) => answersOf(json, fields) };
 }
+
+/** The request for one pair, built separately so tests can inspect it without a client. */
+export const vlmRequest = (...args: Parameters<typeof vlmPlan>) => vlmPlan(...args).request;
 
 export type VlmRequest = ReturnType<typeof vlmRequest>;
 
 export type VlmCall = (req: VlmRequest) => Promise<ClaudeResponse>;
 
-let client: Anthropic | undefined;
-// No arguments: the SDK resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login` profile itself.
-const defaultCall: VlmCall = (req) => (client ??= new Anthropic()).beta.messages.create(req);
+const defaultCall: VlmCall = (req) => anthropicClient().beta.messages.create(req);
 
 /** The validated JSON in a response, or a thrown error saying why there isn't one (refusal, truncation, off-schema). */
 export function parseVlmResponse(res: ClaudeResponse, schema: z.ZodType<Json>): Json {
@@ -180,7 +181,7 @@ export function parseVlmResponse(res: ClaudeResponse, schema: z.ZodType<Json>): 
 		throw new Error(`response is not JSON (stop_reason ${res.stop_reason}): ${text.slice(0, 120)}`);
 	}
 	const parsed = schema.safeParse(json);
-	if (!parsed.success) throw new Error(`response does not match the schema: ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
+	if (!parsed.success) throw new Error(`response does not match the schema: ${zodIssues(parsed.error)}`);
 	return parsed.data;
 }
 
@@ -199,17 +200,17 @@ export function vlmBackend(opts: { call?: VlmCall; env?: NodeJS.ProcessEnv; quie
 		// wording is keyed separately).
 		fingerprint: `vlm:${model}:effort=${effort}:prompt=v2`,
 		async answer({ pair, questionSet, images }): Promise<BackendOutput> {
-			const questions = questionsFor(pair, questionSet);
+			const plan = vlmPlan(pair, questionSet, images, model, effort);
 			let res: ClaudeResponse;
 			try {
-				res = await call(vlmRequest(pair, questionSet, images, model, effort));
+				res = await call(plan.request);
 			} catch (err) {
 				throw describeClaudeError(err);
 			}
-			const json = parseVlmResponse(res, vlmSchema(questions));
+			const json = parseVlmResponse(res, plan.schema);
 			const { input_tokens, output_tokens } = res.usage;
 			return {
-				prediction: toPrediction(vlmAnswers(json, questions)),
+				prediction: toPrediction(plan.answers(json)),
 				inputTokens: input_tokens,
 				outputTokens: output_tokens,
 				costUsd: claudeCostUsd(res.model, input_tokens, output_tokens),

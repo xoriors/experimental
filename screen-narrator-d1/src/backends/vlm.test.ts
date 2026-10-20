@@ -1,9 +1,15 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { choice, noul, type Questions, score } from "@typesafe-ai/sdk";
-import { describe, expect, it } from "vitest";
-import { parseVlmResponse, vlmAnswers, vlmBackend, type VlmCall, vlmPrompt, vlmRequest, vlmSchema } from "./vlm.ts";
+import { describe, expect, it, vi } from "vitest";
+import { parseVlmResponse, vlmAnswers, vlmBackend, type VlmCall, vlmPlan, vlmPrompt, vlmRequest, vlmSchema } from "./vlm.ts";
 import type { ClaudeResponse } from "../anthropic.ts";
 import { CORE_QUESTIONS, pairState, questionsFor } from "../questions.ts";
+
+// questionsFor spied on (still the real one), to check a pair's question set is resolved once per answer.
+vi.mock("../questions.ts", async (importOriginal) => {
+	const orig = await importOriginal<typeof import("../questions.ts")>();
+	return { ...orig, questionsFor: vi.fn(orig.questionsFor) };
+});
 import type { Pair } from "../types.ts";
 
 const IMAGES: [string, string] = ["data:image/png;base64,QkVGT1JF", "data:image/jpeg;base64,QUZURVI="];
@@ -27,6 +33,16 @@ const response = (over: Partial<ClaudeResponse> = {}, body: unknown = answer): C
 });
 
 const shapeKeys = (questions: Questions) => Object.keys(vlmSchema(questions).shape);
+
+describe("vlmPlan", () => {
+	it("validates and maps with the same schema the request sends", () => {
+		const plan = vlmPlan(labelled, "all", IMAGES, "claude-opus-5-5", "low");
+		expect(Object.keys(plan.schema.shape)).toEqual(shapeKeys(questionsFor(labelled, "all")));
+		expect(plan.request.output_config.format.schema).toEqual(vlmRequest(labelled, "all", IMAGES, "claude-opus-5-5", "low").output_config.format.schema);
+		const full = { ...answer, primary: "e0", primary_confidence: 0.7, supportedTrue_probability: 0.95, supportedFalse_probability: 0.2 };
+		expect(plan.answers(parseVlmResponse(response({}, full), plan.schema))).toEqual(vlmAnswers(full, questionsFor(labelled, "all")));
+	});
+});
 
 describe("vlmRequest", () => {
 	it("sends before, after, then the questions; effort and fallbacks, never thinking or temperature", () => {
@@ -154,8 +170,11 @@ describe("vlmBackend", () => {
 		};
 		const b = vlmBackend({ call, env: { NARRATOR_VLM_EFFORT: "medium" }, quiet: true });
 		expect(b.fingerprint).toBe("vlm:claude-opus-5-5:effort=medium:prompt=v2");
+		vi.mocked(questionsFor).mockClear();
 		const out = await b.answer({ pair: pair(), questionSet: "all", images: IMAGES });
 		expect(calls).toHaveLength(1);
+		// One question set per pair: the request's schema is the one that validates the answer.
+		expect(questionsFor).toHaveBeenCalledTimes(1);
 		expect(out.prediction).toEqual({
 			announce: 0.9,
 			kind: { choice: "dialog", probabilities: { dialog: 0.8 } },

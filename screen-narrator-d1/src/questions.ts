@@ -1,7 +1,7 @@
 // The question set, in one place: every backend asks these (the Liquid backends verbatim, the VLM baseline via
 // their wording), and the benchmark exists to tune them. Change wording here and re-run; the cache key includes it.
-import { choice, noul, type Questions, score } from "@typesafe-ai/sdk";
-import type { Pair, QuestionSet } from "./types.ts";
+import { type ChoiceResponse, choice, type NoulResponse, noul, type Questions, type ResultFor, score } from "@typesafe-ai/sdk";
+import type { ChangeKind, Pair, Prediction, QuestionSet } from "./types.ts";
 
 /** `state` for a before/after pair. The docs say image order matters, so it names images by position. */
 export function pairState(focused?: string): Record<string, string> {
@@ -29,7 +29,7 @@ export const KIND = choice("What is the main change between images[0] and images
 	scroll: "The same content moved because the page scrolled",
 	cosmetic: "Only visual styling changed: hover, focus ring, animation or spinner frame, colours",
 	none: "No visible change",
-});
+} satisfies Record<ChangeKind, string>);
 
 export const URGENCY = score("How urgently should a blind user be told about the change between images[0] and images[1]?", [
 	"Not at all: drop it",
@@ -67,4 +67,36 @@ export function questionsFor(pair: Pair, set: QuestionSet): Questions {
 		}
 	}
 	return q;
+}
+
+/** Answers keyed as above; the core ones typed by their question, so kind / urgency keep their label types. */
+type Answers = Partial<
+	{ [K in keyof typeof CORE_QUESTIONS]: ResultFor<(typeof CORE_QUESTIONS)[K]> } & {
+		primary: ChoiceResponse;
+		supportedTrue: NoulResponse;
+		supportedFalse: NoulResponse;
+	}
+>;
+
+/** The yes-probability of a noul answer under `key`, or undefined when it is missing or malformed. */
+export function noulOf(answers: Record<string, unknown>, key: string): number | undefined {
+	const p = (answers[key] as { noul?: unknown } | undefined)?.noul;
+	return typeof p === "number" && Number.isFinite(p) ? p : undefined;
+}
+
+/**
+ * Answers keyed as in this file → a Prediction. The one decoder of these keys: the Liquid backends and the VLM (which
+ * returns Liquid-shaped answers) both go through it. Unknown keys are ignored; absent ones stay absent.
+ */
+export function toPrediction(answers: Record<string, unknown>): Prediction {
+	const a = answers as Answers;
+	const p: Prediction = {};
+	if (a.announce) p.announce = a.announce.noul;
+	if (a.kind) p.kind = { choice: a.kind.choice, probabilities: a.kind.probabilities };
+	if (a.urgency) p.urgency = { score: a.urgency.score, probabilities: a.urgency.probabilities };
+	if (a.sensitive) p.sensitive = a.sensitive.noul;
+	if (a.primary) p.primary = { choice: a.primary.choice, probabilities: a.primary.probabilities };
+	const supported = noulOf(answers, "supportedTrue"), unsupported = noulOf(answers, "supportedFalse");
+	if (supported !== undefined && unsupported !== undefined) p.supported = { supported, unsupported };
+	return p;
 }

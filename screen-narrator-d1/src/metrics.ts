@@ -1,26 +1,22 @@
 // Scores a RunResult: how often each backend is right, how well its probabilities are calibrated, how noisy it would
 // be as a narrator, and what it costs. Pure functions over the shapes in types.ts, so tests can hand-check the maths.
-//
-// Shape of `computeMetrics(run)` (every "no data" value is an explicit null, never NaN or undefined, so it survives
-// JSON.stringify unchanged):
-//
-//   RunMetrics {
-//     thresholds                    the policy thresholds used (announce and sensitive scoring, decide())
-//     pairs, ambiguous{announce,kind,urgency}, sessions   counts over the whole run
-//     backends: { [name]: BackendMetrics }   in run.backends order
-//     verdicts: { [pairId]: { [backend]: Verdict } }      per-pair right/wrong, for the report's pair browser
-//   }
-//   BackendMetrics { announce, sensitive, supported: BinaryMetrics; kind: KindMetrics; urgency: UrgencyMetrics;
-//                    primary: PrimaryMetrics; noise: NoiseMetrics; cost: CostMetrics }
-//
-// A result is skipped for a question when it has an `error` or the prediction lacks that field (pixel diff only
-// answers `announce`); a pair is skipped for a question when its label is AMBIGUOUS (counted in `skippedAmbiguous`).
-import { type Action, decide, DEFAULT_THRESHOLDS, type Thresholds, urgencyLevel } from "./policy.ts";
-import { AMBIGUOUS, CHANGE_KINDS, type ChangeKind, type Pair, type PairResult, type Prediction, type RunResult, type Urgency } from "./types.ts";
+// - Every "no data" value is an explicit null, never NaN or undefined, so it survives JSON.stringify unchanged.
+// - A result is skipped for a question when it has an `error` or the prediction lacks that field (pixel diff only
+//   answers `announce`); a pair is skipped for a question when its label is AMBIGUOUS.
+import { type Action, decide, DEFAULT_THRESHOLDS, type Thresholds, TOP_URGENCY, urgencyLevel } from "./policy.ts";
+import {
+	AMBIGUOUS,
+	CHANGE_KINDS,
+	type ChangeKind,
+	type Pair,
+	type PairResult,
+	type Prediction,
+	type RunResult,
+	type Urgency,
+	URGENCY_LEVELS,
+} from "./types.ts";
 
 export const BIN_COUNT = 10;
-/** Confidently wrong = wrong while P(announce) was at least this far into either tail, or kind wrong at this confidence. */
-export const CONFIDENT = 0.8;
 
 export interface ReliabilityBin {
 	lo: number;
@@ -34,7 +30,6 @@ export interface ReliabilityBin {
 
 export interface BinaryMetrics {
 	n: number;
-	skippedAmbiguous: number;
 	positives: number;
 	threshold: number;
 	accuracy: number | null;
@@ -48,7 +43,6 @@ export interface BinaryMetrics {
 
 export interface KindMetrics {
 	n: number;
-	skippedAmbiguous: number;
 	accuracy: number | null;
 	/** Mean probability the backend gave the labelled kind. */
 	meanTrueProb: number | null;
@@ -67,16 +61,15 @@ export interface RateCount {
 
 export interface UrgencyMetrics {
 	n: number;
-	skippedAmbiguous: number;
-	/** Mean |score − label|, score being the expected level (0–3). */
+	/** Mean |score − label|, score being the expected level. */
 	mae: number | null;
 	/** urgencyLevel(score) === label. */
 	levelAccuracy: number | null;
-	/** Predicted level 3 when the label is below 3: interrupting for nothing, the worst mistake for a screen reader user. */
+	/** Predicted the top level (interrupt) when the label is below it: interrupting for nothing, the worst mistake for a screen reader user. */
 	falseInterrupt: RateCount;
-	/** Label 3, predicted below 3. */
+	/** Labelled the top level, predicted below it. */
 	missedInterrupt: RateCount;
-	/** confusion[label][predicted level], 4×4. */
+	/** confusion[label][predicted level], one row and column per URGENCY_LEVELS entry. */
 	confusion: number[][];
 }
 
@@ -145,7 +138,7 @@ export interface Verdict {
 	urgency: boolean | null;
 	/** The predicted urgency level (urgencyLevel of the score); null when urgency wasn't answered. */
 	level: Urgency | null;
-	/** Predicted level 3 where the label is below 3. */
+	/** Predicted the top level where the label is below it. */
 	falseInterrupt: boolean;
 	/** At least one of announce / kind / urgency was judged. */
 	judged: boolean;
@@ -162,9 +155,10 @@ export interface Verdict {
 }
 
 export interface RunMetrics {
+	/** The thresholds every verdict and binary metric above was computed with. */
 	thresholds: Thresholds;
 	pairs: number;
-	ambiguous: { announce: number; kind: number; urgency: number };
+	ambiguous: { announce: number };
 	sessions: number;
 	backends: Record<string, BackendMetrics>;
 	verdicts: Record<string, Record<string, Verdict>>;
@@ -173,7 +167,7 @@ export interface RunMetrics {
 // --- building blocks ---------------------------------------------------------------------------------------------
 
 const mean = (xs: number[]): number | null => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
-const ratio = (num: number, den: number): number | null => (den > 0 ? num / den : null);
+const ratio = (num: number, den: number | null): number | null => (den !== null && den > 0 ? num / den : null);
 type Sample = { p: number; y: boolean };
 const sample = (p: number, y: boolean): Sample => ({ p, y });
 
@@ -211,7 +205,7 @@ export function auroc(samples: Sample[]): number | null {
 	return wins / (pos.length * neg.length);
 }
 
-export function binaryMetrics(samples: Sample[], threshold = 0.5, skippedAmbiguous = 0): BinaryMetrics {
+export function binaryMetrics(samples: Sample[], threshold = 0.5): BinaryMetrics {
 	let tp = 0;
 	let fp = 0;
 	let fn = 0;
@@ -226,7 +220,6 @@ export function binaryMetrics(samples: Sample[], threshold = 0.5, skippedAmbiguo
 	const bins = reliabilityBins(samples);
 	return {
 		n: samples.length,
-		skippedAmbiguous,
 		positives: samples.filter((s) => s.y).length,
 		threshold,
 		accuracy: ratio(correct, samples.length),
@@ -270,15 +263,12 @@ function answered(pairs: Map<string, Pair>, results: PairResult[]): Answered[] {
 
 export function announceMetrics(rows: Answered[], threshold: number): BinaryMetrics {
 	const samples: Sample[] = [];
-	let skipped = 0;
 	for (const { pair, result } of rows) {
 		const p = result.prediction.announce;
-		if (p === undefined) continue;
 		const label = pair.labels.announce;
-		if (label === AMBIGUOUS) skipped++;
-		else samples.push(sample(p, label));
+		if (p !== undefined && label !== AMBIGUOUS) samples.push(sample(p, label));
 	}
-	return binaryMetrics(samples, threshold, skipped);
+	return binaryMetrics(samples, threshold);
 }
 
 export function sensitiveMetrics(rows: Answered[], threshold: number): BinaryMetrics {
@@ -289,14 +279,14 @@ export function sensitiveMetrics(rows: Answered[], threshold: number): BinaryMet
 }
 
 /** Pools both narrations: P(supported) for the true one should be high, for the invented one low. */
-export function supportedMetrics(rows: Answered[]): BinaryMetrics {
+export function supportedMetrics(rows: Answered[], threshold: number): BinaryMetrics {
 	const samples: Sample[] = [];
 	for (const { pair, result } of rows) {
 		const s = result.prediction.supported;
 		if (!s || !pair.labels.narrations) continue;
 		samples.push(sample(s.supported, true), sample(s.unsupported, false));
 	}
-	return binaryMetrics(samples);
+	return binaryMetrics(samples, threshold);
 }
 
 export function kindMetrics(rows: Answered[]): KindMetrics {
@@ -304,15 +294,10 @@ export function kindMetrics(rows: Answered[]): KindMetrics {
 	const confusion = labels.map(() => labels.map(() => 0));
 	const confidence: Sample[] = [];
 	const trueProbs: number[] = [];
-	let skipped = 0;
 	for (const { pair, result } of rows) {
 		const k = result.prediction.kind;
-		if (!k) continue;
 		const label = pair.labels.kind;
-		if (label === AMBIGUOUS) {
-			skipped++;
-			continue;
-		}
+		if (!k || label === AMBIGUOUS) continue;
 		const top = topKind(k);
 		const row = labels.indexOf(label);
 		const col = labels.indexOf(top.choice);
@@ -321,40 +306,34 @@ export function kindMetrics(rows: Answered[]): KindMetrics {
 		trueProbs.push(k.probabilities[label] ?? 0);
 	}
 	const conf = binaryMetrics(confidence);
-	return { n: confidence.length, skippedAmbiguous: skipped, accuracy: conf.n ? conf.positives / conf.n : null, meanTrueProb: mean(trueProbs), labels, confusion, confidence: conf };
+	return { n: confidence.length, accuracy: ratio(conf.positives, conf.n), meanTrueProb: mean(trueProbs), labels, confusion, confidence: conf };
 }
 
 export function urgencyMetrics(rows: Answered[]): UrgencyMetrics {
 	const errors: number[] = [];
-	const confusion = [0, 1, 2, 3].map(() => [0, 0, 0, 0]);
+	const confusion = URGENCY_LEVELS.map(() => URGENCY_LEVELS.map(() => 0));
 	let exact = 0;
-	let skipped = 0;
 	const fi = { count: 0, of: 0 };
 	const mi = { count: 0, of: 0 };
 	for (const { pair, result } of rows) {
 		const u = result.prediction.urgency;
-		if (!u) continue;
 		const label = pair.labels.urgency;
-		if (label === AMBIGUOUS) {
-			skipped++;
-			continue;
-		}
+		if (!u || label === AMBIGUOUS) continue;
 		const level = urgencyLevel(u.score);
 		// A non-number score counts as 0, as urgencyLevel treats it, so the MAE never turns into NaN.
 		errors.push(Math.abs((Number.isFinite(u.score) ? u.score : 0) - label));
 		confusion[label]![level]!++;
 		if (level === label) exact++;
-		if (label < 3) {
+		if (label < TOP_URGENCY) {
 			fi.of++;
-			if (level === 3) fi.count++;
+			if (level === TOP_URGENCY) fi.count++;
 		} else {
 			mi.of++;
-			if (level < 3) mi.count++;
+			if (level < TOP_URGENCY) mi.count++;
 		}
 	}
 	return {
 		n: errors.length,
-		skippedAmbiguous: skipped,
 		mae: mean(errors),
 		levelAccuracy: ratio(exact, errors.length),
 		falseInterrupt: { ...fi, rate: ratio(fi.count, fi.of) },
@@ -386,9 +365,9 @@ function stepGap(times: number[]): number | null {
 
 /**
  * Counts what a narrator would have said over every scripted session, from the same verdicts the report's session
- * strip draws (`verdicts[pairId]`, one backend's). A frame without a verdict counts as silence.
+ * strip draws (`verdicts[pairId]`, one backend's; computeMetrics gives every pair one).
  */
-export function noiseMetrics(pairs: Pair[], verdicts: Record<string, Verdict | undefined>): NoiseMetrics {
+export function noiseMetrics(pairs: Pair[], verdicts: Record<string, Verdict>): NoiseMetrics {
 	const groups = new Map<string, Pair[]>();
 	for (const p of pairs) {
 		if (!p.session) continue;
@@ -408,13 +387,11 @@ export function noiseMetrics(pairs: Pair[], verdicts: Record<string, Verdict | u
 		let falseA = 0;
 		let missed = 0;
 		for (const f of frames) {
-			const v = verdicts[f.id];
-			const said = v?.said ?? false;
-			const wrongly = v?.saidWrongly ?? f.labels.announce === true;
+			const { said, saidWrongly } = verdicts[f.id]!;
 			if (said) predicted++;
 			if (f.labels.announce === true) labelled++;
-			if (wrongly && said) falseA++;
-			if (wrongly && !said) missed++;
+			if (saidWrongly && said) falseA++;
+			if (saidWrongly && !said) missed++;
 		}
 		sessions.push({
 			name,
@@ -422,8 +399,8 @@ export function noiseMetrics(pairs: Pair[], verdicts: Record<string, Verdict | u
 			minutes,
 			predicted,
 			labelled,
-			predictedPerMin: minutes ? predicted / minutes : null,
-			labelledPerMin: minutes ? labelled / minutes : null,
+			predictedPerMin: ratio(predicted, minutes),
+			labelledPerMin: ratio(labelled, minutes),
 			falseAnnouncements: falseA,
 			missedAnnouncements: missed,
 		});
@@ -440,8 +417,8 @@ export function noiseMetrics(pairs: Pair[], verdicts: Record<string, Verdict | u
 			minutes,
 			predicted: sum(sessions, (s) => s.predicted),
 			labelled: sum(sessions, (s) => s.labelled),
-			predictedPerMin: minutes ? sum(timed, (s) => s.predicted) / minutes : null,
-			labelledPerMin: minutes ? sum(timed, (s) => s.labelled) / minutes : null,
+			predictedPerMin: ratio(sum(timed, (s) => s.predicted), minutes),
+			labelledPerMin: ratio(sum(timed, (s) => s.labelled), minutes),
 			falseAnnouncements: sum(sessions, (s) => s.falseAnnouncements),
 			missedAnnouncements: sum(sessions, (s) => s.missedAnnouncements),
 		},
@@ -492,19 +469,20 @@ export function verdict(pair: Pair, result: PairResult | undefined, thresholds: 
 	if (!p) return v;
 	if (p.announce !== undefined && labels.announce !== AMBIGUOUS) {
 		v.announce = p.announce >= thresholds.announce === labels.announce;
-		// Not `p <= 1 - CONFIDENT`: 1 - 0.8 is 0.19999999999999996, which would leave p = 0.2 out of the low tail.
-		if (!v.announce && Math.max(p.announce, 1 - p.announce) >= CONFIDENT) v.confidentlyWrong = true;
+		// Confidently wrong: at least `confident` into either tail. Not `p <= 1 - confident`: 1 - 0.8 is
+		// 0.19999999999999996, which would leave p = 0.2 out of the low tail.
+		if (!v.announce && Math.max(p.announce, 1 - p.announce) >= thresholds.confident) v.confidentlyWrong = true;
 	}
 	if (p.kind && labels.kind !== AMBIGUOUS) {
 		const top = topKind(p.kind);
 		v.kind = top.choice === labels.kind;
-		if (!v.kind && top.p >= CONFIDENT) v.confidentlyWrong = true;
+		if (!v.kind && top.p >= thresholds.confident) v.confidentlyWrong = true;
 	}
 	if (p.urgency) {
 		v.level = urgencyLevel(p.urgency.score);
 		if (labels.urgency !== AMBIGUOUS) {
 			v.urgency = v.level === labels.urgency;
-			v.falseInterrupt = v.level === 3 && labels.urgency < 3;
+			v.falseInterrupt = v.level === TOP_URGENCY && labels.urgency < TOP_URGENCY;
 		}
 	}
 	v.judged = v.announce !== null || v.kind !== null || v.urgency !== null;
@@ -533,7 +511,7 @@ export function computeMetrics(run: RunResult, thresholds: Thresholds = DEFAULT_
 		backends[backend] = {
 			announce: announceMetrics(rows, thresholds.announce),
 			sensitive: sensitiveMetrics(rows, thresholds.sensitive),
-			supported: supportedMetrics(rows),
+			supported: supportedMetrics(rows, thresholds.supported),
 			kind: kindMetrics(rows),
 			urgency: urgencyMetrics(rows),
 			primary: primaryMetrics(rows),
@@ -545,11 +523,7 @@ export function computeMetrics(run: RunResult, thresholds: Thresholds = DEFAULT_
 	return {
 		thresholds,
 		pairs: run.pairs.length,
-		ambiguous: {
-			announce: run.pairs.filter((p) => p.labels.announce === AMBIGUOUS).length,
-			kind: run.pairs.filter((p) => p.labels.kind === AMBIGUOUS).length,
-			urgency: run.pairs.filter((p) => p.labels.urgency === AMBIGUOUS).length,
-		},
+		ambiguous: { announce: run.pairs.filter((p) => p.labels.announce === AMBIGUOUS).length },
 		sessions: new Set(run.pairs.flatMap((p) => (p.session ? [p.session.name] : []))).size,
 		backends,
 		verdicts,

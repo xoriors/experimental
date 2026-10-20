@@ -4,13 +4,13 @@
 import { ROOT, fromRoot } from "./env.ts";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { computeMetrics, type RunMetrics } from "./metrics.ts";
+import { NO_URGENCY_LEVEL } from "./policy.ts";
 import { sampleRun } from "./report/fixtures.ts";
 import { AMBIGUOUS, CHANGE_KINDS, type RunResult, URGENCY_LEVELS } from "./types.ts";
 import { errorMessage, isEntryPoint } from "./util.ts";
 
-const REPORT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "report");
+const REPORT_DIR = path.join(import.meta.dirname, "report");
 // Inlined in this order: helpers first, then the sections, then the pair browser that uses both.
 const SCRIPTS = ["charts.js", "app.js", "browser.js"];
 
@@ -24,9 +24,9 @@ const read = (name: string) => readFileSync(path.join(REPORT_DIR, name), "utf8")
  * placeholder instead of a broken image; the report lives two levels down (runs/<id>/), hence imageBase.
  */
 export function renderReport(run: RunResult, metrics: RunMetrics, missing: string[] = []): string {
-	// The page's label vocabulary comes from types.ts, so the scripts never keep their own copy; the thresholds the
-	// page draws are already in metrics.thresholds.
-	const constants = { changeKinds: CHANGE_KINDS, urgencyLevels: URGENCY_LEVELS, ambiguous: AMBIGUOUS };
+	// The page's label vocabulary comes from types.ts and policy.ts, so the scripts never keep their own copy; the
+	// thresholds the page draws are already in metrics.thresholds.
+	const constants = { changeKinds: CHANGE_KINDS, urgencyLevels: URGENCY_LEVELS, ambiguous: AMBIGUOUS, noUrgencyLevel: NO_URGENCY_LEVEL };
 	const data = scriptSafeJson({ run, metrics, constants, imageBase: "../../", missing });
 	// Function replacers: a string replacement would interpret `$&`, `$'` … inside the data and the scripts.
 	return read("template.html")

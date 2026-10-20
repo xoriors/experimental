@@ -1,11 +1,11 @@
 // Formatting helpers and hand-written SVG/HTML charts. Everything returns an HTML string; every piece of run data
 // goes through esc() because ids, errors and narrations come from files we didn't write by hand.
 // The first script on the page, so it also reads the JSON src/report.ts inlined: { run, metrics, constants, imageBase,
-// missing }. `constants` is types.ts's label vocabulary, so no script keeps its own copy.
+// missing }. `constants` is the label vocabulary from types.ts and policy.ts, so no script keeps its own copy.
 "use strict";
 
 const DATA = JSON.parse(document.getElementById("report-data").textContent);
-const { changeKinds: KINDS, urgencyLevels: URGENCY_NAMES, ambiguous: AMB } = DATA.constants;
+const { changeKinds: KINDS, urgencyLevels: URGENCY_NAMES, ambiguous: AMB, noUrgencyLevel: NO_URGENCY_LEVEL } = DATA.constants;
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const NA = '<span class="muted" title="no data">—</span>';
@@ -39,12 +39,13 @@ const cssId = (name) => String(name).replace(/[^a-zA-Z0-9_-]/g, "_");
  * cols: [{ head, dir?: "high" | "low" | ((v) => number distance, lower is better), value(row), cell(row) }]
  */
 function table(cols, rows, { caption = "" } = {}) {
+	// Lower rank is better, whatever the column's direction.
+	const rank = (c, v) => (c.dir === "high" ? -v : c.dir === "low" ? v : c.dir(v));
 	const best = cols.map((c) => {
 		if (!c.dir) return null;
 		const vals = rows.map((r) => c.value(r)).filter(isNum);
 		if (vals.length < 2) return null;
-		const key = (v) => (c.dir === "high" ? -v : c.dir === "low" ? v : c.dir(v));
-		return Math.min(...vals.map(key));
+		return Math.min(...vals.map((v) => rank(c, v)));
 	});
 	const head = cols.map((c) => `<th scope="col">${c.head}</th>`).join("");
 	const body = rows
@@ -53,7 +54,7 @@ function table(cols, rows, { caption = "" } = {}) {
 				.map((c, i) => {
 					if (i === 0) return `<th scope="row">${c.cell(r)}</th>`;
 					const v = c.value ? c.value(r) : null;
-					const key = !isNum(v) || best[i] === null ? null : c.dir === "high" ? -v : c.dir === "low" ? v : c.dir(v);
+					const key = !isNum(v) || best[i] === null ? null : rank(c, v);
 					const isBest = key !== null && Math.abs(key - best[i]) < 1e-12;
 					const cls = isBest ? "best" : c.value && !isNum(v) ? "na" : "";
 					return `<td class="${cls}">${c.cell(r)}${isBest ? '<span class="sr"> (best)</span>' : ""}</td>`;

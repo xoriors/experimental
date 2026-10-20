@@ -1,11 +1,11 @@
 # Diagrams
 
-Sources are the `.mmd` files; the `.svg` files are pre-rendered so they show in any viewer. To re-render after
-editing one (uses the system Chrome, no Puppeteer download):
+Sources are the `.mmd` files; the `.svg` files are pre-rendered so they show in any viewer. To re-render all of
+them after editing one (uses the system Chrome via `pptr.json`, no Puppeteer download; `mermaid.json` sets Arial,
+so no font is embedded in the SVGs):
 
 ```bash
-cd docs
-PUPPETEER_SKIP_DOWNLOAD=1 npx -y @mermaid-js/mermaid-cli -p pptr.json -i pipeline.mmd -o pipeline.svg
+pnpm diagrams
 ```
 
 ## Pipeline: capture → bench → report, and live mode

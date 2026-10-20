@@ -21,13 +21,14 @@ const read = (name: string) => readFileSync(path.join(REPORT_DIR, name), "utf8")
 
 /**
  * The report page for a run. `missing` lists image paths (project-relative) that don't exist, so the page shows a
- * placeholder instead of a broken image; the report lives two levels down (runs/<id>/), hence imageBase.
+ * placeholder instead of a broken image. `imageBase` is the path from the page to the project root: the local report
+ * lives two levels down (runs/<id>/); the published site (src/publish.ts) copies the images next to the page.
  */
-export function renderReport(run: RunResult, metrics: RunMetrics, missing: string[] = []): string {
+export function renderReport(run: RunResult, metrics: RunMetrics, missing: string[] = [], imageBase = "../../"): string {
 	// The page's label vocabulary comes from types.ts and policy.ts, so the scripts never keep their own copy; the
 	// thresholds the page draws are already in metrics.thresholds.
 	const constants = { changeKinds: CHANGE_KINDS, urgencyLevels: URGENCY_LEVELS, ambiguous: AMBIGUOUS, noUrgencyLevel: NO_URGENCY_LEVEL };
-	const data = scriptSafeJson({ run, metrics, constants, imageBase: "../../", missing });
+	const data = scriptSafeJson({ run, metrics, constants, imageBase, missing });
 	// Function replacers: a string replacement would interpret `$&`, `$'` … inside the data and the scripts.
 	return read("template.html")
 		.replace("{{TITLE}}", () => `Report ${escapeHtml(run.id)} · screen-narrator-d1`)
@@ -38,12 +39,12 @@ export function renderReport(run: RunResult, metrics: RunMetrics, missing: strin
 
 const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-function missingImages(run: RunResult): string[] {
+export function missingImages(run: RunResult): string[] {
 	const paths = new Set(run.pairs.flatMap((p) => [p.before, p.after]));
 	return [...paths].filter((p) => !existsSync(fromRoot(p)));
 }
 
-function resolveRunId(arg: string | undefined): string {
+export function resolveRunId(arg: string | undefined): string {
 	if (arg) return arg;
 	const latest = fromRoot("runs", "latest");
 	if (!existsSync(latest)) throw new Error("No run id given and runs/latest doesn't exist: run `pnpm bench` first, or try `pnpm report --sample`.");

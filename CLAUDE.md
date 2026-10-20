@@ -46,6 +46,7 @@ Tests Liquid AI's d1-ultra decision model as the "should I announce this?" gate 
 - Pipeline: `pnpm capture` (Playwright renders `fixtures/*.html` into before/after pairs, written to `data/pairs/index.json`), then `pnpm bench` (backends × pairs, written to `runs/<id>/results.json`), then `pnpm report`. `pnpm live` is the screen-sharing page that speaks. `pnpm test`, `pnpm typecheck`.
 - `src/types.ts`, `src/questions.ts` and `src/policy.ts` are the shared contracts. Every backend derives its fields from the question set, so a new question key needs no backend edits; map it onto `Prediction` in `toPrediction` (`src/backends/liquid.ts`). Claude settings and pricing live only in `src/anthropic.ts`.
 - `pnpm bench` spends real money on paid backends (Liquid costs cents; the Claude `vlm` backend costs more). Run `--dry-run` first, then `--limit`. Answers are cached in `runs/cache/`.
+- Published results: [screen-narrator-d1.vercel.app](https://screen-narrator-d1.vercel.app) (Vercel team "xorio's projects"). To update it: `pnpm site [runId]` builds `public/` (the report + its screenshots), then `vercel deploy --prod --yes` **from inside `screen-narrator-d1/`**, where `.vercel/` links the project. `.vercelignore` uploads only `public/` and `vercel.json`, so no source, `.env`, `data/` or `runs/` leaves the machine.
 - `.env` holds `LIQUID_API_KEY` and is gitignored. A hook blocks any Bash command that names `.env`; `src/env.ts` loads it.
 
 ### ansible — working infra example

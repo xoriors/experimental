@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mermaid actions</title>
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<header>
+  <a href="?f=docs/deploy-flow.md">deploy-flow</a>
+  <a href="?f=docs/runbook.md">runbook</a>
+  <label>Theme
+    <select id="theme"><option value="auto">auto</option><option value="light">light</option><option value="dark">dark</option></select>
+  </label>
+  <span id="toast" role="status" aria-live="polite"></span>
+</header>
+<main id="doc"></main>
+
+<script type="module">
+import { marked } from 'https://cdn.jsdelivr.net/npm/marked@16.1.2/lib/marked.esm.js';
+import { mount } from 'https://cdn.jsdelivr.net/npm/pele@1.10.0/+esm';
+
+// `action` is the one non-standard scheme. Pele keeps only the schemes listed here.
+const PELE = { linkSchemes: ['http', 'https', 'mailto', 'tel', 'action'], zoom: 'auto' };
+
+const file = new URLSearchParams(location.search).get('f') ?? 'docs/deploy-flow.md';
+const docUrl = new URL(file, location.href);
+const doc = document.getElementById('doc');
+
+// Theme: auto follows the OS, light/dark force it. Stored per browser only.
+const sel = document.getElementById('theme');
+const applyTheme = v => {
+  if (v === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = v;
+  try { localStorage.setItem('theme', v); } catch {}
+};
+try { sel.value = localStorage.getItem('theme') ?? 'auto'; } catch {}
+applyTheme(sel.value);
+sel.onchange = () => applyTheme(sel.value);
+
+// 1. Markdown → HTML. Each ```mermaid block becomes a placeholder; its source is kept aside.
+let md = await (await fetch(docUrl)).text();
+md = md.replace(/^---\n[\s\S]*?\n---\n/, '');                 // doc frontmatter
+const sources = [];
+md = md.replace(/```mermaid\n([\s\S]*?)```/g, (_, src) => `\n<div class="diagram" data-i="${sources.push(src) - 1}"></div>\n`);
+doc.innerHTML = marked.parse(md);
+for (const h of doc.querySelectorAll('h1,h2,h3,h4,h5,h6')) {
+  if (!h.id) h.id = h.textContent.trim().toLowerCase().replace(/[^\w]+/g, '-').replace(/^-|-$/g, '');
+}
+
+// 2. Pele renders each diagram. `click … href` lines come out as real <a> elements.
+for (const el of doc.querySelectorAll('.diagram')) mount(el, sources[el.dataset.i], PELE);
+
+// 3. Actions. Add one here, then use it as `click node href "action:name?key=value"`.
+const actions = {
+  copy:   (p)       => navigator.clipboard.writeText(p.get('text')).then(() => toast(`Copied: ${p.get('text')}`)),
+  toggle: (p, node) => node?.classList.toggle(p.get('class')),
+  show:   (p)       => {
+    const t = document.getElementById(p.get('id'));
+    if (!t) return toast(`No element #${p.get('id')}`);
+    if ('open' in t) t.open = true;
+    t.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    t.classList.add('flash'); setTimeout(() => t.classList.remove('flash'), 1500);
+  },
+};
+
+doc.addEventListener('click', e => {
+  const a = e.target.closest('a[href]');
+  if (!a) return;
+  const href = a.getAttribute('href');
+  if (href.startsWith('action:')) {                            // action:name?key=value
+    e.preventDefault();
+    const u = new URL(href);
+    (actions[u.pathname] ?? (() => toast(`Unknown action: ${u.pathname}`)))(u.searchParams, a.closest('[data-id]'));
+  } else if (/\.md(#|$)/.test(href) && !/^[a-z]+:/i.test(href)) { // another doc: stay inside the viewer
+    e.preventDefault();
+    const t = new URL(href, docUrl);
+    const rel = t.pathname.slice(new URL('.', location.href).pathname.length);
+    location.href = `?f=${encodeURIComponent(rel)}${t.hash}`;
+  }
+});
+if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2500);
+}
+</script>
+</body>
+</html>

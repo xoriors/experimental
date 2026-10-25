@@ -3,16 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mermaid actions</title>
+<title>Mermaid Actions</title>
 <link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <header>
-  <a href="?f=docs/deploy-flow.md">deploy-flow</a>
-  <a href="?f=docs/runbook.md">runbook</a>
+  <nav aria-label="Docs">
+    <a href="?f=docs/deploy-flow.md" data-doc="docs/deploy-flow.md">deploy-flow</a>
+    <a href="?f=docs/runbook.md" data-doc="docs/runbook.md">runbook</a>
+  </nav>
+  <!-- theme-select -->
   <label>Theme
     <select id="theme"><option value="auto">auto</option><option value="light">light</option><option value="dark">dark</option></select>
   </label>
+  <!-- /theme-select -->
   <span id="toast" role="status" aria-live="polite"></span>
 </header>
 <main id="doc"></main>
@@ -23,12 +27,12 @@ import { mount } from 'https://cdn.jsdelivr.net/npm/pele@1.10.0/+esm';
 
 // `action` is the one non-standard scheme. Pele keeps only the schemes listed here.
 const PELE = { linkSchemes: ['http', 'https', 'mailto', 'tel', 'action'], zoom: 'auto' };
-
-const file = new URLSearchParams(location.search).get('f') ?? 'docs/deploy-flow.md';
-const docUrl = new URL(file, location.href);
 const doc = document.getElementById('doc');
+const base = new URL('.', document.baseURI);   // the folder that holds viewer.html
+let current = '';                               // path of the open doc, relative to that folder
+const mounted = [];
 
-// Theme: auto follows the OS, light/dark force it. Stored per browser only.
+// [theme-select] auto follows the OS, light/dark force it. Stored per browser only.
 const sel = document.getElementById('theme');
 const applyTheme = v => {
   if (v === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = v;
@@ -37,25 +41,39 @@ const applyTheme = v => {
 try { sel.value = localStorage.getItem('theme') ?? 'auto'; } catch {}
 applyTheme(sel.value);
 sel.onchange = () => applyTheme(sel.value);
+// [/theme-select]
 
-// 1. Markdown → HTML. Each ```mermaid block becomes a placeholder; its source is kept aside.
-let md = await (await fetch(docUrl)).text();
-md = md.replace(/^---\n[\s\S]*?\n---\n/, '');                 // doc frontmatter
-const sources = [];
-md = md.replace(/```mermaid\n([\s\S]*?)```/g, (_, src) => `\n<div class="diagram" data-i="${sources.push(src) - 1}"></div>\n`);
-doc.innerHTML = marked.parse(md);
-for (const h of doc.querySelectorAll('h1,h2,h3,h4,h5,h6')) {
-  if (!h.id) h.id = h.textContent.trim().toLowerCase().replace(/[^\w]+/g, '-').replace(/^-|-$/g, '');
+// 1. Markdown → HTML, each ```mermaid block → a placeholder.  2. Pele mounts each placeholder;
+// `click … href` lines come out as real <a> elements.
+async function show(file, hash = '') {
+  const res = await fetch(new URL(file, base));
+  if (!res.ok) { doc.textContent = `Could not load ${file} (${res.status})`; return; }
+  let md = await res.text();
+  md = md.replace(/^---\n[\s\S]*?\n---\n/, '');                 // doc frontmatter
+  const sources = [];
+  md = md.replace(/```mermaid\n([\s\S]*?)```/g, (_, src) => `\n<div class="diagram" data-i="${sources.push(src) - 1}"></div>\n`);
+  for (const m of mounted.splice(0)) m.destroy();
+  doc.innerHTML = marked.parse(md);
+  for (const h of doc.querySelectorAll('h1,h2,h3,h4,h5,h6')) if (!h.id) h.id = slug(h.textContent);
+  for (const el of doc.querySelectorAll('.diagram')) mounted.push(mount(el, sources[el.dataset.i], PELE));
+  current = file;
+  for (const a of document.querySelectorAll('nav a')) {
+    if (a.dataset.doc === file) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  }
+  try { history.replaceState(null, '', `?f=${encodeURIComponent(file)}${hash}`); } catch {}
+  if (hash) jump(hash); else window.scrollTo(0, 0);
 }
-
-// 2. Pele renders each diagram. `click … href` lines come out as real <a> elements.
-for (const el of doc.querySelectorAll('.diagram')) mount(el, sources[el.dataset.i], PELE);
+const slug = t => t.trim().toLowerCase().replace(/[^\w]+/g, '-').replace(/^-|-$/g, '');
+const jump = hash => document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: 'start' });
 
 // 3. Actions. Add one here, then use it as `click node href "action:name?key=value"`.
 const actions = {
-  copy:   (p)       => navigator.clipboard.writeText(p.get('text')).then(() => toast(`Copied: ${p.get('text')}`)),
+  copy: (p) => {
+    const text = p.get('text');
+    navigator.clipboard.writeText(text).then(() => toast(`Copied: ${text}`), () => toast(`Clipboard blocked here, the text is: ${text}`));
+  },
   toggle: (p, node) => node?.classList.toggle(p.get('class')),
-  show:   (p)       => {
+  show: (p) => {
     const t = document.getElementById(p.get('id'));
     if (!t) return toast(`No element #${p.get('id')}`);
     if ('open' in t) t.open = true;
@@ -64,27 +82,32 @@ const actions = {
   },
 };
 
-doc.addEventListener('click', e => {
+// One click handler for the page: nav links, action: links, #heading jumps, and ./doc.md links.
+document.addEventListener('click', e => {
   const a = e.target.closest('a[href]');
   if (!a) return;
   const href = a.getAttribute('href');
-  if (href.startsWith('action:')) {                            // action:name?key=value
+  if (a.dataset.doc) {                                           // header nav
+    e.preventDefault(); show(a.dataset.doc);
+  } else if (href.startsWith('action:')) {                       // action:name?key=value
     e.preventDefault();
     const u = new URL(href);
     (actions[u.pathname] ?? (() => toast(`Unknown action: ${u.pathname}`)))(u.searchParams, a.closest('[data-id]'));
-  } else if (/\.md(#|$)/.test(href) && !/^[a-z]+:/i.test(href)) { // another doc: stay inside the viewer
+  } else if (href.startsWith('#')) {                             // heading in this doc
+    e.preventDefault(); jump(href);
+  } else if (/\.md(#|$)/.test(href) && !/^[a-z]+:/i.test(href)) { // another doc: stay in the viewer
     e.preventDefault();
-    const t = new URL(href, docUrl);
-    const rel = t.pathname.slice(new URL('.', location.href).pathname.length);
-    location.href = `?f=${encodeURIComponent(rel)}${t.hash}`;
+    const t = new URL(href, new URL(current, base));
+    show(t.pathname.slice(base.pathname.length), t.hash);
   }
 });
-if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+
+show(new URLSearchParams(location.search).get('f') ?? 'docs/deploy-flow.md', location.hash);
 
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('on');
-  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2500);
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 4000);
 }
 </script>
 </body>

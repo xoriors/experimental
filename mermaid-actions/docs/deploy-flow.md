@@ -6,7 +6,7 @@ title: Deploy flow
 
 Every node below carries an action, and every action is declared inside the Mermaid block with a
 `click … href` line. There is no script in this file. GitHub shows the diagram without the clicks,
-Obsidian follows the plain links, and [`viewer.html`](../viewer.html) executes the `action:` ones.
+Obsidian follows the plain links, and the viewer (`viewer.html` next to this folder) executes the `action:` ones.
 
 ```mermaid
 ---

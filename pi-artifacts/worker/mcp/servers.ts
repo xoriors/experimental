@@ -21,6 +21,7 @@ export const MCP_SERVERS: McpServerConfig[] = [
     cacheScope: "viewer",
     description:
       "Live cryptocurrency market data (prices, market caps, volumes, charts, trending coins). " +
-      "Code mode: call search_docs to find SDK methods, then execute with an async run(client) function.",
+      "Code mode: call search_docs to find SDK methods, then execute with an async run(client) function. " +
+      "execute wraps what run() returns as {\"result\": <value>}, so a page reads payload.result.",
   },
 ];

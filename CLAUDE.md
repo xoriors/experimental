@@ -41,7 +41,9 @@ with `@cloudflare/vite-plugin`, pnpm; configured and deployed with the `cf` CLI 
 - `runtime/runtime.d.ts` is load-bearing twice: it documents the page API and is inlined into the agent's system
   prompt. Change it together with `runtime/pi-runtime.js`, `src/artifact/broker.ts` and `shared/protocol.ts`.
 - The README lists the security model (manifest per version, author's connections, write tools only for the author)
-  and what is not verified yet (an agent run with a real model).
+  and what has been verified in production (agent runs with Claude via AI Gateway; not yet `run_python`).
+- Deploy with `cf deploy` from `pi-artifacts/` (Worker `pi-artifacts` on workers.dev; R2 bucket and AI Gateway both
+  named `pi-artifacts`). The sandbox image build needs Docker.
 
 ### llm-git-conflict-resolve — working prototype
 

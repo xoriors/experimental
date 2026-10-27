@@ -1,0 +1,120 @@
+<title>Crypto pulse</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #fff; --text: #1d1d1b; --muted: #6b6a66; --border: #e2e0da;
+    --up: #15803d; --down: #b91c1c; --accent: #c2410c;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141413; --surface: #1d1d1b; --text: #ecebe7; --muted: #9b9a95; --border: #34332f; --up: #4ade80; --down: #f87171; --accent: #f97316; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; max-width: 1100px; margin: 0 auto 16px; }
+  h1 { margin: 0; font-size: 22px; }
+  .status { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.live { background: var(--up); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 25%, transparent); }
+  button { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); max-width: 1100px; margin: 0 auto; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .coin { display: flex; align-items: center; gap: 10px; }
+  .badge { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); text-transform: uppercase; }
+  .name { font-weight: 600; }
+  .sym { color: var(--muted); font-size: 13px; text-transform: uppercase; }
+  .price { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .change { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .up { color: var(--up); } .down { color: var(--down); }
+  svg { width: 100%; height: 64px; display: block; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0; font-size: 13px; }
+  dt { color: var(--muted); } dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  .note { max-width: 1100px; margin: 12px auto; color: var(--muted); font-size: 13px; }
+  .error { color: var(--down); }
+  .skeleton { min-height: 230px; background: linear-gradient(90deg, var(--surface), var(--border), var(--surface)); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+</style>
+
+<header>
+  <h1>Crypto pulse</h1>
+  <div class="status"><span id="dot" class="dot"></span><span id="updated">Connecting…</span><button id="refresh" type="button" hidden>Refresh</button></div>
+</header>
+<main class="grid" id="grid">
+  <div class="card skeleton"></div><div class="card skeleton"></div><div class="card skeleton"></div>
+</main>
+<p class="note" id="note">Live data from CoinGecko through this chat's MCP connection. Prices refresh every 30 seconds while the page is visible.</p>
+
+<script>
+  const COINS = "bitcoin,ethereum,solana";
+  // Runs on CoinGecko's side (code mode); returns only what the page draws.
+  const CODE = `async function run(client) {
+    const rows = await client.coins.markets.get({ vs_currency: "usd", ids: "${COINS}", sparkline: true, price_change_percentage: "24h" });
+    return rows.map((r) => ({ id: r.id, symbol: r.symbol, name: r.name, price: r.current_price, change24h: r.price_change_percentage_24h,
+      high24h: r.high_24h, low24h: r.low_24h, marketCap: r.market_cap, volume: r.total_volume, spark: r.sparkline_in_7d?.price ?? [] }));
+  }`;
+
+  const $ = (id) => document.getElementById(id);
+  const usd = (n, digits) => n == null ? "—" : "$" + n.toLocaleString("en-US", { minimumFractionDigits: digits ?? (n < 10 ? 4 : 2), maximumFractionDigits: digits ?? (n < 10 ? 4 : 2) });
+  const compact = (n) => n == null ? "—" : "$" + Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(n);
+  const pct = (n) => n == null ? "—" : (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
+
+  function sparkline(points, up) {
+    if (points.length < 2) return "";
+    const min = Math.min(...points), max = Math.max(...points), w = 300, h = 64, span = max - min || 1;
+    const d = points.map((p, i) => `${i ? "L" : "M"}${(i / (points.length - 1) * w).toFixed(1)},${(h - 4 - (p - min) / span * (h - 8)).toFixed(1)}`).join("");
+    const color = up ? "var(--up)" : "var(--down)";
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="7-day price"><path d="${d}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+
+  function card(c) {
+    const up = (c.change24h ?? 0) >= 0;
+    return `<article class="card">
+      <div class="coin"><span class="badge">${c.symbol.slice(0, 4)}</span><div><div class="name">${c.name}</div><div class="sym">${c.symbol}</div></div></div>
+      <div><div class="price">${usd(c.price)}</div><div class="change ${up ? "up" : "down"}">${pct(c.change24h)} <span class="sym">24 h</span></div></div>
+      ${sparkline(c.spark, (c.spark.at(-1) ?? 0) >= (c.spark[0] ?? 0))}
+      <dl><dt>24 h range</dt><dd>${usd(c.low24h)} – ${usd(c.high24h)}</dd><dt>Market cap</dt><dd>${compact(c.marketCap)}</dd><dt>Volume 24 h</dt><dd>${compact(c.volume)}</dd></dl>
+    </article>`;
+  }
+
+  let storedAt = null;
+  setInterval(() => {
+    if (storedAt) $("updated").textContent = `Updated ${Math.max(0, Math.round((Date.now() - storedAt) / 1000))} s ago`;
+  }, 1000);
+
+  const MESSAGES = {
+    server_not_connected: "This chat has no CoinGecko connection.",
+    not_in_manifest: "This page is not allowed to call CoinGecko.",
+    server_unavailable: "CoinGecko is not answering; showing the last prices.",
+    rate_limited: "Too many requests; showing the last prices.",
+    tool_error: "CoinGecko returned an error",
+  };
+
+  (async () => {
+    const mcp = await pi.use("mcp");
+    if (!mcp) {
+      $("updated").textContent = "Offline";
+      $("note").textContent = "Live data needs the pi-artifacts viewer. Open this page from its chat or its share link.";
+      $("grid").innerHTML = "";
+      return;
+    }
+    $("refresh").hidden = false;
+    $("refresh").onclick = () => mcp.invalidate("CoinGecko");
+
+    mcp.watchTool("CoinGecko", "execute", { code: CODE }, (ev) => {
+      if (ev.type === "data") {
+        const coins = ev.result.payload?.result;
+        if (!Array.isArray(coins)) return;
+        storedAt = ev.result.cache?.storedAt ?? Date.now();
+        $("grid").innerHTML = coins.map(card).join("");
+        $("dot").className = "dot live";
+        $("note").classList.remove("error");
+        $("note").textContent = "Live data from CoinGecko through this chat's MCP connection. Prices refresh every 30 seconds while the page is visible.";
+      } else {
+        const code = ev.error.code;
+        $("dot").className = "dot";
+        $("note").classList.add("error");
+        $("note").textContent = code === "tool_error" ? `${MESSAGES.tool_error}: ${ev.error.message}` : MESSAGES[code] ?? `Live data failed (${code}).`;
+        if (code === "not_in_manifest" || code === "server_not_connected") $("grid").innerHTML = "";
+      }
+    }, { refetchInterval: 30_000 });
+  })();
+</script>

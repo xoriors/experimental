@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/worker.tsbuildinfo",
+    "target": "es2024",
+    "lib": [
+      "es2024"
+    ],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": [
+      "./worker-configuration.d.ts",
+      "node"
+    ],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "worker",
+    "shared"
+  ]
+}

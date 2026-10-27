@@ -1,0 +1,148 @@
+# pi-artifacts
+
+A small reimplementation of Claude's artifacts on Cloudflare: chat with a [Pi](https://developers.cloudflare.com/agents/harnesses/pi/)
+agent that builds **live dashboards**, preview them beside the chat, and share them by link. A published page pulls
+**real-time data from MCP servers** each time someone views it, the way
+[Claude's artifacts call MCP connectors](https://code.claude.com/docs/en/artifacts#pull-live-data-with-mcp-connectors).
+
+- **Pi Durable** runs the agent inside a Durable Object, one per chat, and survives evictions mid-turn.
+- **Durable Objects** hold each chat (agent, MCP connections, live calls) and each user's index of chats and artifacts.
+- **Sandbox** (a Linux container per chat) runs the Python the agent writes, with no internet.
+- **R2** keeps artifact versions and each user's files, which the agent reads and writes.
+- **The demo MCP server is [CoinGecko's public one](https://mcp.api.coingecko.com/mcp)**: free, keyless, live crypto market data.
+
+![A live crypto dashboard artifact](docs/crypto-dashboard.png)
+
+## How live data works
+
+The page never talks to the network. Its CSP is `connect-src 'none'`. It calls `pi.use("mcp")`, and every call travels
+to **the same MCP connection the agent used to build it**:
+
+```
+artifact page (sandboxed iframe, opaque origin)
+  │  mcp.watchTool("CoinGecko", "execute", {code}, onEvent, {refetchInterval: 30_000})
+  ▼  MessagePort, handed over once when the frame loads
+viewer page: ArtifactBroker (src/artifact/broker.ts)
+  │  caches, groups identical watches, pauses while the tab is hidden, polls on the server's hint
+  ▼  POST /api/artifacts/:id/mcp  {version, mode, server, tool, input, staleMs}
+Worker: finds the artifact's chat
+  ▼  RPC
+ChatAgent Durable Object (worker/chat-agent.ts)
+  ├─ is (server, tool) in this version's manifest?      no → not_in_manifest
+  ├─ read-only tool? cache + one shared request in flight (McpHub.read)
+  ├─ a write? only the page's author may call it          no → not_granted
+  └─ McpHub ─► MCP server (no model involved: deterministic, quick, no tokens)
+```
+
+**The manifest.** When the agent publishes, it declares the servers and tools the page may call
+(`[{server: "CoinGecko", tools: ["execute"]}]`). Publishing checks those names against the server's real tool list and
+refuses a mismatch. Each version keeps its own manifest; a page cannot widen it.
+
+**Whose connection.** Calls use the chat's MCP connections, so they run as the page's author. Claude's artifacts use
+each viewer's own connectors instead. Two things follow from that:
+
+- Sharing a page shares the data its manifest allows.
+- Tools that are not marked `readOnlyHint` are refused for everyone but the author, are never cached and cannot be
+  watched.
+
+There is no MCP auth yet, so only keyless servers are configured.
+
+**Polling with a server hint.** Every response carries `nextRefreshAt`: when the Durable Object's copy goes stale.
+
+- The viewer asks again 0.25–1.25 s after that time, so it shows a new upstream result within about a second of the
+  Durable Object fetching it. That is as fresh as WebSocket push would be, without the sockets.
+- `refetchInterval` has a 30 s floor, as at Claude.
+- Each server's results are cached per viewer by default (`cacheScope: "viewer"` in `worker/mcp/servers.ts`, the way
+  Claude keeps viewers apart). Switch a keyless server to `"shared"` to let every viewer reuse one upstream call per
+  interval.
+
+Measured against CoinGecko:
+
+- One `execute` call takes 0.6–0.9 s.
+- The prices it returns are already 18–32 s old.
+
+So upstream freshness, not the transport, sets how live the page can be.
+
+## The page runtime
+
+`runtime/pi-runtime.js` is inlined at the top of every published page. It mirrors the shape of Claude's
+`window.claude.use("mcp")`, so a model that knows one writes the other. `runtime/runtime.d.ts` is the contract, and the
+agent reads it in its system prompt.
+
+```js
+const mcp = await pi.use("mcp");                    // null outside a viewer: render a static fallback
+const stop = mcp.watchTool("CoinGecko", "execute", { code }, (ev) => {
+  if (ev.type === "data") render(ev.result.payload, ev.result.cache?.storedAt);
+  else showSectionError(ev.error.code);             // server_unavailable, not_in_manifest, tool_error, …
+}, { refetchInterval: 30_000 });
+
+const docs = await mcp.CoinGecko.search_docs({ query: "markets" });   // one-shot call, resolves to the payload
+await mcp.invalidate("CoinGecko");                                    // refetch now
+```
+
+[`examples/crypto-dashboard.html`](examples/crypto-dashboard.html) is a complete page written against it.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `worker/index.ts` | Routes: demo sign-in, chats, chat WebSocket, artifact pages (`/u/:id/v:n`), the MCP proxy, files |
+| `worker/chat-agent.ts` | `ChatAgent` DO: `PiHarness`, the chat socket, `artifactCall`, rate limit |
+| `worker/mcp/` | `McpHub` (connections, cache, coalescing, hint), the MCP SDK connector, the server list |
+| `worker/agent/` | Pi tools (MCP, files, artifacts, `run_python`) and the system prompt |
+| `worker/artifacts/` | R2 storage, manifest checks, the CSP and the runtime injection |
+| `worker/users.ts`, `worker/sandbox.ts` | `UserDirectory` DO (chats and artifacts per user), `Sandbox` DO (the container) |
+| `runtime/` | The page runtime and its contract |
+| `src/` | React app: chats, the streamed transcript, the preview panel, `ArtifactBroker` |
+| `shared/` | Types and helpers used by all of the above |
+
+## Run it
+
+```sh
+pnpm install
+cp .dev.vars.example .dev.vars        # DEV_TOOLS=true: enables a publish route for testing without the model
+pnpm dev                              # needs a Cloudflare login (the AI binding is remote) and Docker (the sandbox)
+```
+
+- **Without a Cloudflare account or Docker:** run `PI_OFFLINE=1 PI_NO_DOCKER=1 pnpm dev`. Everything works except
+  the model and `run_python`.
+- **Testing live data without the model:** publish the example page into a chat:
+
+  ```sh
+  curl -c jar -X POST localhost:5173/api/session -H 'content-type: application/json' -d '{"name":"ada"}'
+  CHAT=$(curl -s -b jar -X POST localhost:5173/api/chats | jq -r .id)
+  jq -n --rawfile html examples/crypto-dashboard.html '{title:"Crypto pulse", html:$html, mcp:[{server:"CoinGecko",tools:["execute"]}]}' \
+    | curl -s -b jar -X POST localhost:5173/api/dev/chats/$CHAT/publish -H 'content-type: application/json' -d @-
+  # → {"artifactId":"…","version":1}; open http://localhost:5173/a/<artifactId>
+  ```
+
+Tests: `pnpm test` covers the hub and the broker, and `LIVE=1 pnpm test` also calls CoinGecko. Typecheck with
+`pnpm typecheck`.
+
+## Deploy
+
+1. `npx wrangler r2 bucket create pi-artifacts`
+2. Create an AI Gateway named `pi-artifacts` and store an Anthropic key in it (BYOK), or use unified billing.
+   `MODEL` in `wrangler.jsonc` is a pi-ai gateway specifier (`anthropic/claude-sonnet-5.5`). A Workers AI id such as
+   `@cf/zai-org/glm-5.3-flash` needs no key.
+3. `pnpm run deploy`. This builds the sandbox image with Docker.
+
+Artifact pages are served from the app's own origin inside an opaque-origin sandbox. That is enough to keep them away
+from the app's cookies and storage. A production deployment should still serve `/u/*` from a separate domain, as
+claude.ai uses `*.claudeusercontent.com`.
+
+## Limits and what's next
+
+- **Sign-in is a demo.** You type a name and get a cookie, so anyone typing the same name gets the same chats.
+  Artifacts are viewable by anyone with the link. Real auth (Cloudflare Access, OAuth) comes next, then per-viewer
+  consent.
+- **The agent loop was only exercised offline.** It is wired to Pi's real APIs and was checked as far as the model
+  call: tools registered, the system prompt rendered, and model errors streamed to the chat. A run with a model needs
+  a Cloudflare account.
+- **Pi Durable is experimental.** It has no tool approvals, conversations can't be deleted yet, and a reconnecting
+  client resumes from a fresh snapshot rather than a cursor.
+- **Next:**
+  - a screenshot self-check in the sandbox before publishing
+  - MCP servers that need OAuth
+  - WebSocket push for sources that stream
+  - a separate preview domain

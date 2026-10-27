@@ -141,9 +141,12 @@ claude.ai uses `*.claudeusercontent.com`.
 - **Sign-in is a demo.** You type a name and get a cookie, so anyone typing the same name gets the same chats.
   Artifacts are viewable by anyone with the link. Real auth (Cloudflare Access, OAuth) comes next, then per-viewer
   consent.
-- **The agent loop was only exercised offline.** It is wired to Pi's real APIs and was checked as far as the model
-  call: tools registered, the system prompt rendered, and model errors streamed to the chat. A run with a model needs
-  a Cloudflare account.
+- **Verified deployed with Claude Sonnet 5.5:** the agent built a live BTC/ETH/SOL dashboard from one prompt and, when
+  told what was wrong, fixed it as version 2 of the same artifact.
+
+  ![A dashboard the deployed agent built](docs/agent-dashboard.png)
+
+  The `run_python` sandbox has not been exercised in production yet.
 - **Pi Durable is experimental.** It has no tool approvals, conversations can't be deleted yet, and a reconnecting
   client resumes from a fresh snapshot rather than a cursor.
 - **Next:**

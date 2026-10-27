@@ -134,15 +134,20 @@ function Entry({ entry, onOpen }: { entry: EntryRecord; onOpen: (artifact: Publi
   return null;
 }
 
+/** A message's blocks, skipping any slot a stream has not filled yet. */
+function blocks<T>(content: string | readonly (T | undefined | null)[]): T[] {
+  return typeof content === "string" ? [] : content.filter((b): b is T => b != null);
+}
+
 function User({ message }: { message: UserMessage }) {
-  const text = typeof message.content === "string" ? message.content : message.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+  const text = typeof message.content === "string" ? message.content : blocks(message.content).map((b) => (b.type === "text" ? b.text : "")).join("");
   return <div className="bubble user">{text}</div>;
 }
 
 function Assistant({ message, streaming }: { message: AssistantMessage; streaming?: boolean }) {
   return (
     <div className={streaming ? "assistant streaming" : "assistant"}>
-      {message.content.map((block, i) => {
+      {blocks(message.content).map((block, i) => {
         if (block.type === "text") return block.text ? <div key={i} className="bubble bot">{block.text}</div> : null;
         if (block.type === "toolCall") return <div key={i} className="tool-call">→ {block.name}</div>;
         return null;
@@ -154,7 +159,7 @@ function Assistant({ message, streaming }: { message: AssistantMessage; streamin
 }
 
 function ToolResult({ message }: { message: ToolResultMessage }) {
-  const text = message.content.map((b) => (b.type === "text" ? b.text : "[image]")).join("\n");
+  const text = blocks(message.content).map((b) => (b.type === "text" ? b.text : "[image]")).join("\n");
   return (
     <details className={message.isError ? "tool-result error" : "tool-result"}>
       <summary>

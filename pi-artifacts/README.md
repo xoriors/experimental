@@ -21,7 +21,7 @@ to **the same MCP connection the agent used to build it**:
 ```
 artifact page (sandboxed iframe, opaque origin)
   │  mcp.watchTool("CoinGecko", "execute", {code}, onEvent, {refetchInterval: 30_000})
-  ▼  MessagePort, handed over once when the frame loads
+  ▼  MessagePort, handed over once, in answer to the page's hello
 viewer page: ArtifactBroker (src/artifact/broker.ts)
   │  caches, groups identical watches, pauses while the tab is hidden, polls on the server's hint
   ▼  POST /api/artifacts/:id/mcp  {version, mode, server, tool, input, staleMs}

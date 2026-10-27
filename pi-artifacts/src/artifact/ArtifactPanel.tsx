@@ -70,7 +70,7 @@ export function ArtifactPanel({ artifactId, latestKnown, uid, onClose, fullPage 
           )}
         </div>
       </header>
-      <ArtifactFrame key={reloads} artifactId={meta.id} version={entry.version} manifest={entry.manifest} uid={uid} title={meta.title} />
+      <ArtifactFrame key={`${entry.version}:${reloads}`} artifactId={meta.id} version={entry.version} manifest={entry.manifest} uid={uid} title={meta.title} />
     </section>
   );
 }

@@ -27,12 +27,20 @@ function published(entry: EntryRecord): PublishedArtifact | undefined {
 export function ChatView({ chatId, onArtifact, onActivity }: Props) {
   const { state, connected, prompt, abort } = useChat(chatId);
   const [draft, setDraft] = useState("");
-  const bottom = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   const lastArtifact = useRef<string>("");
 
+  // Follow new output only while the reader is at the bottom; scrolling up to read stops it,
+  // scrolling back down (or sending a message) resumes it. Scroll the list itself, never the page.
+  const following = useRef(true);
+  const onScroll = () => {
+    const el = list.current;
+    if (el) following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
-  }, [state.entries.length, state.partial, state.tools.length]);
+    const el = list.current;
+    if (el && following.current) el.scrollTop = el.scrollHeight;
+  }, [state.entries.length, state.partial, state.tools]);
 
   // A finished run may have renamed the chat or published artifacts: refresh the sidebar.
   const wasBusy = useRef(false);
@@ -54,6 +62,7 @@ export function ChatView({ chatId, onArtifact, onActivity }: Props) {
     event?.preventDefault();
     const text = draft.trim();
     if (!text || !prompt(text)) return;
+    following.current = true;
     setDraft("");
     onActivity();
   };
@@ -64,7 +73,7 @@ export function ChatView({ chatId, onArtifact, onActivity }: Props) {
 
   return (
     <section className="chat">
-      <div className="messages">
+      <div className="messages" ref={list} onScroll={onScroll}>
         {state.entries.length === 0 && !state.busy && (
           <div className="empty-chat">
             <h2>What should we build?</h2>
@@ -80,7 +89,6 @@ export function ChatView({ chatId, onArtifact, onActivity }: Props) {
         ))}
         {state.busy && !state.partial && state.tools.length === 0 && <div className="thinking">Thinking…</div>}
         {state.error && <div className="chat-error">{state.error}</div>}
-        <div ref={bottom} />
       </div>
       <form className="composer" onSubmit={submit}>
         <textarea

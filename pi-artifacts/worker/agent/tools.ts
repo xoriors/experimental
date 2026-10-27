@@ -1,4 +1,5 @@
 import { Type } from "@earendil-works/pi-ai";
+import { exports } from "cloudflare:workers";
 import { defineExtension, defineTool, section, type Extension } from "@earendil-works/pi-durable";
 import type { ArtifactManifest, ArtifactMeta } from "../../shared/protocol.ts";
 import { checkManifest, MAX_HTML_BYTES, publishVersion, readHtml, readMeta } from "../artifacts/store.ts";
@@ -128,7 +129,7 @@ export function sandboxExtension(scope: ChatScope): Extension {
             if (!object) throw new Error(`No file "${path}".`);
             inputs.push({ name: path.split("/").pop()!, bytes: await object.arrayBuffer() });
           }
-          const sandbox = scope.env.SANDBOX.getByName(`${scope.uid}-${scope.chatId}`);
+          const sandbox = exports.Sandbox.getByName(`${scope.uid}-${scope.chatId}`);
           const run = await sandbox.runPython(args.code, inputs);
           const saved = [];
           for (const output of run.outputs) {

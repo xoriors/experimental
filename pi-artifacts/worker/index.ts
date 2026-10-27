@@ -1,3 +1,4 @@
+import { exports } from "cloudflare:workers";
 import { ID_PATTERN, UID_PATTERN, type ProxyRequest } from "../shared/protocol.ts";
 import { artifactResponse } from "./artifacts/serve.ts";
 import { newId, readHtml, readMeta } from "./artifacts/store.ts";
@@ -51,7 +52,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (artifact && ID_PATTERN.test(artifact[1])) {
     const meta = await readMeta(env.FILES, artifact[1]);
     if (!meta) return json({ error: "No such artifact" }, 404);
-    const chat = env.CHAT.getByName(`${meta.ownerUid}:${meta.chatId}`);
+    const chat = exports.ChatAgent.getByName(`${meta.ownerUid}:${meta.chatId}`);
     if (!artifact[2] && method === "GET") {
       const { chatId: _chatId, ...visible } = meta;
       return json({ ...visible, isOwner: uid === meta.ownerUid });
@@ -69,7 +70,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   }
 
   if (!uid) return json({ error: "Not signed in" }, 401);
-  const directory = env.USERS.getByName(uid);
+  const directory = exports.UserDirectory.getByName(uid);
 
   if (path === "/api/chats" && method === "GET") return json(await directory.listChats());
   if (path === "/api/chats" && method === "POST") return json(await directory.createChat(newId()));
@@ -79,7 +80,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (socket) {
     if (request.headers.get("upgrade") !== "websocket") return json({ error: "Expected a WebSocket upgrade" }, 426);
     if (!ID_PATTERN.test(socket[1]) || !(await directory.hasChat(socket[1]))) return json({ error: "No such chat" }, 404);
-    return env.CHAT.getByName(`${uid}:${socket[1]}`).fetch(request);
+    return exports.ChatAgent.getByName(`${uid}:${socket[1]}`).fetch(request);
   }
 
   // Publish a page without the model, to try the live-data path locally. Set DEV_TOOLS=true in .dev.vars.
@@ -87,7 +88,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (devPublish && method === "POST" && env.DEV_TOOLS === "true") {
     if (!(await directory.hasChat(devPublish[1]))) return json({ error: "No such chat" }, 404);
     try {
-      return json(await env.CHAT.getByName(`${uid}:${devPublish[1]}`).devPublish(await request.json()));
+      return json(await exports.ChatAgent.getByName(`${uid}:${devPublish[1]}`).devPublish(await request.json()));
     } catch (error) {
       return json({ error: error instanceof Error ? error.message : String(error) }, 400);
     }

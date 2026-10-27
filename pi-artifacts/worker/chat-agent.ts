@@ -3,7 +3,7 @@ import { createRegistry, Harness, type AgentEventStream } from "@earendil-works/
 import { PiHarness } from "agents/harness/pi";
 import { Lifecycle, type DurableObjectCapability } from "agents/lifecycle";
 import { createAI } from "agents/models/pi-ai";
-import { DurableObject } from "cloudflare:workers";
+import { DurableObject, exports } from "cloudflare:workers";
 import type { ArtifactManifest, ChatClientMessage, ChatServerMessage, McpError, ProxyRequest, ProxyResponse, ToolInfo } from "../shared/protocol.ts";
 import { promptExtension } from "./agent/prompt.ts";
 import { artifactExtension, filesExtension, mcpExtension, publishArtifact, sandboxExtension, type ChatScope } from "./agent/tools.ts";
@@ -56,7 +56,7 @@ export class ChatAgent extends DurableObject<Env> {
       chatId: this.chatId,
       env,
       hub: this.hub,
-      onPublished: (artifact) => env.USERS.getByName(this.uid).recordArtifact({ ...artifact, chatId: this.chatId }),
+      onPublished: (artifact) => exports.UserDirectory.getByName(this.uid).recordArtifact({ ...artifact, chatId: this.chatId }),
     });
     this.registry.install(promptExtension);
     this.registry.install(artifactExtension(scope));
@@ -101,7 +101,7 @@ export class ChatAgent extends DurableObject<Env> {
     await this.ensureMcpTools().catch(() => {});
     const first = (await this.harness.messages()).length === 0;
     await this.harness.submit(text);
-    await this.env.USERS.getByName(this.uid).touchChat(this.chatId, first ? text : undefined);
+    await exports.UserDirectory.getByName(this.uid).touchChat(this.chatId, first ? text : undefined);
   }
 
   /** Publish without the model, through the same checks as the agent's tool. Only routed when DEV_TOOLS is on. */

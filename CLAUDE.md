@@ -27,6 +27,22 @@ documented in the README: the ephemeris-meridian correction to `mu`, and the fac
 "eclipse magnitude" for a central eclipse is the Moon/Sun diameter ratio rather than the standard
 magnitude formula.
 
+### pi-artifacts — working prototype
+
+Claude-style artifacts on Cloudflare Workers: a Pi Durable agent (`agents/harness/pi`) per chat Durable Object builds
+HTML dashboards, published to R2 and previewed in a sandboxed iframe. Pages get live data by calling
+`pi.use("mcp")`; calls go page → MessagePort → viewer page (`src/artifact/broker.ts`) → Worker → the chat's
+`ChatAgent.artifactCall` → the same `McpHub` the agent's tools use. No model is involved in those calls. React + Vite
+with `@cloudflare/vite-plugin`, pnpm.
+
+- `pnpm test` (hub + broker; `LIVE=1` also hits CoinGecko), `pnpm typecheck`, `pnpm dev`. Without a Cloudflare login or
+  Docker: `PI_OFFLINE=1 PI_NO_DOCKER=1 pnpm dev`. Everything but the model and `run_python` then works, and
+  `POST /api/dev/chats/:id/publish` (with `DEV_TOOLS=true` in `.dev.vars`) publishes a page without the model.
+- `runtime/runtime.d.ts` is load-bearing twice: it documents the page API and is inlined into the agent's system
+  prompt. Change it together with `runtime/pi-runtime.js`, `src/artifact/broker.ts` and `shared/protocol.ts`.
+- The README lists the security model (manifest per version, author's connections, write tools only for the author)
+  and what is not verified yet (an agent run with a real model).
+
 ### llm-git-conflict-resolve — working prototype
 
 LLM-assisted git merge-conflict resolution driven by semantic intent (commit messages + three-way diff) rather than textual diffs. Python 3 stdlib only.

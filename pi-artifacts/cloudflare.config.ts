@@ -35,10 +35,8 @@ export default defineConfig({
       AI: bindings.ai({}),
       // Artifact versions (artifacts/<id>/v<n>/…) and each user's files (users/<uid>/files/…).
       FILES: bindings.r2({ name: "pi-artifacts" }),
-      CHAT: bindings.durableObject({ worker: "pi-artifacts", exportName: "ChatAgent" }),
-      USERS: bindings.durableObject({ worker: "pi-artifacts", exportName: "UserDirectory" }),
-      SANDBOX: bindings.durableObject({ worker: "pi-artifacts", exportName: "Sandbox" }),
     },
+    // The Worker reaches its own Durable Objects through `exports` from cloudflare:workers, not bindings.
     exports: {
       ChatAgent: exports.durableObject({ storage: "sqlite" }),
       UserDirectory: exports.durableObject({ storage: "sqlite" }),

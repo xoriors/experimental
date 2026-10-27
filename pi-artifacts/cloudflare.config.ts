@@ -28,6 +28,8 @@ export default defineConfig({
       // A pi-ai Cloudflare AI Gateway specifier, or a Workers AI id such as @cf/zai-org/glm-5.3-flash.
       MODEL: bindings.text("anthropic/claude-sonnet-5.5"),
       AI_GATEWAY_ID: bindings.text("pi-artifacts"),
+      // Alias of the provider key stored in the gateway (Provider Keys). Empty: the key marked default, else unified billing.
+      AI_BYOK_ALIAS: bindings.text("claude"),
       SANDBOX_ENABLED: bindings.text(withSandbox ? "true" : "false"),
       // DEV_TOOLS=true (when running pnpm dev) enables POST /api/dev/chats/:id/publish. Never set it for a deploy.
       DEV_TOOLS: bindings.text(process.env.DEV_TOOLS === "true" ? "true" : "false"),

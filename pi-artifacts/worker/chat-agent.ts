@@ -31,7 +31,7 @@ export interface ArtifactCall {
  */
 export class ChatAgent extends DurableObject<Env> {
   readonly hub = new McpHub(MCP_SERVERS, connectStreamableHttp);
-  readonly ai = createAI({ binding: this.env.AI, gateway: this.env.AI_GATEWAY_ID });
+  readonly ai = createAI({ binding: this.env.AI, gateway: this.env.AI_GATEWAY_ID, byokAlias: this.env.AI_BYOK_ALIAS || undefined });
   readonly registry = createRegistry();
   readonly harness = new PiHarness({
     harness: ({ storage, context, onWake }) => {
@@ -39,7 +39,8 @@ export class ChatAgent extends DurableObject<Env> {
       models.setProvider(this.ai.provider);
       return Harness.open(storage, { models, registry: this.registry, onWake }, context);
     },
-    defaults: { model: this.ai(this.env.MODEL) },
+    // Current Claude models reject pi's "off" (thinking: disabled), so new chats think at medium effort.
+    defaults: { model: this.ai(this.env.MODEL), thinkingLevel: "medium" },
   });
   readonly sockets = new ChatSockets(this);
   readonly lifecycle = Lifecycle.install(this).use(this.harness).use(this.sockets);

@@ -11,7 +11,7 @@
 
   const CONNECT_TIMEOUT_MS = 10_000;
 
-  // The viewer page hands over one port, once, right after the frame loads.
+  // The page says hello; the viewer page that frames it answers with one port, once.
   const session = new Promise((resolve) => {
     let settled = false;
     const finish = (value) => {
@@ -26,6 +26,7 @@
       finish({ port: event.ports[0], manifest: data.manifest || {} });
     });
     setTimeout(() => finish(null), CONNECT_TIMEOUT_MS);
+    if (window.parent !== window) window.parent.postMessage({ type: "pi:hello" }, "*");
   });
 
   let mcp;

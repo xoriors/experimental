@@ -38,26 +38,31 @@ export function ArtifactFrame({ artifactId, version, manifest, uid, title }: Pro
       storage: browserStorage(),
     });
 
-    // The bridge goes to the first document only. If the page navigates
-    // itself elsewhere, whatever loads next gets no port.
-    let loads = 0;
-    const onLoad = () => {
-      if (++loads > 1) return;
+    // The page's runtime says hello as it starts. The first hello from this frame gets the
+    // bridge; anything later (a reload, or a page the artifact navigated to) gets nothing.
+    // Waiting for the page to ask, rather than counting load events, means an about:blank
+    // or an earlier navigation can never take the port.
+    let connected = false;
+    const onMessage = (event: MessageEvent) => {
+      if (connected || event.source !== iframe.contentWindow || event.data?.type !== "pi:hello") return;
+      connected = true;
       const channel = new MessageChannel();
       broker.connect(channel.port1);
-      iframe.contentWindow?.postMessage({ type: "pi:connect", manifest }, "*", [channel.port2]);
+      (event.source as Window).postMessage({ type: "pi:connect", manifest }, "*", [channel.port2]);
     };
     const onVisibility = () => broker.setHidden(document.visibilityState === "hidden");
 
-    iframe.addEventListener("load", onLoad);
+    window.addEventListener("message", onMessage);
     document.addEventListener("visibilitychange", onVisibility);
     onVisibility();
-    iframe.src = `/u/${artifactId}/v${version}`;
+    // Each version gets its own frame (see ArtifactPanel's key), so this only skips the
+    // second run of a development-mode double effect.
+    const url = `/u/${artifactId}/v${version}`;
+    if (iframe.getAttribute("src") !== url) iframe.src = url;
     return () => {
-      iframe.removeEventListener("load", onLoad);
+      window.removeEventListener("message", onMessage);
       document.removeEventListener("visibilitychange", onVisibility);
       broker.close();
-      iframe.src = "about:blank";
     };
     // The manifest is fixed per version, so the version stands for it.
     // eslint-disable-next-line react-hooks/exhaustive-deps

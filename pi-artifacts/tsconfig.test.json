@@ -23,6 +23,8 @@
   "include": [
     "test",
     "src/artifact/broker.ts",
+    "src/chat/useChat.ts",
+    "src/api.ts",
     "shared",
     "worker/mcp"
   ]

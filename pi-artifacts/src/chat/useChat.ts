@@ -45,7 +45,8 @@ export function reduce(state: ChatState, action: Action): ChatState {
         next = { ...next, busy: false, partial: undefined, tools: [] };
         break;
       case "message_start":
-        if (event.message.role === "assistant") next = { ...next, partial: { ...event.message, content: [] } };
+        // An assistant message can open with blocks already in it; later changes index into them.
+        if (event.message.role === "assistant") next = { ...next, partial: { ...event.message, content: [...event.message.content] } };
         break;
       case "message_update": {
         if (!next.partial) break;

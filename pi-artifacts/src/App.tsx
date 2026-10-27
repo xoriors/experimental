@@ -3,6 +3,7 @@ import type { ChatSummary } from "../shared/protocol.ts";
 import { api, type ArtifactSummary, type FileInfo } from "./api.ts";
 import { ArtifactPanel } from "./artifact/ArtifactPanel.tsx";
 import { ChatView, type PublishedArtifact } from "./chat/ChatView.tsx";
+import { ErrorBoundary } from "./ErrorBoundary.tsx";
 
 function usePath(): [string, (path: string) => void] {
   const [path, setPath] = useState(location.pathname);
@@ -30,7 +31,11 @@ export function App() {
   if (shared) {
     // A shared artifact: anyone with the link can view it, signed in or not.
     if (uid === undefined) return null;
-    return <ArtifactPanel artifactId={shared[1]} uid={uid ?? undefined} fullPage />;
+    return (
+      <ErrorBoundary what="this artifact">
+        <ArtifactPanel artifactId={shared[1]} uid={uid ?? undefined} fullPage />
+      </ErrorBoundary>
+    );
   }
   if (uid === undefined) return null;
   if (uid === null) return <SignIn onSignedIn={setUid} />;
@@ -172,7 +177,9 @@ function Workspace({ uid, chatId, navigate, onSignOut }: WorkspaceProps) {
       </aside>
       <main className="main">
         {chatId ? (
-          <ChatView key={chatId} chatId={chatId} onArtifact={onArtifact} onActivity={refresh} />
+          <ErrorBoundary key={chatId} what="this chat">
+            <ChatView chatId={chatId} onArtifact={onArtifact} onActivity={refresh} />
+          </ErrorBoundary>
         ) : (
           <div className="panel-empty">
             <button type="button" className="primary" onClick={newChat}>
@@ -182,7 +189,9 @@ function Workspace({ uid, chatId, navigate, onSignOut }: WorkspaceProps) {
         )}
       </main>
       {preview && (
-        <ArtifactPanel artifactId={preview.artifactId} latestKnown={preview.version} uid={uid} onClose={() => setPreview(null)} />
+        <ErrorBoundary key={preview.artifactId} what="the preview">
+          <ArtifactPanel artifactId={preview.artifactId} latestKnown={preview.version} uid={uid} onClose={() => setPreview(null)} />
+        </ErrorBoundary>
       )}
     </div>
   );

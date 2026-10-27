@@ -91,6 +91,7 @@ await mcp.invalidate("CoinGecko");                                    // refetch
 | `worker/mcp/` | `McpHub` (connections, cache, coalescing, hint), the MCP SDK connector, the server list |
 | `worker/agent/` | Pi tools (MCP, files, artifacts, `run_python`) and the system prompt |
 | `worker/artifacts/` | R2 storage, manifest checks, the CSP and the runtime injection |
+| `cloudflare.config.ts` | The Worker, its bindings, Durable Object exports and the sandbox container (cf CLI) |
 | `worker/users.ts`, `worker/sandbox.ts` | `UserDirectory` DO (chats and artifacts per user), `Sandbox` DO (the container) |
 | `runtime/` | The page runtime and its contract |
 | `src/` | React app: chats, the streamed transcript, the preview panel, `ArtifactBroker` |
@@ -100,13 +101,13 @@ await mcp.invalidate("CoinGecko");                                    // refetch
 
 ```sh
 pnpm install
-cp .dev.vars.example .dev.vars        # DEV_TOOLS=true: enables a publish route for testing without the model
-pnpm dev                              # needs a Cloudflare login (the AI binding is remote) and Docker (the sandbox)
+pnpm dev        # cf dev: needs a Cloudflare login (cf auth login; the AI binding is remote) and Docker (the sandbox)
 ```
 
 - **Without a Cloudflare account or Docker:** run `PI_OFFLINE=1 PI_NO_DOCKER=1 pnpm dev`. Everything works except
   the model and `run_python`.
-- **Testing live data without the model:** publish the example page into a chat:
+- **Testing live data without the model:** start with `DEV_TOOLS=true` added to the command above, which enables a
+  publish route, then publish the example page into a chat:
 
   ```sh
   curl -c jar -X POST localhost:5173/api/session -H 'content-type: application/json' -d '{"name":"ada"}'
@@ -121,11 +122,15 @@ Tests: `pnpm test` covers the hub and the broker, and `LIVE=1 pnpm test` also ca
 
 ## Deploy
 
-1. `npx wrangler r2 bucket create pi-artifacts`
-2. Create an AI Gateway named `pi-artifacts` and store an Anthropic key in it (BYOK), or use unified billing.
-   `MODEL` in `wrangler.jsonc` is a pi-ai gateway specifier (`anthropic/claude-sonnet-5.5`). A Workers AI id such as
-   `@cf/zai-org/glm-5.3-flash` needs no key.
-3. `pnpm run deploy`. This builds the sandbox image with Docker.
+The project uses Cloudflare's [`cf` CLI](https://developers.cloudflare.com/cf/); its configuration is
+`cloudflare.config.ts`, migrated from Wrangler with `cf migrate`.
+
+1. `cf auth login`. Add `--no-browser` on a remote machine: it prints a link and a code to approve.
+2. Enable R2 for the account in the dashboard, then create the bucket: `cf r2 buckets create --name pi-artifacts`.
+3. Create an AI Gateway named `pi-artifacts` and store an Anthropic key in it (BYOK), or use unified billing.
+   `MODEL` in `cloudflare.config.ts` is a pi-ai gateway specifier (`anthropic/claude-sonnet-5.5`). A Workers AI id
+   such as `@cf/zai-org/glm-5.3-flash` needs no key.
+4. `pnpm run deploy` (`cf deploy`). This builds the sandbox image with Docker and needs the Workers Paid plan.
 
 Artifact pages are served from the app's own origin inside an opaque-origin sandbox. That is enough to keep them away
 from the app's cookies and storage. A production deployment should still serve `/u/*` from a separate domain, as

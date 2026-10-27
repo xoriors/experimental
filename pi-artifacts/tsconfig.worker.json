@@ -9,7 +9,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "types": [
-      "./worker-configuration.d.ts",
+      "./.cloudflare/types/index.d.ts",
       "node"
     ],
     "strict": true,

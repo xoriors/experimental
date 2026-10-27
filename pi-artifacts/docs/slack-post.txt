@@ -1,0 +1,29 @@
+:sparkles: *pi-artifacts — Claude-style live artifacts, rebuilt on Cloudflare* (demo video :point_down:)
+
+You chat with an agent and it builds an interactive dashboard, shown right beside the chat. Every change you ask for becomes a new version. Each time someone opens a page, it pulls *live data from MCP servers*, the way Claude artifacts call connectors. The demo uses CoinGecko's free public MCP server for live crypto prices.
+
+*How it fits together*
+```
+Browser ── chat over WebSocket ──┐      Artifact page (sandboxed iframe, CSP blocks all network)
+                                 │        pi.use("mcp").watchTool("CoinGecko", "execute", …)
+                                 │        └─ MessagePort → viewer page → POST /api/artifacts/:id/mcp
+                                 ▼                                   │
+                              Worker ───────── RPC ──────────────────┘
+                                 ▼
+          ChatAgent Durable Object (one per user + chat)
+           ├─ Pi Durable agent loop ── AI Gateway ── Claude Sonnet 5.5
+           ├─ McpHub: one MCP session per server, used by the agent's tools AND by live pages
+           ├─ R2: artifact versions + the user's files
+           └─ Sandbox container: run_python
+```
+
+*Ideas worth stealing*
+• *No LLM in the live-data path.* A page's call goes straight to the MCP client in the chat's Durable Object, the same one the agent used to build the page. That makes it deterministic, about 1 s, and costs no tokens.
+• *A manifest for each version.* At publish time the agent declares which MCP tools the page may call. That list is checked against the server's real tools, and any call outside it is refused (`not_in_manifest`).
+• *Polling with a server hint.* Each response carries `nextRefreshAt`, and the viewer asks again just after that time (at most every 30 s, paused while the tab is hidden). It's within about a second of push, without keeping sockets open.
+• *The same page API as Claude.* `pi.use("mcp")` has the same shape as `claude.use("mcp")`, so models already know how to write these pages.
+• *Durable by default.* Pi saves every step to the Durable Object's SQLite, so an eviction or a deploy mid-turn resumes where it stopped.
+
+*Stack:* Cloudflare Workers + Durable Objects (Pi Durable via the Agents SDK), AI Gateway, R2, Containers (Sandbox SDK), React + Vite, deployed with the new `cf` CLI.
+*Status:* a deployed prototype. It's verified end to end: the agent built a live dashboard, then revised it on request. Sign-in is a demo (pick a name). `run_python` hasn't been exercised in production yet.
+*Code:* https://github.com/xoriors/experimental/tree/claude/charming-cannon-h2sh7j/pi-artifacts · one-page architecture PDF attached

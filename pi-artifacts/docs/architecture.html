@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>pi-artifacts — architecture</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 12mm; }
+  :root {
+    --ink: #1d1d1b; --muted: #6b6a66; --line: #d9d6cf; --soft: #f4f2ed; --accent: #c2410c; --accent-soft: #fbe9df;
+    --do: #eef3fb; --do-line: #8fa8cf; --ext: #f1f7ef; --ext-line: #8fb987;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--ink); font: 10.2pt/1.45 Inter, "DejaVu Sans", sans-serif; }
+  h1 { font: 700 21pt/1.15 "Inter Display", Inter, sans-serif; margin: 0 0 3pt; letter-spacing: -0.01em; }
+  h2 { font: 650 12pt/1.3 Inter, sans-serif; margin: 14pt 0 5pt; }
+  p { margin: 0 0 6pt; }
+  code { font: 8.8pt "JetBrains Mono", monospace; background: var(--soft); padding: 0 3pt; border-radius: 3pt; }
+  .sub { color: var(--muted); font-size: 11pt; margin-bottom: 10pt; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8pt; margin: 10pt 0 4pt; }
+  .stat { border: 1px solid var(--line); border-radius: 6pt; padding: 7pt 9pt; }
+  .stat b { display: block; font: 700 14pt/1.1 "Inter Display", Inter, sans-serif; color: var(--accent); }
+  .stat span { color: var(--muted); font-size: 8.6pt; }
+  figure { margin: 8pt 0 0; }
+  figcaption { color: var(--muted); font-size: 8.6pt; margin-top: 4pt; }
+  svg text { font-family: Inter, sans-serif; }
+  .page-break { break-before: page; }
+  ol.flow { margin: 0; padding-left: 16pt; }
+  ol.flow li { margin-bottom: 4pt; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.2pt; }
+  th, td { text-align: left; vertical-align: top; padding: 5pt 6pt; border-bottom: 1px solid var(--line); }
+  th { font-weight: 650; color: var(--muted); font-size: 8.4pt; text-transform: uppercase; letter-spacing: 0.04em; }
+  td:first-child { font-weight: 600; width: 27%; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt; }
+  ul { margin: 0; padding-left: 14pt; }
+  li { margin-bottom: 3pt; }
+  .foot { margin-top: 18pt; color: var(--muted); font-size: 8.4pt; border-top: 1px solid var(--line); padding-top: 5pt; }
+</style>
+</head>
+<body>
+
+<h1>pi-artifacts</h1>
+<div class="sub">Claude-style live artifacts, rebuilt on Cloudflare: an agent builds dashboards that fetch real-time MCP data every time they are viewed.</div>
+
+<p>You chat with a Pi agent. It finds the data through MCP tools and writes a self-contained HTML page. It then publishes the page as a versioned <em>artifact</em> that appears beside the chat and can be shared by link. Each time someone opens the page, it calls the MCP tools declared at publish time and keeps the data current. The page API has the same shape as Claude's <code>claude.use("mcp")</code>. The demo uses CoinGecko's free public MCP server.</p>
+
+<div class="stats">
+  <div class="stat"><b>0 tokens</b><span>per live data call: no model in the path</span></div>
+  <div class="stat"><b>~1 s</b><span>page → MCP → page, measured against CoinGecko</span></div>
+  <div class="stat"><b>30 s</b><span>polling floor, timed by the server's refresh hint</span></div>
+  <div class="stat"><b>1 DO</b><span>per user + chat: the agent, MCP sessions, cache</span></div>
+</div>
+
+<figure>
+<svg viewBox="0 0 820 410" width="100%" role="img" aria-label="Architecture diagram">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b6a66"/></marker>
+    <marker id="arrow-live" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker>
+  </defs>
+
+  <!-- Browser -->
+  <rect x="8" y="10" width="198" height="390" rx="10" fill="#f4f2ed" stroke="#d9d6cf"/>
+  <text x="20" y="32" font-size="12" font-weight="700">Browser</text>
+  <rect x="22" y="48" width="170" height="74" rx="7" fill="#fff" stroke="#d9d6cf"/>
+  <text x="34" y="70" font-size="11" font-weight="600">Chat UI (React)</text>
+  <text x="34" y="87" font-size="9.5" fill="#6b6a66">streams Pi events,</text>
+  <text x="34" y="101" font-size="9.5" fill="#6b6a66">shows the preview panel</text>
+  <rect x="22" y="176" width="170" height="74" rx="7" fill="#fff" stroke="#c2410c"/>
+  <text x="34" y="198" font-size="11" font-weight="600">Viewer broker</text>
+  <text x="34" y="215" font-size="9.5" fill="#6b6a66">cache · groups identical calls</text>
+  <text x="34" y="229" font-size="9.5" fill="#6b6a66">polls on the server's hint</text>
+  <rect x="22" y="296" width="170" height="90" rx="7" fill="#fff" stroke="#c2410c" stroke-dasharray="4 3"/>
+  <text x="34" y="318" font-size="11" font-weight="600">Artifact page</text>
+  <text x="34" y="335" font-size="9.5" fill="#6b6a66">sandboxed iframe, opaque origin</text>
+  <text x="34" y="349" font-size="9.5" fill="#6b6a66">CSP: connect-src 'none'</text>
+  <text x="34" y="366" font-size="9.5" font-family="JetBrains Mono" fill="#c2410c">pi.use("mcp")</text>
+
+  <!-- Worker -->
+  <rect x="268" y="150" width="130" height="120" rx="9" fill="#fff" stroke="#1d1d1b"/>
+  <text x="282" y="174" font-size="12" font-weight="700">Worker</text>
+  <text x="282" y="192" font-size="9.5" fill="#6b6a66">routes, demo sign-in,</text>
+  <text x="282" y="206" font-size="9.5" fill="#6b6a66">serves pages from R2</text>
+  <text x="282" y="220" font-size="9.5" fill="#6b6a66">with CSP + runtime</text>
+  <rect x="268" y="318" width="130" height="62" rx="9" fill="#eef3fb" stroke="#8fa8cf"/>
+  <text x="280" y="342" font-size="10.5" font-weight="600">UserDirectory DO</text>
+  <text x="280" y="358" font-size="9.5" fill="#6b6a66">chats + artifacts index</text>
+
+  <!-- ChatAgent DO -->
+  <rect x="462" y="10" width="190" height="390" rx="10" fill="#eef3fb" stroke="#8fa8cf"/>
+  <text x="474" y="32" font-size="12" font-weight="700">ChatAgent DO</text>
+  <text x="474" y="47" font-size="9" fill="#6b6a66">one per user + chat · SQLite</text>
+  <rect x="476" y="60" width="162" height="86" rx="7" fill="#fff" stroke="#8fa8cf"/>
+  <text x="488" y="82" font-size="11" font-weight="600">Pi Durable agent</text>
+  <text x="488" y="99" font-size="9.5" fill="#6b6a66">PiHarness + Lifecycle</text>
+  <text x="488" y="113" font-size="9.5" fill="#6b6a66">checkpoints every step,</text>
+  <text x="488" y="127" font-size="9.5" fill="#6b6a66">resumes after eviction</text>
+  <rect x="476" y="180" width="162" height="80" rx="7" fill="#fff" stroke="#c2410c"/>
+  <text x="488" y="202" font-size="11" font-weight="600">McpHub</text>
+  <text x="488" y="219" font-size="9.5" fill="#6b6a66">one MCP session per server</text>
+  <text x="488" y="233" font-size="9.5" fill="#6b6a66">manifest check · cache</text>
+  <text x="488" y="247" font-size="9.5" fill="#6b6a66">→ nextRefreshAt hint</text>
+  <rect x="476" y="294" width="162" height="92" rx="7" fill="#fff" stroke="#8fa8cf"/>
+  <text x="488" y="316" font-size="11" font-weight="600">Agent tools</text>
+  <text x="488" y="333" font-size="9.5" fill="#6b6a66">coingecko__* (from tools/list)</text>
+  <text x="488" y="347" font-size="9.5" fill="#6b6a66">artifact_publish / _read</text>
+  <text x="488" y="361" font-size="9.5" fill="#6b6a66">files_* · run_python</text>
+
+  <!-- External -->
+  <rect x="676" y="60" width="138" height="66" rx="9" fill="#f1f7ef" stroke="#8fb987"/>
+  <text x="688" y="83" font-size="11" font-weight="600">AI Gateway</text>
+  <text x="688" y="100" font-size="9.5" fill="#6b6a66">Claude Sonnet 5.5</text>
+  <text x="688" y="114" font-size="9.5" fill="#6b6a66">BYOK · rate limit · logs</text>
+  <rect x="676" y="180" width="138" height="66" rx="9" fill="#f1f7ef" stroke="#c2410c"/>
+  <text x="688" y="203" font-size="11" font-weight="600">MCP server</text>
+  <text x="688" y="220" font-size="9.5" fill="#6b6a66">CoinGecko (public)</text>
+  <text x="688" y="234" font-size="9.5" fill="#6b6a66">Streamable HTTP</text>
+  <rect x="676" y="282" width="138" height="48" rx="9" fill="#f1f7ef" stroke="#8fb987"/>
+  <text x="688" y="303" font-size="11" font-weight="600">R2</text>
+  <text x="688" y="318" font-size="9.5" fill="#6b6a66">artifact versions · files</text>
+  <rect x="676" y="342" width="138" height="48" rx="9" fill="#f1f7ef" stroke="#8fb987"/>
+  <text x="688" y="363" font-size="11" font-weight="600">Sandbox container</text>
+  <text x="688" y="378" font-size="9.5" fill="#6b6a66">Python, no internet</text>
+
+  <!-- Agent path (grey) -->
+  <path d="M192,85 C230,85 246,166 268,170" fill="none" stroke="#6b6a66" stroke-width="1.4" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+  <text x="246" y="112" font-size="9" fill="#6b6a66">WebSocket</text>
+  <path d="M398,170 C430,170 446,110 476,104" fill="none" stroke="#6b6a66" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <path d="M333,270 L333,318" fill="none" stroke="#6b6a66" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <path d="M638,100 L676,96" fill="none" stroke="#6b6a66" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <path d="M557,146 L557,180" fill="none" stroke="#6b6a66" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <text x="563" y="167" font-size="9" fill="#6b6a66">tool calls</text>
+  <path d="M557,294 L557,262" fill="none" stroke="#6b6a66" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <path d="M638,325 L676,308" fill="none" stroke="#6b6a66" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <path d="M638,360 L676,364" fill="none" stroke="#6b6a66" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+  <!-- Live data path (accent) -->
+  <path d="M107,296 L107,250" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#arrow-live)"/>
+  <text x="114" y="278" font-size="9" fill="#c2410c">MessagePort</text>
+  <path d="M192,213 C228,213 244,232 268,232" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#arrow-live)"/>
+  <text x="213" y="254" font-size="9" fill="#c2410c">POST /mcp</text>
+  <path d="M398,238 C430,238 446,222 476,222" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#arrow-live)"/>
+  <text x="405" y="260" font-size="9" fill="#c2410c">artifactCall</text>
+  <text x="405" y="271" font-size="9" fill="#c2410c">(RPC)</text>
+  <path d="M638,220 L676,214" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#arrow-live)"/>
+</svg>
+<figcaption><span style="color:#c2410c;font-weight:600">Orange</span>: the live-data path a published page uses at view time, with no model involved. Grey: the agent building pages.</figcaption>
+</figure>
+
+<div class="foot">github.com/xoriors/experimental · pi-artifacts (branch claude/charming-cannon-h2sh7j)</div>
+
+<h2 class="page-break">How a live call travels</h2>
+<ol class="flow">
+  <li><b>Publish.</b> The agent makes one real read-only MCP call to learn the data's shape. It writes the page and calls <code>artifact_publish</code> with a manifest such as <code>[{server: "CoinGecko", tools: ["execute"]}]</code>. The manifest is checked against the server's <code>tools/list</code>, and the HTML and manifest are stored in R2 as a new version.</li>
+  <li><b>View.</b> The Worker serves the page with the runtime inlined and a CSP that blocks all network access. The viewer frames it in a sandbox with an opaque origin. The page says hello, and the viewer answers its own frame's first hello with a <code>MessagePort</code>.</li>
+  <li><b>Watch.</b> The page calls <code>mcp.watchTool(server, tool, input, onEvent, {refetchInterval})</code>. The broker shows the cached result at once, then sends <code>POST /api/artifacts/:id/mcp</code>.</li>
+  <li><b>Check and call.</b> The Worker passes the call by RPC to the chat's Durable Object. It checks the version's manifest, applies a per-viewer rate limit, and allows tools that aren't read-only only for the author. It then calls the tool through the <em>same</em> McpHub session the agent used: the result is served from the cache or fetched, and identical calls in flight share one request.</li>
+  <li><b>Refresh.</b> The response carries <code>storedAt</code> and <code>nextRefreshAt</code>. The broker polls again just after that time, pauses while the tab is hidden, and delivers each new result to every watch on that call.</li>
+</ol>
+
+<h2>Design decisions</h2>
+<table>
+  <tr><th>Decision</th><th>Why</th><th>Trade-off</th></tr>
+  <tr><td>The page reaches the chat's own MCP connection</td><td>The page sees exactly what the agent saw; no model, no tokens, deterministic.</td><td>Calls run as the author, so sharing a page shares what its manifest allows (Claude uses each viewer's connectors).</td></tr>
+  <tr><td>A manifest for each published version</td><td>The page can't widen its own access; tool names are checked against the server at publish.</td><td>A new tool means a new version.</td></tr>
+  <tr><td>Polling timed by a server hint, not WebSocket push</td><td>Within about a second of push, with no sockets, timers or reconnect logic. The upstream data is already 18–32 s old.</td><td>Revisit for sources that actually stream.</td></tr>
+  <tr><td>The same API shape as Claude's runtime</td><td>Models already write <code>use("mcp")</code> / <code>watchTool</code> pages; the contract is inlined into the system prompt.</td><td>Has to track a contract owned elsewhere.</td></tr>
+  <tr><td>One Durable Object per chat, holding the Pi agent and the MCP sessions</td><td>Single-threaded state, SQLite checkpoints, and a natural place for the cache.</td><td>Page traffic shares an object with the agent loop. The cache absorbs it; the hub can move to a per-user object.</td></tr>
+</table>
+
+<div class="cols">
+  <div>
+    <h2>Stack</h2>
+    <ul>
+      <li>Workers + Durable Objects, Pi Durable via the Agents SDK <code>PiHarness</code></li>
+      <li>AI Gateway → Claude Sonnet 5.5 (BYOK)</li>
+      <li>MCP SDK client (Streamable HTTP) → CoinGecko</li>
+      <li>R2 for versions and files; Containers (Sandbox SDK) for Python</li>
+      <li>React + Vite, deployed with the <code>cf</code> CLI</li>
+    </ul>
+  </div>
+  <div>
+    <h2>Status and next</h2>
+    <ul>
+      <li>Deployed; an agent built a live dashboard and revised it as v2</li>
+      <li>Demo sign-in only. Next: Cloudflare Access / OAuth, then consent per viewer</li>
+      <li>Next: a screenshot self-check before publishing, MCP servers with OAuth, push for streaming sources</li>
+      <li><code>run_python</code> not yet exercised in production</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

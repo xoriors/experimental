@@ -56,7 +56,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   }
 
   // Artifact metadata and the MCP proxy.
-  const artifact = path.match(/^\/api\/artifacts\/([a-z0-9]+)(\/mcp|\/tools)?$/);
+  const artifact = path.match(/^\/api\/artifacts\/([a-z0-9]+)(\/mcp|\/tools|\/clone)?$/);
   if (artifact && ID_PATTERN.test(artifact[1])) {
     const meta = await storage.artifacts.readMeta(artifact[1]);
     if (!meta) return json({ error: "No such artifact" }, 404);
@@ -74,6 +74,13 @@ async function route(request: Request, env: Env): Promise<Response> {
         return json({ ok: false, error: { code: "bad_request", message: "Expected {version, mode, server, tool, input}." } }, 400);
       }
       return json(await chat.artifactCall({ artifactId: meta.id, viewer: uid, request: body }));
+    }
+    // A read-only Git token for the artifact's repo, for `git clone`. Only the owner gets one:
+    // the repo also holds the version history and the metadata.
+    if (artifact[2] === "/clone" && method === "POST") {
+      if (uid !== meta.ownerUid) return json({ error: "Only the artifact's owner can clone it." }, 403);
+      const access = await storage.artifacts.cloneAccess(meta.id);
+      return access ? json(access) : json({ error: "This artifact has no repository yet; it gets one when it is next published." }, 404);
     }
   }
 

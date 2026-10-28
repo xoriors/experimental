@@ -1,6 +1,7 @@
 import { Type } from "@earendil-works/pi-ai";
 import { exports } from "cloudflare:workers";
 import { defineExtension, defineTool, section, type Extension } from "@earendil-works/pi-durable";
+import { createTwoFilesPatch } from "diff";
 import type { ArtifactManifest, ArtifactMeta } from "../../shared/protocol.ts";
 import { checkManifest, MAX_HTML_BYTES } from "../artifacts/manifest.ts";
 import type { McpHub } from "../mcp/hub.ts";
@@ -143,7 +144,7 @@ export function sandboxExtension(scope: ChatScope): Extension {
 /** Check the declaration, store a new version and index it for the user. Throws with what to fix. */
 export async function publishArtifact(
   scope: ChatScope,
-  input: { title: string; html: string; artifactId?: string; mcp?: { server: string; tools: string[] }[] },
+  input: { title: string; html: string; artifactId?: string; mcp?: { server: string; tools: string[] }[]; message?: string },
 ): Promise<ArtifactMeta> {
   if (new TextEncoder().encode(input.html).byteLength > MAX_HTML_BYTES) throw new Error("The page is over 2 MB; summarise the data instead of inlining it.");
   const manifest: ArtifactManifest = input.mcp?.length ? { mcp: { servers: input.mcp } } : {};
@@ -156,8 +157,16 @@ export async function publishArtifact(
     title: input.title,
     html: input.html,
     manifest,
+    message: input.message,
   });
   await scope.onPublished({ id: meta.id, title: meta.title, latest: meta.latest, updatedAt: meta.updatedAt });
+  return meta;
+}
+
+/** An artifact this chat published. Anything else reads as missing. */
+async function ownArtifact(scope: ChatScope, id: string): Promise<ArtifactMeta> {
+  const meta = await scope.artifacts.readMeta(id);
+  if (!meta || meta.chatId !== scope.chatId || meta.ownerUid !== scope.uid) throw new Error(`No artifact ${id} in this chat.`);
   return meta;
 }
 
@@ -174,6 +183,9 @@ export function artifactExtension(scope: ChatScope): Extension {
           title: Type.String({ description: "Two to five words." }),
           html: Type.String({ description: "The page: a full HTML document, or a body fragment." }),
           artifact_id: Type.Optional(Type.String()),
+          message: Type.Optional(
+            Type.String({ description: "One line on what this version changes, e.g. \"Add a 7-day sparkline\". It becomes the version's commit message." }),
+          ),
           mcp: Type.Optional(
             Type.Array(Type.Object({ server: Type.String(), tools: Type.Array(Type.String()) }), {
               description: 'e.g. [{"server": "CoinGecko", "tools": ["execute"]}]',
@@ -181,7 +193,7 @@ export function artifactExtension(scope: ChatScope): Extension {
           ),
         }),
         execute: async (args) => {
-          const meta = await publishArtifact(scope, { title: args.title, html: args.html, artifactId: args.artifact_id, mcp: args.mcp });
+          const meta = await publishArtifact(scope, { title: args.title, html: args.html, artifactId: args.artifact_id, mcp: args.mcp, message: args.message });
           return {
             output: text(`Published artifact ${meta.id} version ${meta.latest} ("${meta.title}"). The user now sees it in the preview panel.`),
             details: { artifactId: meta.id, version: meta.latest, title: meta.title },
@@ -194,13 +206,38 @@ export function artifactExtension(scope: ChatScope): Extension {
         parameters: Type.Object({ artifact_id: Type.String(), version: Type.Optional(Type.Number()) }),
         replay: "safe",
         execute: async (args) => {
-          const meta = await scope.artifacts.readMeta(args.artifact_id);
-          if (!meta || meta.chatId !== scope.chatId || meta.ownerUid !== scope.uid) throw new Error(`No artifact ${args.artifact_id} in this chat.`);
+          const meta = await ownArtifact(scope, args.artifact_id);
           const version = args.version ?? meta.latest;
           const html = await scope.artifacts.readHtml(meta.id, version);
           if (html === null) throw new Error(`Artifact ${meta.id} has no version ${version}.`);
           const declared = JSON.stringify(meta.versions.find((v) => v.version === version)?.manifest ?? {});
           return { output: text(`Version ${version} of ${meta.latest}, manifest ${declared}:\n\n${html}`) };
+        },
+      }),
+      defineTool({
+        name: "artifact_history",
+        description: "List the versions of an artifact published in this chat: when each was published and what it changed.",
+        parameters: Type.Object({ artifact_id: Type.String() }),
+        replay: "safe",
+        execute: async (args) => {
+          const meta = await ownArtifact(scope, args.artifact_id);
+          const lines = meta.versions.map((v) => `v${v.version}  ${new Date(v.publishedAt).toISOString()}  ${v.message ?? "(no message)"}`);
+          return { output: text(`"${meta.title}", ${meta.latest} versions, newest last:\n${lines.join("\n")}`) };
+        },
+      }),
+      defineTool({
+        name: "artifact_diff",
+        description: "Show what changed in an artifact's page between two versions, as a unified diff. Defaults to the latest version against the one before.",
+        parameters: Type.Object({ artifact_id: Type.String(), from: Type.Optional(Type.Number()), to: Type.Optional(Type.Number()) }),
+        replay: "safe",
+        execute: async (args) => {
+          const meta = await ownArtifact(scope, args.artifact_id);
+          const to = args.to ?? meta.latest;
+          const from = args.from ?? to - 1;
+          const [before, after] = await Promise.all([scope.artifacts.readHtml(meta.id, from), scope.artifacts.readHtml(meta.id, to)]);
+          if (before === null || after === null) throw new Error(`Artifact ${meta.id} has versions 1 to ${meta.latest}.`);
+          const patch = createTwoFilesPatch(`v${from}/index.html`, `v${to}/index.html`, before, after, undefined, undefined, { context: 3 });
+          return { output: text(clip(patch)) };
         },
       }),
     ],

@@ -21,6 +21,8 @@
     "@earendil-works/pi-durable": "1.4.0",
     "@modelcontextprotocol/sdk": "1.32.1",
     "agents": "0.31.0",
+    "diff": "8.0.4",
+    "isomorphic-git": "1.44.8",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zod": "^4.6.7"

@@ -30,8 +30,8 @@ magnitude formula.
 ### pi-artifacts — working prototype
 
 Claude-style artifacts on Cloudflare Workers: a Pi Durable agent (`agents/harness/pi`) per chat Durable Object builds
-HTML dashboards, published to R2 and previewed in a sandboxed iframe. Pages get live data by calling
-`pi.use("mcp")`; calls go page → MessagePort → viewer page (`src/artifact/broker.ts`) → Worker → the chat's
+HTML dashboards, published as one Git repo each in Cloudflare Artifacts (R2 keeps a read cache) and previewed in a
+sandboxed iframe. Pages get live data by calling `pi.use("mcp")`; calls go page → MessagePort → viewer page (`src/artifact/broker.ts`) → Worker → the chat's
 `ChatAgent.artifactCall` → the same `McpHub` the agent's tools use. No model is involved in those calls. React + Vite
 with `@cloudflare/vite-plugin`, pnpm; configured and deployed with the `cf` CLI (`cloudflare.config.ts`, no Wrangler config).
 
@@ -41,12 +41,15 @@ with `@cloudflare/vite-plugin`, pnpm; configured and deployed with the `cf` CLI 
 - `runtime/runtime.d.ts` is load-bearing twice: it documents the page API and is inlined into the agent's system
   prompt. Change it together with `runtime/pi-runtime.js`, `src/artifact/broker.ts` and `shared/protocol.ts`.
 - Identity comes only from a verified Cloudflare Access token (`worker/auth/`). Only `worker/storage/` may touch the R2
-  bucket (a test enforces it); user files go through `UserFiles`, scoped per uid and encrypted with a per-user SSE-C key
-  derived from the `FILES_MASTER_KEY` secret.
+  bucket or the Artifacts binding `REPOS` (a test enforces it); user files go through `UserFiles`, scoped per uid and
+  encrypted with a per-user SSE-C key derived from the `FILES_MASTER_KEY` secret.
+- Each artifact is the repo `artifact-<id>`: one commit and tag `v<n>` per publish, pushed with isomorphic-git
+  (`worker/storage/git.ts`), since the binding cannot write files. `pnpm dev` uses a local Git backend for it (needs
+  `git`); `test/artifact-store.test.ts` runs the real Git code against `git http-backend`.
 - The README lists the security model (manifest per version, author's connections, write tools only for the author)
   and what has been verified in production (agent runs with Claude via AI Gateway; not yet `run_python`).
-- Deploy with `cf deploy` from `pi-artifacts/` (Worker `pi-artifacts` on workers.dev; R2 bucket and AI Gateway both
-  named `pi-artifacts`). The sandbox image build needs Docker.
+- Deploy with `cf deploy` from `pi-artifacts/` (Worker `pi-artifacts` on workers.dev; R2 bucket, Artifacts namespace and AI
+  Gateway all named `pi-artifacts`). The sandbox image build needs Docker.
 
 ### llm-git-conflict-resolve — working prototype
 

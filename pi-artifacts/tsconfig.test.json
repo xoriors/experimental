@@ -28,6 +28,9 @@
     "shared",
     "worker/mcp",
     "worker/storage/paths.ts",
+    "worker/storage/artifacts.ts",
+    "worker/storage/git.ts",
+    "worker/storage/memory-fs.ts",
     "worker/storage/keys.ts",
     "worker/storage/user-files.ts",
     "worker/auth/access.ts"

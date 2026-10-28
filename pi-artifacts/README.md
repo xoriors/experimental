@@ -8,7 +8,9 @@ agent that builds **live dashboards**, preview them beside the chat, and share t
 - **Pi Durable** runs the agent inside a Durable Object, one per chat, and survives evictions mid-turn.
 - **Durable Objects** hold each chat (agent, MCP connections, live calls) and each user's index of chats and artifacts.
 - **Sandbox** (a Linux container per chat) runs the Python the agent writes, with no internet.
-- **R2** keeps artifact versions and each user's files, which the agent reads and writes.
+- **[Artifacts](https://developers.cloudflare.com/artifacts/)** keeps each published artifact as a Git repo: one commit
+  and tag per version.
+- **R2** keeps each user's files, which the agent reads and writes, plus a read cache of artifact versions.
 - **The demo MCP server is [CoinGecko's public one](https://mcp.api.coingecko.com/mcp)**: free, keyless, live crypto market data.
 
 ![A live crypto dashboard artifact](docs/crypto-dashboard.png)
@@ -90,8 +92,8 @@ await mcp.invalidate("CoinGecko");                                    // refetch
 | `worker/chat-agent.ts` | `ChatAgent` DO: `PiHarness`, the chat socket, `artifactCall`, rate limit |
 | `worker/mcp/` | `McpHub` (connections, cache, coalescing, hint), the MCP SDK connector, the server list |
 | `worker/agent/` | Pi tools (MCP, files, artifacts, `run_python`) and the system prompt |
-| `worker/artifacts/` | R2 storage, manifest checks, the CSP and the runtime injection |
-| `worker/auth/`, `worker/storage/` | Access token verification; the storage gatekeeper with per-user encrypted files |
+| `worker/artifacts/` | Manifest checks, the CSP and the runtime injection |
+| `worker/auth/`, `worker/storage/` | Access token verification; the storage gatekeeper: artifact repos, per-user encrypted files |
 | `cloudflare.config.ts` | The Worker, its bindings, Durable Object exports and the sandbox container (cf CLI) |
 | `worker/users.ts`, `worker/sandbox.ts` | `UserDirectory` DO (chats and artifacts per user), `Sandbox` DO (the container) |
 | `runtime/` | The page runtime and its contract |
@@ -131,6 +133,8 @@ The project uses Cloudflare's [`cf` CLI](https://developers.cloudflare.com/cf/);
 
 1. `cf auth login`. Add `--no-browser` on a remote machine: it prints a link and a code to approve.
 2. Enable R2 for the account in the dashboard, then create the bucket: `cf r2 buckets create --name pi-artifacts`.
+   The Artifacts namespace `pi-artifacts` needs no setup: it is created with the first repo. Artifacts needs the
+   Workers Paid plan.
 3. Create an AI Gateway named `pi-artifacts` and store an Anthropic key in it (BYOK), or use unified billing.
    `MODEL` in `cloudflare.config.ts` is a pi-ai gateway specifier (`anthropic/claude-sonnet-5.5`). A Workers AI id
    such as `@cf/zai-org/glm-5.3-flash` needs no key.
@@ -140,7 +144,8 @@ The project uses Cloudflare's [`cf` CLI](https://developers.cloudflare.com/cf/);
 5. Generate the file-encryption master key (`openssl rand -base64 32`, at least 32 bytes) and keep a copy somewhere
    safe: losing it makes every user's files unreadable, and changing it later needs a migration (see
    [How file encryption works](#how-file-encryption-works)). Pass it as a secret:
-   `cf deploy --secrets-file secrets.json` with `{"FILES_MASTER_KEY": "…"}`, then delete `secrets.json`.
+   `cf deploy --secrets-file secrets.json` with `{"FILES_MASTER_KEY": "…"}`, then delete `secrets.json`. Later deploys
+   keep the secret, so they need no `--secrets-file` unless it changes.
 6. `pnpm run deploy` (`cf deploy`). This builds the sandbox image with Docker and needs the Workers Paid plan.
 
 ## Who can read what
@@ -148,13 +153,50 @@ The project uses Cloudflare's [`cf` CLI](https://developers.cloudflare.com/cf/);
 - **Sign-in:** Cloudflare Access lets only the people in its policy reach the app at all. The Worker then verifies the
   token Access signs (signature against the team's keys, issuer, audience, expiry) and derives the user's id from it.
   The id never comes from the browser or the model.
-- **One gatekeeper for storage:** only `worker/storage/` touches the R2 bucket, and a test enforces it. Everything else
-  gets either the artifact store or a `UserFiles` handle scoped to one user, which builds every key under that user's
-  folder and rejects paths like `..` or absolute paths.
+- **One gatekeeper for storage:** only `worker/storage/` touches the R2 bucket or the Artifacts binding, and a test
+  enforces it. Everything else gets either the artifact store or a `UserFiles` handle scoped to one user, which builds
+  every key under that user's folder and rejects paths like `..` or absolute paths.
 - **Per-user encryption:** user files are stored with R2 customer-supplied keys (SSE-C), one key per user. See
   [How file encryption works](#how-file-encryption-works).
 - **Artifacts** are shared by link with anyone Access lets in, and are not encrypted per user. Only their owner's chat
-  can publish new versions.
+  can publish new versions, and only their owner can clone their repo. See
+  [Versions in Git](#versions-in-git).
+
+### Versions in Git
+
+Each published artifact is a repo, `artifact-<id>`, in the Cloudflare Artifacts namespace `pi-artifacts`
+(`worker/storage/artifacts.ts`).
+
+- **Each publish is one commit, tagged `v<n>`.** The commit holds `index.html` and `artifact.json`: the metadata and
+  every version's manifest. The agent passes a one-line `message`, which becomes the commit message (`v3: Add a 7-day
+  sparkline`).
+- **The repo is the source of truth; R2 is a read cache.** A publish writes each new version and the latest metadata
+  to R2 too, so page views and live calls never touch Git. If the cache is missing something, it is read back from
+  the repo and the cache is filled again.
+- **Pushing from a Worker.** The Artifacts binding manages repos and reads files, but it cannot write them. A publish
+  therefore uses [isomorphic-git](https://isomorphic-git.org/) on an in-memory filesystem: a depth-1 clone, one
+  commit, then a push of `main` and of the tag.
+- **The agent can see its history.** `artifact_history` lists the versions with their messages, and `artifact_diff`
+  shows a unified diff of the page between two of them.
+- **Older artifacts.** An artifact published before repos existed has only its R2 copy. It keeps serving from there,
+  and the first new publish replays its versions into a new repo, one commit each with their original dates.
+
+How users stay apart:
+
+- **The binding is not per user.** `env.REPOS` can open every repo in the namespace, and Artifacts knows nothing about
+  our users. Only `worker/storage/` may use it, and repo names come only from artifact ids whose owner the Worker
+  has checked against the verified Access identity.
+- **Git tokens are scoped to one repo, and short-lived.** Each publish mints a 5-minute write token for that one repo
+  and revokes it after the push, along with the day-long token `create()` returns.
+- **Owners can clone.** The preview's `git` button calls `POST /api/artifacts/:id/clone`, which only the owner may
+  call. It returns a read-only token for that one repo, valid for 15 minutes, as a ready `git clone` command. Pushing
+  with it is refused.
+- **No per-user encryption here.** Artifacts are already shared by link, so nothing is lost. Private user files stay in
+  R2 under per-user keys; see below.
+
+Locally, `cloudflare.config.ts` points `REPOS` at a local Git backend (`dev: {remote: false}`, which needs `git`
+installed), so development never touches the deployed repos. `test/artifact-store.test.ts` runs the store's real Git
+code against `git http-backend`.
 
 ### How file encryption works
 
@@ -201,7 +243,8 @@ claude.ai uses `*.claudeusercontent.com`.
 
   ![A dashboard the deployed agent built](docs/agent-dashboard.png)
 
-  The `run_python` sandbox has not been exercised in production yet.
+  The `run_python` sandbox has not been exercised in production yet. Neither have artifact repos: publishing, cloning
+  and the import of older artifacts are verified against the local Artifacts backend and in tests.
 - **Pi Durable is experimental.** It has no tool approvals, conversations can't be deleted yet, and a reconnecting
   client resumes from a fresh snapshot rather than a cursor.
 - **Next:**

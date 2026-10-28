@@ -11,13 +11,14 @@ function sources(dir: string): string[] {
   });
 }
 
-// The R2 bucket binding is FILES. Only worker/storage/ may touch it; everything
-// else must go through Storage, which hands out per-user, encrypted UserFiles.
+// The R2 bucket binding is FILES and the Artifacts binding is REPOS. Only
+// worker/storage/ may touch them; everything else must go through Storage,
+// which hands out per-user, encrypted UserFiles and the ArtifactStore.
 describe("storage boundary", () => {
-  it("keeps every use of the R2 binding inside worker/storage/", () => {
+  it("keeps every use of the R2 and Artifacts bindings inside worker/storage/", () => {
     const offenders = sources(WORKER)
       .filter((file) => !relative(WORKER, file).startsWith("storage"))
-      .filter((file) => /\bFILES\b|\bR2Bucket\b/.test(readFileSync(file, "utf8")))
+      .filter((file) => /\bFILES\b|\bR2Bucket\b|\bREPOS\b|\bArtifactsRepo\b|:\s*Artifacts\b/.test(readFileSync(file, "utf8")))
       .map((file) => relative(WORKER, file));
     expect(offenders).toEqual([]);
   });

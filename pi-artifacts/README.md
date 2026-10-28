@@ -86,11 +86,12 @@ await mcp.invalidate("CoinGecko");                                    // refetch
 
 | Path | What |
 |---|---|
-| `worker/index.ts` | Routes: demo sign-in, chats, chat WebSocket, artifact pages (`/u/:id/v:n`), the MCP proxy, files |
+| `worker/index.ts` | Routes: identity, chats, chat WebSocket, artifact pages (`/u/:id/v:n`), the MCP proxy, files |
 | `worker/chat-agent.ts` | `ChatAgent` DO: `PiHarness`, the chat socket, `artifactCall`, rate limit |
 | `worker/mcp/` | `McpHub` (connections, cache, coalescing, hint), the MCP SDK connector, the server list |
 | `worker/agent/` | Pi tools (MCP, files, artifacts, `run_python`) and the system prompt |
 | `worker/artifacts/` | R2 storage, manifest checks, the CSP and the runtime injection |
+| `worker/auth/`, `worker/storage/` | Access token verification; the storage gatekeeper with per-user encrypted files |
 | `cloudflare.config.ts` | The Worker, its bindings, Durable Object exports and the sandbox container (cf CLI) |
 | `worker/users.ts`, `worker/sandbox.ts` | `UserDirectory` DO (chats and artifacts per user), `Sandbox` DO (the container) |
 | `runtime/` | The page runtime and its contract |
@@ -104,8 +105,10 @@ pnpm install
 pnpm dev        # cf dev: needs a Cloudflare login (cf auth login; the AI binding is remote) and Docker (the sandbox)
 ```
 
-- **Without a Cloudflare account or Docker:** run `PI_OFFLINE=1 PI_NO_DOCKER=1 pnpm dev`. Everything works except
-  the model and `run_python`.
+- **Locally, sign in with a typed name:** `AUTH_MODE=demo pnpm dev`. Without it the app expects Cloudflare Access,
+  which only exists once deployed.
+- **Without a Cloudflare account or Docker:** run `AUTH_MODE=demo PI_OFFLINE=1 PI_NO_DOCKER=1 pnpm dev`. Everything
+  works except the model and `run_python`.
 - **Testing live data without the model:** start with `DEV_TOOLS=true` added to the command above, which enables a
   publish route, then publish the example page into a chat:
 
@@ -117,7 +120,8 @@ pnpm dev        # cf dev: needs a Cloudflare login (cf auth login; the AI bindin
   # → {"artifactId":"…","version":1}; open http://localhost:5173/a/<artifactId>
   ```
 
-Tests: `pnpm test` covers the hub and the broker, and `LIVE=1 pnpm test` also calls CoinGecko. Typecheck with
+Tests: `pnpm test` covers the hub, the broker, Access token checks and the storage rules (including a test that fails
+if code outside `worker/storage/` touches the bucket). `LIVE=1 pnpm test` also calls CoinGecko. Typecheck with
 `pnpm typecheck`.
 
 ## Deploy
@@ -130,7 +134,27 @@ The project uses Cloudflare's [`cf` CLI](https://developers.cloudflare.com/cf/);
 3. Create an AI Gateway named `pi-artifacts` and store an Anthropic key in it (BYOK), or use unified billing.
    `MODEL` in `cloudflare.config.ts` is a pi-ai gateway specifier (`anthropic/claude-sonnet-5.5`). A Workers AI id
    such as `@cf/zai-org/glm-5.3-flash` needs no key.
-4. `pnpm run deploy` (`cf deploy`). This builds the sandbox image with Docker and needs the Workers Paid plan.
+4. Put the app behind Cloudflare Access: create a self-hosted Access application for the Worker's hostname with a
+   policy listing who may sign in, then set `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` (the application's audience tag) in
+   `cloudflare.config.ts`.
+5. Generate the file-encryption master key (`openssl rand -base64 32`) and keep a copy somewhere safe: losing it makes
+   every user's files unreadable. Pass it as a secret: `cf deploy --secrets-file secrets.json` with
+   `{"FILES_MASTER_KEY": "…"}`.
+6. `pnpm run deploy` (`cf deploy`). This builds the sandbox image with Docker and needs the Workers Paid plan.
+
+## Who can read what
+
+- **Sign-in:** Cloudflare Access lets only the people in its policy reach the app at all. The Worker then verifies the
+  token Access signs (signature against the team's keys, issuer, audience, expiry) and derives the user's id from it.
+  The id never comes from the browser or the model.
+- **One gatekeeper for storage:** only `worker/storage/` touches the R2 bucket, and a test enforces it. Everything else
+  gets either the artifact store or a `UserFiles` handle scoped to one user, which builds every key under that user's
+  folder and rejects paths like `..` or absolute paths.
+- **Per-user encryption:** user files are stored with R2 customer-supplied keys (SSE-C). Each user's key is derived
+  with HKDF from `FILES_MASTER_KEY` and their id, so reading another user's object with the wrong key fails inside R2.
+  (The local R2 simulator ignores these keys; the encryption only applies once deployed.)
+- **Artifacts** are shared by link with anyone Access lets in, and are not encrypted per user. Only their owner's chat
+  can publish new versions.
 
 Artifact pages are served from the app's own origin inside an opaque-origin sandbox. That is enough to keep them away
 from the app's cookies and storage. A production deployment should still serve `/u/*` from a separate domain, as
@@ -138,9 +162,8 @@ claude.ai uses `*.claudeusercontent.com`.
 
 ## Limits and what's next
 
-- **Sign-in is a demo.** You type a name and get a cookie, so anyone typing the same name gets the same chats.
-  Artifacts are viewable by anyone with the link. Real auth (Cloudflare Access, OAuth) comes next, then per-viewer
-  consent.
+- **Access policy is per email.** Adding people means adding them to the Access policy. Per-viewer consent for live
+  data (as in Claude's artifacts) is not built yet.
 - **Verified deployed with Claude Sonnet 5.5:** the agent built a live BTC/ETH/SOL dashboard from one prompt and, when
   told what was wrong, fixed it as version 2 of the same artifact.
 

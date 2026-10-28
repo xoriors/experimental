@@ -31,6 +31,14 @@ export default defineConfig({
       // Alias of the provider key stored in the gateway (Provider Keys). Empty: the key aliased "default", else unified billing.
       AI_BYOK_ALIAS: bindings.text(""),
       SANDBOX_ENABLED: bindings.text(withSandbox ? "true" : "false"),
+      // Who is signed in. "access" (the default, and the only mode to deploy): a verified Cloudflare Access token.
+      // "demo" (AUTH_MODE=demo pnpm dev): a typed name in a cookie, for local development only.
+      AUTH_MODE: bindings.text(process.env.AUTH_MODE === "demo" ? "demo" : "access"),
+      ACCESS_TEAM_DOMAIN: bindings.text("xorio42.cloudflareaccess.com"),
+      // The Access application's audience (AUD) tag, from Zero Trust → Access → Applications → pi-artifacts.
+      ACCESS_AUD: bindings.text("21dcccf4fbfa5991beb76a9ac48ff0c0de86d3c1a55597c82e141559e3ebcdc9"),
+      // 32+ random bytes, base64. Each user's files are encrypted with a key derived from it: losing it loses the files.
+      FILES_MASTER_KEY: bindings.secret(),
       // DEV_TOOLS=true (when running pnpm dev) enables POST /api/dev/chats/:id/publish. Never set it for a deploy.
       DEV_TOOLS: bindings.text(process.env.DEV_TOOLS === "true" ? "true" : "false"),
       // Workers AI binding. Pi's createAI() routes Claude through AI Gateway with it.

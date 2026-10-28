@@ -2,16 +2,19 @@ import { Type } from "@earendil-works/pi-ai";
 import { exports } from "cloudflare:workers";
 import { defineExtension, defineTool, section, type Extension } from "@earendil-works/pi-durable";
 import type { ArtifactManifest, ArtifactMeta } from "../../shared/protocol.ts";
-import { checkManifest, MAX_HTML_BYTES, publishVersion, readHtml, readMeta } from "../artifacts/store.ts";
+import { checkManifest, MAX_HTML_BYTES } from "../artifacts/manifest.ts";
 import type { McpHub } from "../mcp/hub.ts";
+import type { ArtifactStore, UserFiles } from "../storage/index.ts";
 import type { ToolInfo } from "../../shared/protocol.ts";
 
 /** What the tools need from the chat they run in. */
 export interface ChatScope {
   uid: string;
   chatId: string;
-  env: Env;
   hub: McpHub;
+  artifacts: ArtifactStore;
+  /** This chat's user's files: scoped to the uid and encrypted with that user's key. */
+  files: () => Promise<UserFiles>;
   onPublished(artifact: { id: string; title: string; latest: number; updatedAt: number }): Promise<void>;
 }
 
@@ -61,26 +64,18 @@ export function mcpExtension(hub: McpHub, catalog: Map<string, ToolInfo[]>): Ext
   });
 }
 
-const PATH = /^(?!\/)(?!.*\.\.)[\w .\-/]{1,200}$/;
-
-function filesKey(scope: ChatScope, path: string): string {
-  if (!PATH.test(path)) throw new Error(`Invalid path "${path}": use letters, digits, spaces, . - _ and /, no leading / or "..".`);
-  return `users/${scope.uid}/files/${path}`;
-}
-
 export function filesExtension(scope: ChatScope): Extension {
-  const prefix = `users/${scope.uid}/files/`;
   return defineExtension({
     name: "files",
     tools: [
       defineTool({
         name: "files_list",
         description: "List the user's files (uploads and files your scripts saved), with sizes.",
-        parameters: Type.Object({ prefix: Type.Optional(Type.String({ description: "Only paths starting with this." })) }),
+        parameters: Type.Object({ folder: Type.Optional(Type.String({ description: "Only files in this folder, e.g. uploads." })) }),
         replay: "safe",
         execute: async (args) => {
-          const listing = await scope.env.FILES.list({ prefix: prefix + (args.prefix ?? ""), limit: 500 });
-          const lines = listing.objects.map((o) => `${o.key.slice(prefix.length)}\t${o.size} bytes`);
+          const entries = await (await scope.files()).list(args.folder ?? "");
+          const lines = entries.map((e) => `${e.path}\t${e.size} bytes`);
           return { output: text(lines.length ? lines.join("\n") : "No files.") };
         },
       }),
@@ -90,7 +85,7 @@ export function filesExtension(scope: ChatScope): Extension {
         parameters: Type.Object({ path: Type.String() }),
         replay: "safe",
         execute: async (args) => {
-          const object = await scope.env.FILES.get(filesKey(scope, args.path), { range: { offset: 0, length: 100_000 } });
+          const object = await (await scope.files()).get(args.path, { offset: 0, length: 100_000 });
           if (!object) throw new Error(`No file "${args.path}".`);
           return { output: text(clip(await object.text())) };
         },
@@ -100,7 +95,7 @@ export function filesExtension(scope: ChatScope): Extension {
         description: "Write a UTF-8 text file into the user's files, replacing any file at that path.",
         parameters: Type.Object({ path: Type.String(), content: Type.String() }),
         execute: async (args) => {
-          await scope.env.FILES.put(filesKey(scope, args.path), args.content);
+          await (await scope.files()).put(args.path, args.content, "text/plain; charset=utf-8");
           return { output: text(`Wrote ${args.path} (${args.content.length} characters).`) };
         },
       }),
@@ -123,9 +118,10 @@ export function sandboxExtension(scope: ChatScope): Extension {
           files: Type.Optional(Type.Array(Type.String(), { description: "Paths of the user's files to copy in." })),
         }),
         execute: async (args) => {
+          const files = await scope.files();
           const inputs = [];
           for (const path of args.files ?? []) {
-            const object = await scope.env.FILES.get(filesKey(scope, path));
+            const object = await files.get(path);
             if (!object) throw new Error(`No file "${path}".`);
             inputs.push({ name: path.split("/").pop()!, bytes: await object.arrayBuffer() });
           }
@@ -133,7 +129,7 @@ export function sandboxExtension(scope: ChatScope): Extension {
           const run = await sandbox.runPython(args.code, inputs);
           const saved = [];
           for (const output of run.outputs) {
-            await scope.env.FILES.put(filesKey(scope, `out/${output.name}`), output.bytes);
+            await files.put(`out/${output.name}`, output.bytes);
             saved.push(`out/${output.name}`);
           }
           const report = [`exit code ${run.exitCode}`, `stdout:\n${run.stdout}`, run.stderr && `stderr:\n${run.stderr}`, saved.length && `saved: ${saved.join(", ")}`];
@@ -153,7 +149,7 @@ export async function publishArtifact(
   const manifest: ArtifactManifest = input.mcp?.length ? { mcp: { servers: input.mcp } } : {};
   const problems = await checkManifest(scope.hub, manifest);
   if (problems.length) throw new Error(`Not published. Fix the mcp declaration:\n${problems.join("\n")}`);
-  const meta = await publishVersion(scope.env.FILES, {
+  const meta = await scope.artifacts.publishVersion({
     id: input.artifactId,
     ownerUid: scope.uid,
     chatId: scope.chatId,
@@ -198,10 +194,10 @@ export function artifactExtension(scope: ChatScope): Extension {
         parameters: Type.Object({ artifact_id: Type.String(), version: Type.Optional(Type.Number()) }),
         replay: "safe",
         execute: async (args) => {
-          const meta = await readMeta(scope.env.FILES, args.artifact_id);
+          const meta = await scope.artifacts.readMeta(args.artifact_id);
           if (!meta || meta.chatId !== scope.chatId || meta.ownerUid !== scope.uid) throw new Error(`No artifact ${args.artifact_id} in this chat.`);
           const version = args.version ?? meta.latest;
-          const html = await readHtml(scope.env.FILES, meta.id, version);
+          const html = await scope.artifacts.readHtml(meta.id, version);
           if (html === null) throw new Error(`Artifact ${meta.id} has no version ${version}.`);
           const declared = JSON.stringify(meta.versions.find((v) => v.version === version)?.manifest ?? {});
           return { output: text(`Version ${version} of ${meta.latest}, manifest ${declared}:\n\n${html}`) };

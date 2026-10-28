@@ -8,6 +8,12 @@ export interface ArtifactSummary {
   updatedAt: number;
 }
 
+export interface Me {
+  uid: string;
+  email?: string;
+  auth: "access" | "demo";
+}
+
 export interface FileInfo {
   path: string;
   size: number;
@@ -23,7 +29,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const post = (body: unknown): RequestInit => ({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 export const api = {
-  me: () => request<{ uid: string }>("/api/me"),
+  /** The signed-in user, or null with the Worker's auth mode when nobody is. */
+  me: async (): Promise<{ me: Me | null; auth: Me["auth"] }> => {
+    const response = await fetch("/api/me", { credentials: "same-origin" });
+    const body = (await response.json().catch(() => ({}))) as Partial<Me>;
+    const auth = body.auth === "demo" ? "demo" : "access";
+    return response.ok && body.uid ? { me: body as Me, auth } : { me: null, auth };
+  },
   signIn: (name: string) => request<{ uid: string }>("/api/session", post({ name })),
   signOut: () => request<object>("/api/session", { method: "DELETE" }),
   chats: () => request<ChatSummary[]>("/api/chats"),

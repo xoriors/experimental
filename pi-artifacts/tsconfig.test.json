@@ -26,6 +26,10 @@
     "src/chat/useChat.ts",
     "src/api.ts",
     "shared",
-    "worker/mcp"
+    "worker/mcp",
+    "worker/storage/paths.ts",
+    "worker/storage/keys.ts",
+    "worker/storage/user-files.ts",
+    "worker/auth/access.ts"
   ]
 }

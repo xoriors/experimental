@@ -49,23 +49,43 @@ button.primary { background: var(--accent); color: var(--accent-text); border-co
 
 .workspace {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  /* sidebar | handle | chat [| handle | preview]. Widths come from App.tsx as custom properties. */
+  grid-template-columns: var(--sidebar-w, 240px) 6px minmax(0, 1fr);
   /* One row as tall as the viewport: the columns scroll inside, never the page. */
   grid-template-rows: minmax(0, 1fr);
   height: 100%;
   overflow: hidden;
 }
-.workspace.with-preview { grid-template-columns: 240px minmax(320px, 1fr) minmax(0, 1.4fr); }
+.workspace.with-preview { grid-template-columns: var(--sidebar-w, 240px) 6px minmax(320px, var(--chat-w, 40%)) 6px minmax(360px, 1fr); }
+
+.resize-handle { position: relative; cursor: col-resize; touch-action: none; background: linear-gradient(var(--border), var(--border)) center / 1px 100% no-repeat; }
+.resize-handle::after { content: ""; position: absolute; inset: 0 2px; background: transparent; transition: background 0.15s; }
+.resize-handle:hover::after, .resize-handle:focus-visible::after, body.resizing .resize-handle::after { background: var(--accent); }
+.resize-handle:focus-visible { outline: none; }
+.resize-handle.disabled { cursor: default; pointer-events: none; }
+/* While dragging, the preview iframe must not take the pointer, and nothing gets selected. */
+body.resizing { cursor: col-resize; user-select: none; }
+body.resizing iframe { pointer-events: none; }
 
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 14px;
-  border-right: 1px solid var(--border);
   background: var(--surface);
   overflow-y: auto;
+  min-width: 0;
 }
+.sidebar-top { display: flex; gap: 6px; }
+.connection { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0 3px 8px; font-size: 14px; }
+.connection span { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.connection button { padding: 3px 10px; font-size: 13px; }
+.connection .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.connection .dot.on { background: var(--live); }
+.connection-error { font-size: 13px; padding: 0 8px; margin: 4px 0; }
+.sidebar-top .primary { flex: 1; }
+.sidebar.rail { align-items: center; padding: 14px 8px; }
+.sidebar.rail button { width: 36px; padding: 6px 0; }
 .sidebar h3 { margin: 14px 0 2px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .sidebar nav { display: flex; flex-direction: column; gap: 2px; }
 .sidebar nav a, .sidebar nav span {
@@ -150,6 +170,8 @@ button.primary { background: var(--accent); color: var(--accent-text); border-co
 
 @media (max-width: 900px) {
   .workspace, .workspace.with-preview { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .resize-handle { display: none; }
+  .sidebar.rail { flex-direction: row; justify-content: flex-start; }
   .sidebar { border-right: 0; border-bottom: 1px solid var(--border); max-height: 40vh; }
   .workspace.with-preview .main { display: none; }
 }

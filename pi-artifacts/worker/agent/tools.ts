@@ -32,8 +32,12 @@ export function mcpToolName(server: string, tool: string): string {
   return `${server.toLowerCase().replace(/[^a-z0-9]+/g, "_")}__${tool.replace(/[^a-zA-Z0-9_-]/g, "_")}`.slice(0, 64);
 }
 
-/** One pi tool per MCP tool, calling through the hub the artifacts also use. */
-export function mcpExtension(hub: McpHub, catalog: Map<string, ToolInfo[]>): Extension {
+/**
+ * One pi tool per MCP tool, calling through the hub the artifacts also use.
+ * Servers that could not be listed (down, or the user has not signed in) are
+ * named in the prompt with the reason, so the agent can tell the user.
+ */
+export function mcpExtension(hub: McpHub, catalog: Map<string, ToolInfo[]>, unavailable = new Map<string, string>()): Extension {
   const tools = [];
   for (const [server, serverTools] of catalog) {
     for (const tool of serverTools) {
@@ -61,7 +65,14 @@ export function mcpExtension(hub: McpHub, catalog: Map<string, ToolInfo[]>): Ext
   return defineExtension({
     name: "mcp",
     tools,
-    sections: [section("mcp_servers", () => `MCP servers connected to this chat. Pages declare them by these exact names:\n${servers.join("\n")}`)],
+    sections: [
+      section("mcp_servers", () => {
+        const connected = `MCP servers connected to this chat. Pages declare them by these exact names:\n${servers.join("\n")}`;
+        if (unavailable.size === 0) return connected;
+        const missing = [...unavailable].map(([name, reason]) => `- "${name}": ${hub.servers().find((s) => s.name === name)?.description ?? ""}\n  Not available now: ${reason}`);
+        return `${connected}\n\nServers this chat cannot use right now; if the user asks for their data, say why and what to do:\n${missing.join("\n")}`;
+      }),
+    ],
   });
 }
 

@@ -71,7 +71,10 @@ export class McpHub {
   async tools(server: string): Promise<ToolInfo[]> {
     let tools = this.#tools.get(server);
     if (!tools) {
-      tools = this.#withConnection(server, (connection) => connection.listTools());
+      const hidden = this.#config(server).hideTools;
+      tools = this.#withConnection(server, (connection) => connection.listTools()).then((list) =>
+        hidden ? list.filter((tool) => !hidden.test(tool.name)) : list,
+      );
       this.#tools.set(server, tools);
       tools.catch(() => this.#tools.delete(server));
     }
@@ -166,6 +169,9 @@ export class McpHub {
       try {
         return await fn(await connection);
       } catch (error) {
+        const signIn = error instanceof McpFailure && error.error.code === "auth_required";
+        // A connection that needs a sign-in is dropped, so the next call after signing in connects afresh.
+        if (signIn && this.#connections.get(server) === connection) this.#connections.delete(server);
         if (error instanceof McpFailure) throw error;
         if (this.#connections.get(server) === connection) this.#connections.delete(server);
         connection.then((c) => c.close()).catch(() => {});

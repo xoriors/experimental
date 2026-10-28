@@ -125,3 +125,30 @@ describe("McpHub.read", () => {
     await expect(hub.call("Prices", "price", {})).rejects.toMatchObject({ error: { code: "server_unavailable", retryable: true } });
   });
 });
+
+describe("McpHub with signed-in servers", () => {
+  it("hides a server's tools by pattern", async () => {
+    const connection: McpConnection = {
+      listTools: async () => [
+        { name: "juyo2_whoami", description: "" },
+        { name: "portal_list_servers", description: "" },
+      ],
+      callTool: async () => text({}),
+      close: async () => {},
+    };
+    const hub = new McpHub([{ ...viewerScoped, hideTools: /^portal_/ }], async () => connection);
+    expect((await hub.tools("Prices")).map((t) => t.name)).toEqual(["juyo2_whoami"]);
+  });
+
+  it("connects afresh after a sign-in, instead of keeping the failed connection", async () => {
+    let signedIn = false;
+    const connection: McpConnection = { listTools: async () => [], callTool: async () => text({ ok: true }), close: async () => {} };
+    const hub = new McpHub([viewerScoped], async (server) => {
+      if (!signedIn) throw new McpFailure({ code: "auth_required", server: server.name, message: "Not signed in." });
+      return connection;
+    });
+    await expect(hub.call("Prices", "price", {})).rejects.toMatchObject({ error: { code: "auth_required" } });
+    signedIn = true;
+    expect((await hub.call("Prices", "price", {})).payload).toEqual({ ok: true });
+  });
+});

@@ -8,9 +8,11 @@ import type { ArtifactManifest, ChatClientMessage, ChatServerMessage, McpError, 
 import { promptExtension } from "./agent/prompt.ts";
 import { artifactExtension, filesExtension, mcpExtension, publishArtifact, sandboxExtension, type ChatScope } from "./agent/tools.ts";
 import { Storage } from "./storage/index.ts";
-import { connectStreamableHttp } from "./mcp/connect.ts";
+import { connectStreamableHttp, signInRequired } from "./mcp/connect.ts";
+import { McpOAuthClient } from "./mcp/oauth.ts";
 import { McpFailure, McpHub } from "./mcp/hub.ts";
-import { MCP_SERVERS } from "./mcp/servers.ts";
+import { mcpServers, type McpServerConfig } from "./mcp/servers.ts";
+import { mcpAuthStore } from "./users.ts";
 
 const SOCKET_TAG = "chat";
 const MAX_STALE_MS = 24 * 60 * 60_000;
@@ -30,7 +32,7 @@ export interface ArtifactCall {
  * same McpHub as the agent's tools. No model is involved in those calls.
  */
 export class ChatAgent extends DurableObject<Env> {
-  readonly hub = new McpHub(MCP_SERVERS, connectStreamableHttp);
+  readonly hub = new McpHub(mcpServers(this.env), (server) => this.#connect(server));
   readonly storage = new Storage(this.env);
   readonly ai = createAI({ binding: this.env.AI, gateway: this.env.AI_GATEWAY_ID, byokAlias: this.env.AI_BYOK_ALIAS || undefined });
   readonly registry = createRegistry();
@@ -49,7 +51,9 @@ export class ChatAgent extends DurableObject<Env> {
   readonly scope: ChatScope;
   readonly #manifests = new Map<string, ArtifactManifest>();
   readonly #rate = new Map<string, { windowStart: number; count: number }>();
-  #mcpInstalled: Promise<void> | undefined;
+  #mcpRefresh: Promise<void> | undefined;
+  /** The servers whose tools the agent has now, so a refresh reinstalls only on a change. */
+  #mcpInstalled = "";
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -78,31 +82,47 @@ export class ChatAgent extends DurableObject<Env> {
 
   /** Called by Lifecycle once capabilities have started, including after an eviction. */
   onStart(): void {
-    void this.ensureMcpTools().catch(() => {});
+    void this.refreshMcpTools();
   }
 
-  /** List each MCP server's tools and install them as agent tools. Retried on the next prompt if it fails. */
-  ensureMcpTools(): Promise<void> {
-    this.#mcpInstalled ??= (async () => {
+  /**
+   * List each MCP server's tools and install them as agent tools. Runs before
+   * every prompt: tool lists are cached, and a server the user has signed in
+   * to since (or whose sign-in expired) joins or leaves then.
+   */
+  refreshMcpTools(): Promise<void> {
+    this.#mcpRefresh ??= (async () => {
       const catalog = new Map<string, ToolInfo[]>();
+      const unavailable = new Map<string, string>();
       for (const server of this.hub.servers()) {
         try {
           catalog.set(server.name, await this.hub.tools(server.name));
         } catch (error) {
-          console.warn(`MCP server ${server.name} is unavailable`, error);
+          unavailable.set(server.name, error instanceof McpFailure ? error.error.message : String(error));
         }
       }
-      if (catalog.size === 0) throw new Error("No MCP server answered.");
-      this.registry.install(mcpExtension(this.hub, catalog));
-    })().catch((error) => {
-      this.#mcpInstalled = undefined;
-      throw error;
+      const installed = JSON.stringify([[...catalog.keys()], [...unavailable.keys()]]);
+      if (installed !== this.#mcpInstalled) {
+        this.registry.install(mcpExtension(this.hub, catalog, unavailable));
+        this.#mcpInstalled = installed;
+      }
+    })().finally(() => {
+      this.#mcpRefresh = undefined;
     });
-    return this.#mcpInstalled;
+    return this.#mcpRefresh;
+  }
+
+  /** Public servers connect as they are; a server with `auth: "oauth"` connects with this chat's user's own tokens. */
+  async #connect(server: McpServerConfig) {
+    if (server.auth !== "oauth") return connectStreamableHttp(server);
+    const store = mcpAuthStore(this.uid, server.name);
+    const { tokens, redirectUrl } = await store.get();
+    if (!tokens || !redirectUrl) throw signInRequired(server.name);
+    return connectStreamableHttp(server, new McpOAuthClient(store, server.name, { redirectUrl, interactive: false }));
   }
 
   async prompt(text: string): Promise<void> {
-    await this.ensureMcpTools().catch(() => {});
+    await this.refreshMcpTools().catch(() => {});
     const first = (await this.harness.messages()).length === 0;
     await this.harness.submit(text);
     await exports.UserDirectory.getByName(this.uid).touchChat(this.chatId, first ? text : undefined);
@@ -144,6 +164,10 @@ export class ChatAgent extends DurableObject<Env> {
     const declared = manifest.mcp?.servers.find((entry) => entry.server === server);
     if (!declared?.tools.includes(tool)) {
       return fail({ code: "not_in_manifest", server, message: `This page did not declare ${server}/${tool} when it was published.` });
+    }
+
+    if (this.hub.servers().find((s) => s.name === server)?.pageCallers === "author" && viewer !== this.uid) {
+      return fail({ code: "not_granted", server, message: `${server} holds private data, so only the page's author can load it.` });
     }
 
     try {

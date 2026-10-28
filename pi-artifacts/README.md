@@ -47,7 +47,7 @@ each viewer's own connectors instead. Two things follow from that:
 - Tools that are not marked `readOnlyHint` are refused for everyone but the author, are never cached and cannot be
   watched.
 
-There is no MCP auth yet, so only keyless servers are configured.
+CoinGecko needs no sign-in. Juyo needs each user's own; see [Servers that need your own sign-in](#servers-that-need-your-own-sign-in).
 
 **Polling with a server hint.** Every response carries `nextRefreshAt`: when the Durable Object's copy goes stale.
 
@@ -64,6 +64,54 @@ Measured against CoinGecko:
 - The prices it returns are already 18–32 s old.
 
 So upstream freshness, not the transport, sets how live the page can be.
+
+## Servers that need your own sign-in
+
+Juyo (hotel data) is reached through the Cloudflare MCP portal `juyo`, which fronts the MCP server `juyo2`. Juyo
+signs people in with Cognito, and every user must use their own account, so the app is an ordinary MCP OAuth client
+of the portal (`worker/mcp/oauth.ts`, built on the MCP SDK):
+
+1. **Connections** in the sidebar lists the servers. Juyo shows **Sign in** until you have.
+2. Sign in opens a popup. The Worker discovers the portal's authorization server, registers a client (dynamic
+   registration) and builds a PKCE authorization URL whose `state` names the server.
+3. In the popup you sign in to Cloudflare Access for the portal, then select **Connect** for `juyo2` and sign in to
+   Cognito. The portal keeps your Cognito session; the app never sees it.
+4. The portal sends the popup back to `/api/mcp/oauth/callback`. The Worker checks the `state` against the sign-in it
+   started for *you* (the callback needs your app session too), exchanges the code, and stores your tokens. The popup
+   tells the app and closes.
+
+Where things live and who can use them:
+
+- **Tokens are per user.** They are kept in your `UserDirectory` Durable Object, which only requests carrying your
+  verified identity reach. All your chats share them, and nobody else's chats can.
+- **Chats call as you.** A chat's connection to Juyo carries your token, which the SDK refreshes when it expires. When
+  it can't be refreshed, or you signed out, calls fail with `auth_required`. The agent's prompt names Juyo as
+  unavailable and why, so it can tell you to sign in. After you do, your next prompt picks up Juyo's tools.
+- **Pages with Juyo data are for their author only.** A page calls through its author's chat, so it would show the
+  author's data to anyone who opens the link. Juyo is therefore marked `pageCallers: "author"`. The author's own
+  views load; anyone else gets `not_granted`. Claude's artifacts instead use each viewer's own connectors; doing that
+  here means routing a viewer's calls through their own tokens.
+- **The portal's own tools are hidden.** `portal_list_servers` and the like switch servers on and off for a session,
+  so neither the agent nor pages see them (`hideTools`).
+- **Sign out** forgets your tokens here. To end the portal's session as well, sign out on the portal's home page.
+
+`test/mcp-oauth.test.ts` runs the whole flow against a stand-in portal with discovery, registration, PKCE and refresh:
+- a sign-in;
+- two users kept apart;
+- a forged `state` refused;
+- refresh on expiry;
+- `auth_required` when refresh fails, leaving an open sign-in untouched.
+
+Locally, `JUYO_PORTAL_URL=… pnpm dev` points Juyo at another portal.
+
+Setting up the portal (Zero Trust → Access controls → MCP Portals):
+
+- The portal needs its own hostname, a subdomain of a zone in the account. On the bare domain of a site that already
+  exists, `/mcp` reaches the site instead.
+- Both the portal's Access application and `juyo2`'s need an Allow policy listing who may use them. Without one,
+  nobody can sign in.
+- Keep **Require user auth** on for `juyo2`: that is what makes each person sign in to Cognito themselves.
+- Set the portal's `/mcp` address as `JUYO_PORTAL_URL` in `cloudflare.config.ts`.
 
 ## The page runtime
 
@@ -90,14 +138,14 @@ await mcp.invalidate("CoinGecko");                                    // refetch
 |---|---|
 | `worker/index.ts` | Routes: identity, chats, chat WebSocket, artifact pages (`/u/:id/v:n`), the MCP proxy, files |
 | `worker/chat-agent.ts` | `ChatAgent` DO: `PiHarness`, the chat socket, `artifactCall`, rate limit |
-| `worker/mcp/` | `McpHub` (connections, cache, coalescing, hint), the MCP SDK connector, the server list |
+| `worker/mcp/`, `worker/mcp-routes.ts` | `McpHub` (connections, cache, coalescing, hint), the MCP SDK connector, the server list, per-user OAuth sign-in and its routes |
 | `worker/agent/` | Pi tools (MCP, files, artifacts, `run_python`) and the system prompt |
 | `worker/artifacts/` | Manifest checks, the CSP and the runtime injection |
 | `worker/auth/`, `worker/storage/` | Access token verification; the storage gatekeeper: artifact repos, per-user encrypted files |
 | `cloudflare.config.ts` | The Worker, its bindings, Durable Object exports and the sandbox container (cf CLI) |
 | `worker/users.ts`, `worker/sandbox.ts` | `UserDirectory` DO (chats and artifacts per user), `Sandbox` DO (the container) |
 | `runtime/` | The page runtime and its contract |
-| `src/` | React app: chats, the streamed transcript, the preview panel, `ArtifactBroker` |
+| `src/` | React app: chats, the streamed transcript, the preview panel, `ArtifactBroker`, Connections; resizable columns (`layout.tsx`) |
 | `shared/` | Types and helpers used by all of the above |
 
 ## Run it
@@ -243,12 +291,17 @@ claude.ai uses `*.claudeusercontent.com`.
 
   ![A dashboard the deployed agent built](docs/agent-dashboard.png)
 
-  The `run_python` sandbox has not been exercised in production yet. Neither have artifact repos: publishing, cloning
-  and the import of older artifacts are verified against the local Artifacts backend and in tests.
+  Also verified deployed:
+  - `run_python` wrote a file into the user's files;
+  - R2 refuses to read that file without its key ("stored using a form of Server Side Encryption");
+  - a publish created the artifact's repo, and its `git` button produced a working clone command.
+
+  The Juyo sign-in has been verified only locally, against a stand-in portal, because the `juyo` portal is not
+  reachable yet (see [Servers that need your own sign-in](#servers-that-need-your-own-sign-in)).
 - **Pi Durable is experimental.** It has no tool approvals, conversations can't be deleted yet, and a reconnecting
   client resumes from a fresh snapshot rather than a cursor.
 - **Next:**
   - a screenshot self-check in the sandbox before publishing
-  - MCP servers that need OAuth
+  - live data from servers like Juyo for every viewer, each with their own sign-in
   - WebSocket push for sources that stream
   - a separate preview domain

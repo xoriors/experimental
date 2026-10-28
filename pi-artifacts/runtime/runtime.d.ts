@@ -35,8 +35,9 @@ interface Pi {
 type PiMcpErrorCode =
   | "server_not_connected" // the chat has no server by that name
   | "server_unavailable" //   upstream down or slow; retryable
+  | "auth_required" //        the page's author must sign in to this server in the app (it needs their own login)
   | "not_in_manifest" //      (server, tool) not declared at publish: a page bug
-  | "not_granted" //          a write tool, and the viewer is not the page's author
+  | "not_granted" //          a write tool, or a server with private data, and the viewer is not the page's author
   | "tool_error" //           the tool ran and reported failure; `message` says why
   | "bad_request" //          bad arguments, or watchTool on a tool that is not read-only
   | "rate_limited" //         too many calls; wait `retryAfterMs`

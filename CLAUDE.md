@@ -43,11 +43,16 @@ with `@cloudflare/vite-plugin`, pnpm; configured and deployed with the `cf` CLI 
 - Identity comes only from a verified Cloudflare Access token (`worker/auth/`). Only `worker/storage/` may touch the R2
   bucket or the Artifacts binding `REPOS` (a test enforces it); user files go through `UserFiles`, scoped per uid and
   encrypted with a per-user SSE-C key derived from the `FILES_MASTER_KEY` secret.
+- MCP servers live in `worker/mcp/servers.ts`. Juyo goes through the Cloudflare MCP portal `juyo` with each user's own
+  sign-in (MCP OAuth client in `worker/mcp/oauth.ts`; tokens per user in `UserDirectory`; routes in
+  `worker/mcp-routes.ts`; `test/mcp-oauth.test.ts` runs the flow against a stand-in portal). Its pages are author-only
+  (`pageCallers`), since pages call as their author.
 - Each artifact is the repo `artifact-<id>`: one commit and tag `v<n>` per publish, pushed with isomorphic-git
   (`worker/storage/git.ts`), since the binding cannot write files. `pnpm dev` uses a local Git backend for it (needs
   `git`); `test/artifact-store.test.ts` runs the real Git code against `git http-backend`.
 - The README lists the security model (manifest per version, author's connections, write tools only for the author)
-  and what has been verified in production (agent runs with Claude via AI Gateway; not yet `run_python`).
+  and what has been verified in production (agent runs, `run_python`, per-user R2 encryption, artifact repos; the Juyo
+  sign-in only locally).
 - Deploy with `cf deploy` from `pi-artifacts/` (Worker `pi-artifacts` on workers.dev; R2 bucket, Artifacts namespace and AI
   Gateway all named `pi-artifacts`). The sandbox image build needs Docker.
 

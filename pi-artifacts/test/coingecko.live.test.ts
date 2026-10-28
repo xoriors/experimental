@@ -1,11 +1,11 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { connectStreamableHttp } from "../worker/mcp/connect.ts";
 import { McpHub } from "../worker/mcp/hub.ts";
-import { MCP_SERVERS } from "../worker/mcp/servers.ts";
+import { mcpServers } from "../worker/mcp/servers.ts";
 
 // Calls the real public CoinGecko MCP server. Run with LIVE=1 pnpm test.
 describe.skipIf(!process.env.LIVE)("CoinGecko MCP (live)", () => {
-  const hub = new McpHub(MCP_SERVERS, connectStreamableHttp);
+  const hub = new McpHub(mcpServers({}), connectStreamableHttp);
   afterAll(() => hub.close());
 
   it("lists read-only code-mode tools", async () => {

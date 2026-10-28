@@ -41,6 +41,9 @@ export default defineConfig({
       FILES_MASTER_KEY: bindings.secret(),
       // DEV_TOOLS=true (when running pnpm dev) enables POST /api/dev/chats/:id/publish. Never set it for a deploy.
       DEV_TOOLS: bindings.text(process.env.DEV_TOOLS === "true" ? "true" : "false"),
+      // The Cloudflare MCP portal "juyo" (server juyo2). Each user signs in to it themselves; see worker/mcp/oauth.ts.
+      // JUYO_PORTAL_URL=… pnpm dev points it at another portal, e.g. a local one.
+      JUYO_PORTAL_URL: bindings.text(process.env.JUYO_PORTAL_URL ?? "https://oxfer.app/mcp"),
       // Workers AI binding. Pi's createAI() routes Claude through AI Gateway with it.
       AI: bindings.ai({}),
       // Each user's files (users/<uid>/files/…), and a read cache of artifact versions (artifacts/<id>/…).

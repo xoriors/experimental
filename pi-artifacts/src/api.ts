@@ -14,6 +14,12 @@ export interface Me {
   auth: "access" | "demo";
 }
 
+export interface McpServerStatus {
+  name: string;
+  auth: "none" | "oauth";
+  signedIn: boolean;
+}
+
 export interface FileInfo {
   path: string;
   size: number;
@@ -52,6 +58,9 @@ export const api = {
     throw new Error(`The proxy answered ${response.status}`);
   },
   files: () => request<FileInfo[]>("/api/files"),
+  mcpServers: () => request<McpServerStatus[]>("/api/mcp/servers"),
+  mcpSignIn: (name: string) => request<{ url: string } | { signedIn: true }>(`/api/mcp/servers/${encodeURIComponent(name)}/sign-in`, post({})),
+  mcpSignOut: (name: string) => request<{ signedIn: false }>(`/api/mcp/servers/${encodeURIComponent(name)}/sign-out`, post({})),
   upload: (file: File) => {
     const form = new FormData();
     form.set("file", file);

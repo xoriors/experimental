@@ -2,6 +2,7 @@ import { exports } from "cloudflare:workers";
 import { ID_PATTERN, UID_PATTERN, type ProxyRequest } from "../shared/protocol.ts";
 import { artifactResponse } from "./artifacts/serve.ts";
 import { DEMO_COOKIE, identify } from "./auth/index.ts";
+import { mcpRoute } from "./mcp-routes.ts";
 import { newId, PathError, Storage } from "./storage/index.ts";
 
 export { ChatAgent } from "./chat-agent.ts";
@@ -83,6 +84,9 @@ async function route(request: Request, env: Env): Promise<Response> {
       return access ? json(access) : json({ error: "This artifact has no repository yet; it gets one when it is next published." }, 404);
     }
   }
+
+  const mcp = await mcpRoute(request, env, uid);
+  if (mcp) return mcp;
 
   const directory = exports.UserDirectory.getByName(uid);
   if (path === "/api/chats" && method === "GET") return json(await directory.listChats());

@@ -5,6 +5,7 @@
 export type McpErrorCode =
   | "server_not_connected"
   | "server_unavailable"
+  | "auth_required"
   | "not_in_manifest"
   | "not_granted"
   | "tool_error"

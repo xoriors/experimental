@@ -1,5 +1,6 @@
-import { DurableObject } from "cloudflare:workers";
+import { DurableObject, exports } from "cloudflare:workers";
 import type { ChatSummary } from "../shared/protocol.ts";
+import type { McpAuthRecord, McpAuthStore } from "./mcp/oauth.ts";
 
 export interface ArtifactSummary {
   id: string;
@@ -9,6 +10,12 @@ export interface ArtifactSummary {
   updatedAt: number;
 }
 
+/** One user's OAuth state for one MCP server. `uid` must come from a verified identity. */
+export function mcpAuthStore(uid: string, server: string): McpAuthStore {
+  const directory = exports.UserDirectory.getByName(uid);
+  return { get: () => directory.mcpAuth(server), put: (record) => directory.setMcpAuth(server, record) };
+}
+
 /** One per user: the index of their chats and artifacts. The chats themselves live in ChatAgent objects. */
 export class UserDirectory extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
@@ -16,7 +23,19 @@ export class UserDirectory extends DurableObject<Env> {
     ctx.storage.sql.exec(`
       CREATE TABLE IF NOT EXISTS chats (id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, title TEXT NOT NULL, chat_id TEXT NOT NULL, latest INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS mcp_auth (server TEXT PRIMARY KEY, data TEXT NOT NULL);
     `);
+  }
+
+  /** This user's OAuth state for one MCP server (worker/mcp/oauth.ts): registration, tokens, a sign-in in progress. */
+  mcpAuth(server: string): McpAuthRecord {
+    const row = this.ctx.storage.sql.exec<{ data: string }>("SELECT data FROM mcp_auth WHERE server = ?", server).toArray()[0];
+    return row ? (JSON.parse(row.data) as McpAuthRecord) : {};
+  }
+
+  setMcpAuth(server: string, record: McpAuthRecord): void {
+    if (Object.keys(record).length === 0) this.ctx.storage.sql.exec("DELETE FROM mcp_auth WHERE server = ?", server);
+    else this.ctx.storage.sql.exec("INSERT INTO mcp_auth (server, data) VALUES (?, ?) ON CONFLICT(server) DO UPDATE SET data = excluded.data", server, JSON.stringify(record));
   }
 
   listChats(): ChatSummary[] {

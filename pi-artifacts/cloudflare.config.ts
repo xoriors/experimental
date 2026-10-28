@@ -47,7 +47,7 @@ export default defineConfig({
       // JUYO_PORTAL_URL=… pnpm dev points the portal entry elsewhere, e.g. at a local stand-in.
       MCP_SERVERS: bindings.json([
         { name: "CoinGecko", url: "https://mcp.api.coingecko.com/mcp" },
-        { name: "juyo", url: process.env.JUYO_PORTAL_URL ?? "https://oxfer.app/mcp", auth: "oauth" },
+        { name: "juyo", url: process.env.JUYO_PORTAL_URL ?? "https://juyo-mcp.oxfer.app/mcp", auth: "oauth" },
       ]),
       // Workers AI binding. Pi's createAI() routes Claude through AI Gateway with it.
       AI: bindings.ai({}),

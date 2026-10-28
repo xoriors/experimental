@@ -28,6 +28,8 @@ class FakePortal {
   readonly refresh = new Map<string, string>();
   ttlMs = 3_600_000;
   refreshAllowed = true;
+  /** Answer the token endpoint the way the edge did in production: a bare 403 "error code: 1014". */
+  tokenBlocked = false;
   origin = "";
 
   issue(user: string) {
@@ -81,6 +83,9 @@ class FakePortal {
       const clientId = `client-${this.clients.size + 1}`;
       this.clients.set(clientId, metadata.redirect_uris);
       return send(201, { ...metadata, client_id: clientId });
+    }
+    if (url.pathname === "/token" && this.tokenBlocked) {
+      return res.writeHead(403, { "content-type": "text/plain", "cf-ray": "abc123-ARN" }).end("error code: 1014");
     }
     if (url.pathname === "/token") {
       const form = new URLSearchParams(body);
@@ -231,5 +236,13 @@ describe("per-user MCP sign-in", () => {
     expect(ada.record.tokens).toBeUndefined();
     expect(ada.record.client!.client_id).toBe(clientId);
     expect(portal.clients.size).toBe(1);
+  });
+
+  it("names the request that failed when the code exchange is refused", async () => {
+    const ada = new MemoryStore();
+    const started = await startSignIn(config.url, "Juyo", ada, REDIRECT);
+    const { code, state } = portal.approve((started as { url: string }).url, "ada@juyo");
+    portal.tokenBlocked = true;
+    await expect(finishSignIn(config.url, "Juyo", ada, code, state)).rejects.toThrow(/error code: 1014.*\[POST http:\/\/127\.0\.0\.1:\d+\/token answered 403 \(Cloudflare Ray ID abc123-ARN\)\]/);
   });
 });

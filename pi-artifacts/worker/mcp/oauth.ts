@@ -132,7 +132,8 @@ export async function startSignIn(serverUrl: string, server: string, store: McpA
   const record = await store.get();
   await store.put(record.client && record.redirectUrl === redirectUrl ? { client: record.client, redirectUrl } : { redirectUrl });
   const client = new McpOAuthClient(store, server, { redirectUrl, interactive: true });
-  const result = await auth(client, { serverUrl });
+  const trace = tracedFetch();
+  const result = await auth(client, { serverUrl, fetchFn: trace.fetch }).catch(trace.explain);
   if (result === "AUTHORIZED") return { signedIn: true };
   if (!client.authorizationUrl) throw new Error(`${server} did not return a sign-in page.`);
   return { url: client.authorizationUrl.href };
@@ -141,9 +142,34 @@ export async function startSignIn(serverUrl: string, server: string, store: McpA
 /** Finish a sign-in from the callback: check the state, exchange the code for tokens, clear the sign-in in progress. */
 export async function finishSignIn(serverUrl: string, server: string, store: McpAuthStore, code: string, state: string): Promise<void> {
   const record = await store.get();
-  if (!record.state || record.state !== state || !record.redirectUrl) throw new Error("This sign-in did not start here, or a newer one replaced it. Start again from the sidebar.");
+  if (!record.state || record.state !== state || !record.redirectUrl) throw new Error("This sign-in did not start here, or a newer one replaced it. Open the sign-in link again.");
   const client = new McpOAuthClient(store, server, { redirectUrl: record.redirectUrl, interactive: true });
-  await auth(client, { serverUrl, authorizationCode: code });
+  const trace = tracedFetch();
+  await auth(client, { serverUrl, authorizationCode: code, fetchFn: trace.fetch }).catch(trace.explain);
   const { state: _state, verifier: _verifier, ...done } = await store.get();
   await store.put(done);
+}
+
+/**
+ * A fetch for the SDK's OAuth requests that remembers the last one that did
+ * not succeed, so a failed sign-in says which request failed: method, URL
+ * without its query, status, and Cloudflare's Ray ID when there is one.
+ */
+function tracedFetch() {
+  let failed: string | undefined;
+  return {
+    fetch: async (input: string | URL, init?: RequestInit): Promise<Response> => {
+      const response = await fetch(input, init);
+      if (!response.ok) {
+        const url = new URL(String(input));
+        const ray = response.headers.get("cf-ray");
+        failed = `${init?.method ?? "GET"} ${url.origin}${url.pathname} answered ${response.status}${ray ? ` (Cloudflare Ray ID ${ray})` : ""}`;
+      }
+      return response;
+    },
+    explain: (error: unknown): never => {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(failed ? `${message} [${failed}]` : message);
+    },
+  };
 }

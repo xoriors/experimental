@@ -137,9 +137,10 @@ The project uses Cloudflare's [`cf` CLI](https://developers.cloudflare.com/cf/);
 4. Put the app behind Cloudflare Access: create a self-hosted Access application for the Worker's hostname with a
    policy listing who may sign in, then set `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` (the application's audience tag) in
    `cloudflare.config.ts`.
-5. Generate the file-encryption master key (`openssl rand -base64 32`) and keep a copy somewhere safe: losing it makes
-   every user's files unreadable. Pass it as a secret: `cf deploy --secrets-file secrets.json` with
-   `{"FILES_MASTER_KEY": "…"}`.
+5. Generate the file-encryption master key (`openssl rand -base64 32`, at least 32 bytes) and keep a copy somewhere
+   safe: losing it makes every user's files unreadable, and changing it later needs a migration (see
+   [How file encryption works](#how-file-encryption-works)). Pass it as a secret:
+   `cf deploy --secrets-file secrets.json` with `{"FILES_MASTER_KEY": "…"}`, then delete `secrets.json`.
 6. `pnpm run deploy` (`cf deploy`). This builds the sandbox image with Docker and needs the Workers Paid plan.
 
 ## Who can read what
@@ -150,11 +151,42 @@ The project uses Cloudflare's [`cf` CLI](https://developers.cloudflare.com/cf/);
 - **One gatekeeper for storage:** only `worker/storage/` touches the R2 bucket, and a test enforces it. Everything else
   gets either the artifact store or a `UserFiles` handle scoped to one user, which builds every key under that user's
   folder and rejects paths like `..` or absolute paths.
-- **Per-user encryption:** user files are stored with R2 customer-supplied keys (SSE-C). Each user's key is derived
-  with HKDF from `FILES_MASTER_KEY` and their id, so reading another user's object with the wrong key fails inside R2.
-  (The local R2 simulator ignores these keys; the encryption only applies once deployed.)
+- **Per-user encryption:** user files are stored with R2 customer-supplied keys (SSE-C), one key per user. See
+  [How file encryption works](#how-file-encryption-works).
 - **Artifacts** are shared by link with anyone Access lets in, and are not encrypted per user. Only their owner's chat
   can publish new versions.
+
+### How file encryption works
+
+The master key never encrypts anything itself. It only derives each user's key, and R2 encrypts with that key.
+
+```
+Access token (verified) → sub
+uid     = first 32 hex chars of SHA-256("<team domain>:" + sub)                  worker/auth/index.ts
+userKey = HKDF-SHA-256(ikm = FILES_MASTER_KEY,                                   worker/storage/keys.ts
+                       salt = "pi-artifacts/user-files/v1", info = uid) → 256 bits
+UserFiles(uid, userKey): keys under users/<uid>/files/, every put/get passes {ssecKey: userKey}
+                                                                                  worker/storage/user-files.ts
+```
+
+- **No key is stored.** The derivation is deterministic, so a user's key is recomputed whenever their files are
+  opened.
+- **R2 encrypts with AES-256 and keeps only a fingerprint of the key.** A read without the key, or with another user's
+  key, is refused.
+- **A leaked user key reveals neither the master key nor anyone else's key.** HKDF is one-way.
+- **Two independent locks.** The path prefix is one and the key is the other. A prefix bug, or someone with only an R2
+  API token or the dashboard, can see objects but not read them.
+
+What it does not cover:
+
+- **It is not end-to-end encryption.** The Worker holds the master key, so it can derive any user's key, and it must, so
+  the agent can read your files for you. Anyone who can deploy this Worker or read its secrets can read every file.
+- **Metadata is visible.** Only file contents are encrypted. Object names (file paths), sizes, upload times and content
+  types are not.
+- **Losing the master key loses every file.** Changing it is a migration: read each file with the old key and write it
+  back with the new one. The `v1` in the salt leaves room for a second scheme during such a migration.
+- **The local R2 simulator ignores SSE-C.** In `AUTH_MODE=demo` a fixed demo key stands in for the master key, and
+  files are stored unencrypted. A deployed Worker without `FILES_MASTER_KEY` refuses all file access.
 
 Artifact pages are served from the app's own origin inside an opaque-origin sandbox. That is enough to keep them away
 from the app's cookies and storage. A production deployment should still serve `/u/*` from a separate domain, as

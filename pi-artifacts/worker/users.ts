@@ -1,6 +1,7 @@
 import { DurableObject, exports } from "cloudflare:workers";
 import type { ChatSummary } from "../shared/protocol.ts";
 import type { McpAuthRecord, McpAuthStore } from "./mcp/oauth.ts";
+import { mcpServers } from "./mcp/servers.ts";
 
 export interface ArtifactSummary {
   id: string;
@@ -25,6 +26,10 @@ export class UserDirectory extends DurableObject<Env> {
       CREATE TABLE IF NOT EXISTS artifacts (id TEXT PRIMARY KEY, title TEXT NOT NULL, chat_id TEXT NOT NULL, latest INTEGER NOT NULL, updated_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS mcp_auth (server TEXT PRIMARY KEY, data TEXT NOT NULL);
     `);
+    // Forget sign-ins to servers this deployment no longer has, tokens included.
+    const configured = mcpServers(env).map((server) => server.name);
+    const placeholders = configured.map(() => "?").join(", ");
+    ctx.storage.sql.exec(`DELETE FROM mcp_auth${configured.length ? ` WHERE server NOT IN (${placeholders})` : ""}`, ...configured);
   }
 
   /** This user's OAuth state for one MCP server (worker/mcp/oauth.ts): registration, tokens, a sign-in in progress. */

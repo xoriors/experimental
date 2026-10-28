@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { canonicalJson } from "../shared/canonical.ts";
 import { McpFailure, McpHub, type McpConnection, type RawToolResult } from "../worker/mcp/hub.ts";
-import type { McpServerConfig } from "../worker/mcp/servers.ts";
+import { mcpServers, type McpServerConfig } from "../worker/mcp/servers.ts";
 
-const viewerScoped: McpServerConfig = { name: "Prices", url: "https://example.invalid/mcp", cacheScope: "viewer", description: "" };
+const viewerScoped: McpServerConfig = { name: "Prices", url: "https://example.invalid/mcp", cacheScope: "viewer" };
 const sharedScoped: McpServerConfig = { ...viewerScoped, name: "Public", cacheScope: "shared" };
 
 function fakeServer(answer: (name: string, args: unknown) => RawToolResult | Promise<RawToolResult>) {
@@ -127,17 +127,10 @@ describe("McpHub.read", () => {
 });
 
 describe("McpHub with signed-in servers", () => {
-  it("hides a server's tools by pattern", async () => {
-    const connection: McpConnection = {
-      listTools: async () => [
-        { name: "juyo2_whoami", description: "" },
-        { name: "portal_list_servers", description: "" },
-      ],
-      callTool: async () => text({}),
-      close: async () => {},
-    };
-    const hub = new McpHub([{ ...viewerScoped, hideTools: /^portal_/ }], async () => connection);
-    expect((await hub.tools("Prices")).map((t) => t.name)).toEqual(["juyo2_whoami"]);
+  it("passes on what the server says about itself", async () => {
+    const connection: McpConnection = { instructions: "Hotel data. Start with whoami.", listTools: async () => [], callTool: async () => text({}), close: async () => {} };
+    const hub = new McpHub([viewerScoped], async () => connection);
+    expect(await hub.instructions("Prices")).toBe("Hotel data. Start with whoami.");
   });
 
   it("connects afresh after a sign-in, instead of keeping the failed connection", async () => {
@@ -150,5 +143,21 @@ describe("McpHub with signed-in servers", () => {
     await expect(hub.call("Prices", "price", {})).rejects.toMatchObject({ error: { code: "auth_required" } });
     signedIn = true;
     expect((await hub.call("Prices", "price", {})).payload).toEqual({ ok: true });
+  });
+});
+
+describe("mcpServers", () => {
+  it("takes name and URL entries from the binding and drops malformed ones", () => {
+    const servers = mcpServers({
+      MCP_SERVERS: [
+        { name: "CoinGecko", url: "https://mcp.api.coingecko.com/mcp" },
+        { name: "juyo", url: "https://juyo-mcp.example/mcp", auth: "oauth" },
+        { name: "no url" },
+        { name: "../evil", url: "https://x.example/mcp" },
+        { name: "ftp", url: "ftp://x.example" },
+      ],
+    });
+    expect(servers.map((s) => s.name)).toEqual(["CoinGecko", "juyo"]);
+    expect(mcpServers({})).toEqual([]);
   });
 });

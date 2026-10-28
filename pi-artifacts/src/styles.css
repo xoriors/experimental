@@ -77,12 +77,6 @@ body.resizing iframe { pointer-events: none; }
   min-width: 0;
 }
 .sidebar-top { display: flex; gap: 6px; }
-.connection { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0 3px 8px; font-size: 14px; }
-.connection span { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.connection button { padding: 3px 10px; font-size: 13px; }
-.connection .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
-.connection .dot.on { background: var(--live); }
-.connection-error { font-size: 13px; padding: 0 8px; margin: 4px 0; }
 .sidebar-top .primary { flex: 1; }
 .sidebar.rail { align-items: center; padding: 14px 8px; }
 .sidebar.rail button { width: 36px; padding: 6px 0; }
@@ -156,6 +150,7 @@ body.resizing iframe { pointer-events: none; }
 .pill { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--surface-2); white-space: nowrap; }
 .pill.live { color: var(--live); }
 .artifact-frame { flex: 1; width: 100%; border: 0; background: #fff; }
+.bubble a, .tool-result a { color: var(--accent); overflow-wrap: anywhere; }
 .clone-box { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2); font-size: 13px; }
 .clone-box code { flex: 1 1 320px; min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
 .clone-box small { flex-basis: 100%; color: var(--muted); }

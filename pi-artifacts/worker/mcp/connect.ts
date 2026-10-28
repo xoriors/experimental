@@ -8,18 +8,14 @@ import type { McpServerConfig } from "./servers.ts";
 
 const CALL_TIMEOUT_MS = 60_000;
 
-/** The failure a page or the agent sees when the user has not signed in to a server, or their sign-in expired. */
-export function signInRequired(server: string): McpFailure {
-  return new McpFailure({ code: "auth_required", server, message: `Not signed in to ${server}. Sign in from the Connections list in the sidebar, then try again.` });
-}
-
-/** The SDK reports a missing or rejected sign-in as UnauthorizedError; everything else passes through. */
-async function signedIn<T>(server: string, run: () => Promise<T>): Promise<T> {
-  try {
-    return await run();
-  } catch (error) {
-    throw error instanceof UnauthorizedError ? signInRequired(server) : error;
-  }
+/**
+ * The failure a page or the agent sees when the user has not signed in to a
+ * server, or their sign-in expired. `signInUrl` is a link in this app that
+ * starts the sign-in; the agent passes it on to the user.
+ */
+export function signInRequired(server: string, signInUrl?: string): McpFailure {
+  const how = signInUrl ? ` To sign in, open ${signInUrl} then ask again.` : "";
+  return new McpFailure({ code: "auth_required", server, message: `Not signed in to ${server}.${how}` });
 }
 
 /**
@@ -27,19 +23,28 @@ async function signedIn<T>(server: string, run: () => Promise<T>): Promise<T> {
  * validation uses @cfworker/json-schema. With `authProvider`, the SDK adds the
  * user's token to every request and refreshes it when it expires.
  */
-export async function connectStreamableHttp(server: McpServerConfig, authProvider?: OAuthClientProvider): Promise<McpConnection> {
+export async function connectStreamableHttp(server: McpServerConfig, authProvider?: OAuthClientProvider, options: { signInUrl?: string } = {}): Promise<McpConnection> {
+  // The SDK reports a missing or rejected sign-in as UnauthorizedError; everything else passes through.
+  const signedIn = async <T>(run: () => Promise<T>): Promise<T> => {
+    try {
+      return await run();
+    } catch (error) {
+      throw error instanceof UnauthorizedError ? signInRequired(server.name, options.signInUrl) : error;
+    }
+  };
   const client = new Client(
     { name: "pi-artifacts", version: "0.1.0" },
     { jsonSchemaValidator: new CfWorkerJsonSchemaValidator() },
   );
-  await signedIn(server.name, () => client.connect(new StreamableHTTPClientTransport(new URL(server.url), { authProvider })));
+  await signedIn(() => client.connect(new StreamableHTTPClientTransport(new URL(server.url), { authProvider })));
 
   const connection: McpConnection = {
+    instructions: client.getInstructions(),
     async listTools() {
       const tools: ToolInfo[] = [];
       let cursor: string | undefined;
       do {
-        const page = await signedIn(server.name, () => client.listTools(cursor ? { cursor } : undefined));
+        const page = await signedIn(() => client.listTools(cursor ? { cursor } : undefined));
         for (const tool of page.tools) {
           tools.push({
             name: tool.name,
@@ -55,7 +60,7 @@ export async function connectStreamableHttp(server: McpServerConfig, authProvide
       return tools;
     },
     async callTool(name, args) {
-      const result = await signedIn(server.name, () =>
+      const result = await signedIn(() =>
         client.callTool({ name, arguments: (args ?? {}) as Record<string, unknown> }, undefined, { timeout: CALL_TIMEOUT_MS }),
       );
       return result as RawToolResult;

@@ -32,14 +32,21 @@ export function mcpToolName(server: string, tool: string): string {
   return `${server.toLowerCase().replace(/[^a-z0-9]+/g, "_")}__${tool.replace(/[^a-zA-Z0-9_-]/g, "_")}`.slice(0, 64);
 }
 
+/** What one MCP server told the chat about itself. */
+export interface ServerCatalog {
+  tools: ToolInfo[];
+  instructions?: string;
+}
+
 /**
  * One pi tool per MCP tool, calling through the hub the artifacts also use.
- * Servers that could not be listed (down, or the user has not signed in) are
- * named in the prompt with the reason, so the agent can tell the user.
+ * The agent knows only what the servers say about themselves. Servers that
+ * could not be listed (down, or the user has not signed in) are named in the
+ * prompt with the reason, so the agent can tell the user.
  */
-export function mcpExtension(hub: McpHub, catalog: Map<string, ToolInfo[]>, unavailable = new Map<string, string>()): Extension {
+export function mcpExtension(hub: McpHub, catalog: Map<string, ServerCatalog>, unavailable = new Map<string, string>()): Extension {
   const tools = [];
-  for (const [server, serverTools] of catalog) {
+  for (const [server, { tools: serverTools }] of catalog) {
     for (const tool of serverTools) {
       const readOnly = tool.annotations?.readOnlyHint === true;
       tools.push(
@@ -57,20 +64,24 @@ export function mcpExtension(hub: McpHub, catalog: Map<string, ToolInfo[]>, unav
       );
     }
   }
-  const servers = [...catalog.entries()].map(([name, serverTools]) => {
-    const config = hub.servers().find((s) => s.name === name);
+  const servers = [...catalog.entries()].map(([name, { tools: serverTools, instructions }]) => {
     const list = serverTools.map((t) => `${t.name}${t.annotations?.readOnlyHint ? " (read-only)" : ""} — agent tool ${mcpToolName(name, t.name)}`);
-    return `- "${name}": ${config?.description ?? ""}\n  Tools: ${list.join("; ")}`;
+    const about = instructions?.trim() ? `\n  Says about itself: ${instructions.trim().replace(/\s+/g, " ").slice(0, 1_500)}` : "";
+    return `- "${name}"${about}\n  Tools: ${list.join("; ")}`;
   });
   return defineExtension({
     name: "mcp",
     tools,
     sections: [
       section("mcp_servers", () => {
-        const connected = `MCP servers connected to this chat. Pages declare them by these exact names:\n${servers.join("\n")}`;
+        const connected =
+          "MCP servers connected to this chat. Pages declare them by these exact names. Use the servers and tools the user names; " +
+          "when they don't, pick by the tool descriptions. A server whose tools start with portal_ is a Cloudflare MCP portal: its " +
+          "portal_* tools list the servers behind it and turn them on, and may answer with a link the user must open to sign in to one; " +
+          `pass such links on as they are.\n${servers.join("\n")}`;
         if (unavailable.size === 0) return connected;
-        const missing = [...unavailable].map(([name, reason]) => `- "${name}": ${hub.servers().find((s) => s.name === name)?.description ?? ""}\n  Not available now: ${reason}`);
-        return `${connected}\n\nServers this chat cannot use right now; if the user asks for their data, say why and what to do:\n${missing.join("\n")}`;
+        const missing = [...unavailable].map(([name, reason]) => `- "${name}": ${reason}`);
+        return `${connected}\n\nServers this chat cannot use right now. If the user asks for one, say why, and pass on any sign-in link exactly:\n${missing.join("\n")}`;
       }),
     ],
   });

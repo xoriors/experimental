@@ -43,10 +43,11 @@ with `@cloudflare/vite-plugin`, pnpm; configured and deployed with the `cf` CLI 
 - Identity comes only from a verified Cloudflare Access token (`worker/auth/`). Only `worker/storage/` may touch the R2
   bucket or the Artifacts binding `REPOS` (a test enforces it); user files go through `UserFiles`, scoped per uid and
   encrypted with a per-user SSE-C key derived from the `FILES_MASTER_KEY` secret.
-- MCP servers live in `worker/mcp/servers.ts`. Juyo goes through the Cloudflare MCP portal `juyo` with each user's own
-  sign-in (MCP OAuth client in `worker/mcp/oauth.ts`; tokens per user in `UserDirectory`; routes in
-  `worker/mcp-routes.ts`; `test/mcp-oauth.test.ts` runs the flow against a stand-in portal). Its pages are author-only
-  (`pageCallers`), since pages call as their author.
+- MCP servers are only names and URLs, in `MCP_SERVERS` (`cloudflare.config.ts`): the agent knows only what the
+  servers say (tools, instructions), and the user names servers or tools in chat. `auth: "oauth"` entries (the
+  Cloudflare MCP portal `juyo`) sign in each user with a generic MCP OAuth client (`worker/mcp/oauth.ts`; tokens per
+  user in `UserDirectory`; the agent hands out `/api/mcp/sign-in/<name>` links, routes in `worker/mcp-routes.ts`);
+  pages calling them are author-only. `test/mcp-oauth.test.ts` runs the flow against a stand-in portal.
 - Each artifact is the repo `artifact-<id>`: one commit and tag `v<n>` per publish, pushed with isomorphic-git
   (`worker/storage/git.ts`), since the binding cannot write files. `pnpm dev` uses a local Git backend for it (needs
   `git`); `test/artifact-store.test.ts` runs the real Git code against `git http-backend`.

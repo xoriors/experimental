@@ -11,6 +11,8 @@ export interface RawToolResult {
 
 /** One open MCP session. The real one wraps the MCP SDK client (see connect.ts); tests pass fakes. */
 export interface McpConnection {
+  /** The server's own description of itself, from the MCP handshake. */
+  instructions?: string;
   listTools(): Promise<ToolInfo[]>;
   callTool(name: string, args: unknown): Promise<RawToolResult>;
   close(): Promise<void>;
@@ -71,14 +73,16 @@ export class McpHub {
   async tools(server: string): Promise<ToolInfo[]> {
     let tools = this.#tools.get(server);
     if (!tools) {
-      const hidden = this.#config(server).hideTools;
-      tools = this.#withConnection(server, (connection) => connection.listTools()).then((list) =>
-        hidden ? list.filter((tool) => !hidden.test(tool.name)) : list,
-      );
+      tools = this.#withConnection(server, (connection) => connection.listTools());
       this.#tools.set(server, tools);
       tools.catch(() => this.#tools.delete(server));
     }
     return tools;
+  }
+
+  /** What the server says about itself when it connects (MCP `instructions`), if anything. */
+  async instructions(server: string): Promise<string | undefined> {
+    return this.#withConnection(server, async (connection) => connection.instructions);
   }
 
   async tool(server: string, name: string): Promise<ToolInfo | undefined> {

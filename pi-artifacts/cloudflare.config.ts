@@ -41,9 +41,14 @@ export default defineConfig({
       FILES_MASTER_KEY: bindings.secret(),
       // DEV_TOOLS=true (when running pnpm dev) enables POST /api/dev/chats/:id/publish. Never set it for a deploy.
       DEV_TOOLS: bindings.text(process.env.DEV_TOOLS === "true" ? "true" : "false"),
-      // The Cloudflare MCP portal "juyo" (server juyo2). Each user signs in to it themselves; see worker/mcp/oauth.ts.
-      // JUYO_PORTAL_URL=… pnpm dev points it at another portal, e.g. a local one.
-      JUYO_PORTAL_URL: bindings.text(process.env.JUYO_PORTAL_URL ?? "https://oxfer.app/mcp"),
+      // The MCP servers every chat connects to: just a name and a URL each. The agent learns what a server offers from
+      // the server, and you name servers and tools in chat. "oauth": each user signs in, from a link the agent gives.
+      // A Cloudflare MCP portal is one entry for every server behind it; its portal_* tools turn them on and off.
+      // JUYO_PORTAL_URL=… pnpm dev points the portal entry elsewhere, e.g. at a local stand-in.
+      MCP_SERVERS: bindings.json([
+        { name: "CoinGecko", url: "https://mcp.api.coingecko.com/mcp" },
+        { name: "juyo", url: process.env.JUYO_PORTAL_URL ?? "https://oxfer.app/mcp", auth: "oauth" },
+      ]),
       // Workers AI binding. Pi's createAI() routes Claude through AI Gateway with it.
       AI: bindings.ai({}),
       // Each user's files (users/<uid>/files/…), and a read cache of artifact versions (artifacts/<id>/…).

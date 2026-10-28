@@ -2,6 +2,7 @@ import type { AssistantMessage, ToolResultMessage, UserMessage } from "@earendil
 import type { EntryRecord } from "@earendil-works/pi-durable";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useChat, type RunningTool } from "./useChat.ts";
+import { Linkified } from "./Linkified.tsx";
 
 export interface PublishedArtifact {
   artifactId: string;
@@ -148,7 +149,12 @@ function Assistant({ message, streaming }: { message: AssistantMessage; streamin
   return (
     <div className={streaming ? "assistant streaming" : "assistant"}>
       {blocks(message.content).map((block, i) => {
-        if (block.type === "text") return block.text ? <div key={i} className="bubble bot">{block.text}</div> : null;
+        if (block.type === "text")
+          return block.text ? (
+            <div key={i} className="bubble bot">
+              <Linkified text={block.text} />
+            </div>
+          ) : null;
         if (block.type === "toolCall") return <div key={i} className="tool-call">→ {block.name}</div>;
         return null;
       })}
@@ -165,7 +171,9 @@ function ToolResult({ message }: { message: ToolResultMessage }) {
       <summary>
         {message.isError ? "✕" : "✓"} {message.toolName}
       </summary>
-      <pre>{text.length > 4_000 ? `${text.slice(0, 4_000)}…` : text}</pre>
+      <pre>
+        <Linkified text={text.length > 4_000 ? `${text.slice(0, 4_000)}…` : text} />
+      </pre>
     </details>
   );
 }

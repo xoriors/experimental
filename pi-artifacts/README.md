@@ -73,7 +73,7 @@ nothing more:
 ```ts
 MCP_SERVERS: bindings.json([
   { name: "CoinGecko", url: "https://mcp.api.coingecko.com/mcp" },
-  { name: "juyo", url: "https://oxfer.app/mcp", auth: "oauth" },   // a Cloudflare MCP portal
+  { name: "juyo", url: "https://juyo-mcp.oxfer.app/mcp", auth: "oauth" },   // a Cloudflare MCP portal
 ]),
 ```
 
@@ -122,6 +122,8 @@ Setting up the `juyo` portal (Zero Trust → Access controls → MCP Portals):
 
 - The portal needs its own hostname, a subdomain of a zone in the account. On the bare domain of a site that already
   exists, `/mcp` reaches the site instead.
+- The hostname needs a proxied CNAME to `gateway.agents.cloudflare.com`. The dashboard adds it when it creates a
+  portal; changing the hostname later, the API and Terraform do not, and the portal's address then does not resolve.
 - Both the portal's Access application and `juyo2`'s need an Allow policy listing who may use them. Without one,
   nobody can sign in.
 - Keep **Require user auth** on for `juyo2`: that is what makes each person sign in to Cognito themselves.

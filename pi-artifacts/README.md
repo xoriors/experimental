@@ -148,6 +148,21 @@ await mcp.invalidate("CoinGecko");                                    // refetch
 
 [`examples/crypto-dashboard.html`](examples/crypto-dashboard.html) is a complete page written against it.
 
+## The sandbox
+
+`run_python` and `run_bash` run in one Linux container per chat (`worker/sandbox.ts`, the Sandbox SDK's container
+in a Durable Object). It runs Debian with Python 3.13, pandas, numpy and the usual command-line tools, and has no
+internet. Each run is limited to 60 seconds. Files move like this:
+
+- **In:** the agent names files from the user's files. The tool reads each one through the user's `UserFiles`, so R2
+  decrypts it with the user's key. It is copied into the container's `./files/` with the Sandbox SDK's file API.
+- **Out:** after the run, whatever the script wrote to `./out/` (top level only) is read back from the container and
+  saved through the same `UserFiles` as `out/<name>`, encrypted with the user's key.
+- **Between runs:** `./files` and `./out` start empty each run. Anything else in the working directory stays until
+  the container stops, 10 minutes after the last run.
+
+The container never sees R2, the bucket or any key: only the bytes the Worker hands it.
+
 ## Layout
 
 | Path | What |
@@ -155,7 +170,7 @@ await mcp.invalidate("CoinGecko");                                    // refetch
 | `worker/index.ts` | Routes: identity, chats, chat WebSocket, artifact pages (`/u/:id/v:n`), the MCP proxy, files |
 | `worker/chat-agent.ts` | `ChatAgent` DO: `PiHarness`, the chat socket, `artifactCall`, rate limit |
 | `worker/mcp/`, `worker/mcp-routes.ts` | `McpHub` (connections, cache, coalescing, hint), the MCP SDK connector, the server list, per-user OAuth sign-in and its routes |
-| `worker/agent/` | Pi tools (MCP, files, artifacts, `run_python`) and the system prompt |
+| `worker/agent/` | Pi tools (MCP, files, artifacts, `run_python`, `run_bash`) and the system prompt |
 | `worker/artifacts/` | Manifest checks, the CSP and the runtime injection |
 | `worker/auth/`, `worker/storage/` | Access token verification; the storage gatekeeper: artifact repos, per-user encrypted files |
 | `cloudflare.config.ts` | The Worker, its bindings, Durable Object exports and the sandbox container (cf CLI) |
@@ -174,7 +189,7 @@ pnpm dev        # cf dev: needs a Cloudflare login (cf auth login; the AI bindin
 - **Locally, sign in with a typed name:** `AUTH_MODE=demo pnpm dev`. Without it the app expects Cloudflare Access,
   which only exists once deployed.
 - **Without a Cloudflare account or Docker:** run `AUTH_MODE=demo PI_OFFLINE=1 PI_NO_DOCKER=1 pnpm dev`. Everything
-  works except the model and `run_python`.
+  works except the model and the sandbox (`run_python`, `run_bash`).
 - **Testing live data without the model:** start with `DEV_TOOLS=true` added to the command above, which enables a
   publish route, then publish the example page into a chat:
 

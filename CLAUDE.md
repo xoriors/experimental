@@ -36,7 +36,7 @@ sandboxed iframe. Pages get live data by calling `pi.use("mcp")`; calls go page 
 with `@cloudflare/vite-plugin`, pnpm; configured and deployed with the `cf` CLI (`cloudflare.config.ts`, no Wrangler config).
 
 - `pnpm test` (hub, broker, Access tokens, storage rules; `LIVE=1` also hits CoinGecko), `pnpm typecheck`,
-  `AUTH_MODE=demo pnpm dev`. Without a Cloudflare login or Docker: `AUTH_MODE=demo PI_OFFLINE=1 PI_NO_DOCKER=1 pnpm dev`. Everything but the model and `run_python` then works, and
+  `AUTH_MODE=demo pnpm dev`. Without a Cloudflare login or Docker: `AUTH_MODE=demo PI_OFFLINE=1 PI_NO_DOCKER=1 pnpm dev`. Everything but the model and the sandbox (`run_python`, `run_bash`) then works, and
   `POST /api/dev/chats/:id/publish` (with `DEV_TOOLS=true` in the environment) publishes a page without the model.
 - `runtime/runtime.d.ts` is load-bearing twice: it documents the page API and is inlined into the agent's system
   prompt. Change it together with `runtime/pi-runtime.js`, `src/artifact/broker.ts` and `shared/protocol.ts`.

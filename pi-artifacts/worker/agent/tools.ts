@@ -5,6 +5,7 @@ import { createTwoFilesPatch } from "diff";
 import type { ArtifactManifest, ArtifactMeta } from "../../shared/protocol.ts";
 import { checkManifest, MAX_HTML_BYTES } from "../artifacts/manifest.ts";
 import type { McpHub } from "../mcp/hub.ts";
+import type { SandboxFile, SandboxRun } from "../sandbox.ts";
 import type { ArtifactStore, UserFiles } from "../storage/index.ts";
 import type { ToolInfo } from "../../shared/protocol.ts";
 
@@ -126,38 +127,53 @@ export function filesExtension(scope: ChatScope): Extension {
   });
 }
 
+const SANDBOX_FILES =
+  "Files you name are copied from the user's files into ./files/; anything written to ./out/ (top level, not subfolders) is saved back to the user's files under out/. " +
+  "Each run starts with fresh ./files and ./out; other files under the working directory stay while the sandbox is up (10 minutes after the last run). " +
+  "Returns exit code, stdout and stderr.";
+
+/**
+ * Copy the named user files in, run in this chat's sandbox, save ./out back to
+ * the user's files. The files go through the user's UserFiles, so they are
+ * decrypted on the way in and encrypted with the user's key on the way out.
+ */
+async function runInSandbox(scope: ChatScope, paths: string[] | undefined, run: (sandbox: ReturnType<typeof exports.Sandbox.getByName>, inputs: SandboxFile[]) => Promise<SandboxRun>) {
+  const files = await scope.files();
+  const inputs: SandboxFile[] = [];
+  for (const path of paths ?? []) {
+    const object = await files.get(path);
+    if (!object) throw new Error(`No file "${path}".`);
+    inputs.push({ name: path.split("/").pop()!, bytes: await object.arrayBuffer() });
+  }
+  const result = await run(exports.Sandbox.getByName(`${scope.uid}-${scope.chatId}`), inputs);
+  const saved = [];
+  for (const output of result.outputs) {
+    await files.put(`out/${output.name}`, output.bytes);
+    saved.push(`out/${output.name}`);
+  }
+  const report = [`exit code ${result.exitCode}`, `stdout:\n${result.stdout}`, result.stderr && `stderr:\n${result.stderr}`, saved.length && `saved: ${saved.join(", ")}`];
+  return { output: text(clip(report.filter(Boolean).join("\n\n"))), isError: result.exitCode !== 0 };
+}
+
+const inputFiles = Type.Optional(Type.Array(Type.String(), { description: "Paths of the user's files to copy in." }));
+
 export function sandboxExtension(scope: ChatScope): Extension {
   return defineExtension({
     name: "sandbox",
     tools: [
       defineTool({
         name: "run_python",
+        description: `Run a Python 3.13 script (pandas and numpy installed) in this chat's isolated Linux sandbox: no internet, 60 s limit. ${SANDBOX_FILES}`,
+        parameters: Type.Object({ code: Type.String(), files: inputFiles }),
+        execute: async (args) => runInSandbox(scope, args.files, (sandbox, inputs) => sandbox.runPython(args.code, inputs)),
+      }),
+      defineTool({
+        name: "run_bash",
         description:
-          "Run a Python 3.13 script (pandas and numpy installed) in an isolated Linux sandbox with no internet, 60 s limit. " +
-          "Files you name are copied from the user's files into ./files/; anything the script writes to ./out/ is saved back to the user's files under out/. " +
-          "Returns exit code, stdout and stderr.",
-        parameters: Type.Object({
-          code: Type.String(),
-          files: Type.Optional(Type.Array(Type.String(), { description: "Paths of the user's files to copy in." })),
-        }),
-        execute: async (args) => {
-          const files = await scope.files();
-          const inputs = [];
-          for (const path of args.files ?? []) {
-            const object = await files.get(path);
-            if (!object) throw new Error(`No file "${path}".`);
-            inputs.push({ name: path.split("/").pop()!, bytes: await object.arrayBuffer() });
-          }
-          const sandbox = exports.Sandbox.getByName(`${scope.uid}-${scope.chatId}`);
-          const run = await sandbox.runPython(args.code, inputs);
-          const saved = [];
-          for (const output of run.outputs) {
-            await files.put(`out/${output.name}`, output.bytes);
-            saved.push(`out/${output.name}`);
-          }
-          const report = [`exit code ${run.exitCode}`, `stdout:\n${run.stdout}`, run.stderr && `stderr:\n${run.stderr}`, saved.length && `saved: ${saved.join(", ")}`];
-          return { output: text(clip(report.filter(Boolean).join("\n\n"))), isError: run.exitCode !== 0 };
-        },
+          "Run a bash script in the same sandbox as run_python (Debian with coreutils, grep, sed, awk, tar, gzip, python3): no internet, so no package installs or downloads; 60 s limit. " +
+          `Runs as written; start with set -e to stop at the first failing command. ${SANDBOX_FILES}`,
+        parameters: Type.Object({ script: Type.String(), files: inputFiles }),
+        execute: async (args) => runInSandbox(scope, args.files, (sandbox, inputs) => sandbox.runBash(args.script, inputs)),
       }),
     ],
   });

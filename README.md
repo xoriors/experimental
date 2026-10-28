@@ -12,6 +12,7 @@ stable release.
 - [`weather-voodoo/`](./weather-voodoo/) — SvelteKit webapp for fused hour-by-hour weather forecasts along a route or at a fixed location, with trip-window scoring, activity recommendations, and shareable URLs. [Live](https://weather-voodoo.vercel.app) · [Docs](./weather-voodoo/README.md)
 - [`solar-eclipse-2026/`](./solar-eclipse-2026/) — Interactive guide and physically-accurate simulator for the total solar eclipse of 12 August 2026, with contact times computed in-browser from NASA's Besselian elements for any point on Earth. [Docs](./solar-eclipse-2026/README.md)
 - [`screen-narrator-d1/`](./screen-narrator-d1/) — Playground for testing Liquid AI's d1-ultra decision model as the "when to speak" gate of a screen narrator for blind users: synthetic screenshot benchmark, calibration report, live screen-sharing mode. [Results](https://screen-narrator-d1.vercel.app) · [Docs](./screen-narrator-d1/README.md)
+- [`hutter-prize/`](./hutter-prize/) — Ideas for beating the Hutter Prize record (compressing 1 GB of Wikipedia), with a Rust workbench that measures them: three verified side models worth 1.4 MB on a proxy model, a transfer analysis against the record holder, and a plan for the next award. [Docs](./hutter-prize/README.md)
 - [`llm-git-conflict-resolve/`](./llm-git-conflict-resolve/) — Use an LLM to resolve git merge conflicts
 - [`llm-linter/`](./llm-linter/) — LLM-driven code linting
 - [`llm-password-reset/`](./llm-password-reset/) — LLM password-reset experiment

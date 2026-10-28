@@ -49,6 +49,15 @@ Tests Liquid AI's d1-ultra decision model as the "should I announce this?" gate 
 - Published results: [screen-narrator-d1.vercel.app](https://screen-narrator-d1.vercel.app) (Vercel team "xorio's projects"). To update it: `pnpm site [runId]` builds `public/` (the report + its screenshots), then `vercel deploy --prod --yes` **from inside `screen-narrator-d1/`**, where `.vercel/` links the project. `.vercelignore` uploads only `public/` and `vercel.json`, so no source, `.env`, `data/` or `runs/` leaves the machine.
 - `.env` holds `LIQUID_API_KEY` and is gitignored. A hook blocks any Bash command that names `.env`; `src/env.ts` loads it.
 
+### hutter-prize — research + Rust workbench
+
+Ideas for beating the Hutter Prize record (enwik9; record 100,424,672 bytes by fx2-cmix-T, July 2026), with a dependency-free Rust crate (`hutter-lab`) that measures them. The README is the deliverable: ranked ideas, measured gains, transfer estimates and a plan.
+
+- `cargo build --release`, `cargo test --release`, `cargo clippy --release` (kept warning-free). Needs Rust 1.88+. `.cargo/config.toml` sets `target-cpu=native` for the AVX2/FMA mixer.
+- Experiments need `enwik9` (not in the repo) and, for the record holder's article order, `new_article_order` from the fx2-cmix-T repo (GPL, deliberately not vendored). `hutter-lab header|lang|census <enwik9> [--order FILE] [--verify]` prints the README's tables. The default `--table-bits 20` produced every published number; keep it if you re-run them.
+- `src/cm.rs` is the proxy context-mixing model; `src/side/*` are the side models (`SideModel` trait: a next-byte distribution plus optional context hashes, fed only coded bytes); `src/transform.rs` holds the reversible transforms. A side model must stay strictly causal: `--verify` encodes, decodes and compares.
+- Third-party compressors (fx2-cmix-T, cmix-lex, cmix-obias) were read, never built or run.
+
 ### ansible — working infra example
 
 Tutorial-scale Ansible + Docker playground: one container runs Apache, another runs the playbook against it. Run with `docker-compose up --build` from `ansible/`.

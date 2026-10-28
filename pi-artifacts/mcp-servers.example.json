@@ -1,0 +1,4 @@
+[
+  { "name": "CoinGecko", "url": "https://mcp.api.coingecko.com/mcp" },
+  { "name": "portal", "url": "https://mcp.example.com/mcp", "auth": "oauth" }
+]

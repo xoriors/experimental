@@ -47,7 +47,7 @@ each viewer's own connectors instead. Two things follow from that:
 - Tools that are not marked `readOnlyHint` are refused for everyone but the author, are never cached and cannot be
   watched.
 
-CoinGecko needs no sign-in. The `juyo` portal needs each user's own; see [MCP servers, and servers that need your own sign-in](#mcp-servers-and-servers-that-need-your-own-sign-in).
+CoinGecko needs no sign-in. A server can also require each user's own; see [MCP servers, and servers that need your own sign-in](#mcp-servers-and-servers-that-need-your-own-sign-in).
 
 **Polling with a server hint.** Every response carries `nextRefreshAt`: when the Durable Object's copy goes stale.
 
@@ -67,20 +67,25 @@ So upstream freshness, not the transport, sets how live the page can be.
 
 ## MCP servers, and servers that need your own sign-in
 
-The app is agnostic of what its MCP servers do. `MCP_SERVERS` in `cloudflare.config.ts` is a list of names and URLs,
-nothing more:
+The app is agnostic of what its MCP servers do. The server list is a list of names and URLs, nothing more, and each
+deployment keeps its own out of the repository. `cloudflare.config.ts` reads it, in this order:
+1. `PI_MCP_SERVERS`, as JSON, if set;
+2. otherwise `mcp-servers.json`, which is gitignored (copy `mcp-servers.example.json`);
+3. otherwise the public demo server alone.
 
-```ts
-MCP_SERVERS: bindings.json([
-  { name: "CoinGecko", url: "https://mcp.api.coingecko.com/mcp" },
-  { name: "juyo", url: "https://juyo-mcp.oxfer.app/mcp", auth: "oauth" },   // a Cloudflare MCP portal
-]),
+```json
+[
+  { "name": "CoinGecko", "url": "https://mcp.api.coingecko.com/mcp" },
+  { "name": "portal", "url": "https://mcp.example.com/mcp", "auth": "oauth" }
+]
 ```
 
+The last entry is a Cloudflare MCP portal.
+
 - **What the agent knows** comes only from the servers: their tool lists, and the instructions a server sends when it
-  connects. You say in chat which server or tools to use ("use juyo2's run_query for…"). Otherwise the agent picks by
+  connects. You say in chat which server or tools to use ("use the reports server's run_query for…"). Otherwise the agent picks by
   the tool descriptions.
-- **A Cloudflare MCP portal is one entry** for every server behind it. Its tools come namespaced (`juyo2_run_query`),
+- **A Cloudflare MCP portal is one entry** for every server behind it. Its tools come namespaced (`reports_run_query`),
   and its own `portal_*` tools are left in. Through them, the agent can list the portal's servers and turn them on,
   and the portal can answer with a link for signing in to one of them.
 
@@ -89,10 +94,10 @@ MCP OAuth client for it (`worker/mcp/oauth.ts`, on the MCP SDK): discovery, dyna
 refresh. There is nothing specific to any one server:
 
 1. Until you sign in, the server's tools are missing. The agent's prompt names the server as unavailable, with a
-   sign-in link such as `https://<app>/api/mcp/sign-in/juyo`, and the agent passes the link on when you ask for it.
-2. The link starts the flow and redirects to the server's sign-in. For the `juyo` portal, that means Cloudflare
-   Access, then the portal's page where you select **Connect** for `juyo2` and sign in to Cognito. The portal keeps
-   your Cognito session; the app never sees it.
+   sign-in link such as `https://<app>/api/mcp/sign-in/portal`, and the agent passes the link on when you ask for it.
+2. The link starts the flow and redirects to the server's sign-in. For a Cloudflare MCP portal, that means Cloudflare
+   Access, then the portal's page where you select **Connect** for each server that needs your own login and sign in
+   to its identity provider. The portal keeps those sessions; the app never sees them.
 3. The browser comes back to `/api/mcp/oauth/callback`. The Worker checks the `state` against the sign-in it started
    for *you* (the callback needs your app session too), exchanges the code and stores your tokens. Ask again in the
    chat: your next prompt picks up the server's tools.
@@ -116,18 +121,19 @@ Where things live and who can use them:
 - refresh on expiry;
 - `auth_required` when refresh fails, leaving an open sign-in untouched.
 
-Locally, `JUYO_PORTAL_URL=… pnpm dev` points the portal entry elsewhere.
+Locally, `PI_MCP_SERVERS='[…]' pnpm dev` uses another list, for example with a local stand-in portal.
 
-Setting up the `juyo` portal (Zero Trust → Access controls → MCP Portals):
+Setting up a Cloudflare MCP portal for it (Zero Trust → Access controls → MCP Portals):
 
 - The portal needs its own hostname, a subdomain of a zone in the account. On the bare domain of a site that already
   exists, `/mcp` reaches the site instead.
 - The hostname needs a proxied CNAME to `gateway.agents.cloudflare.com`. The dashboard adds it when it creates a
   portal; changing the hostname later, the API and Terraform do not, and the portal's address then does not resolve.
-- Both the portal's Access application and `juyo2`'s need an Allow policy listing who may use them. Without one,
-  nobody can sign in.
-- Keep **Require user auth** on for `juyo2`: that is what makes each person sign in to Cognito themselves.
-- Put the portal's `/mcp` address in `MCP_SERVERS`.
+- The portal's Access application and each of its servers' need an Allow policy listing who may use them. Without
+  one, nobody can sign in.
+- Keep **Require user auth** on for servers whose data depends on who asks: that is what makes each person sign in
+  with their own account.
+- Put the portal's `/mcp` address in `mcp-servers.json` with `"auth": "oauth"`.
 
 ## The page runtime
 
@@ -327,12 +333,13 @@ claude.ai uses `*.claudeusercontent.com`.
   - R2 refuses to read that file without its key ("stored using a form of Server Side Encryption");
   - a publish created the artifact's repo, and its `git` button produced a working clone command.
 
-  The Juyo sign-in has been verified only locally, against a stand-in portal, because the `juyo` portal is not
-  reachable yet (see [MCP servers, and servers that need your own sign-in](#mcp-servers-and-servers-that-need-your-own-sign-in)).
+  The per-user sign-in to an MCP portal has been verified only locally, against a stand-in portal: the deployed
+  portal so far refuses the code exchange with Cloudflare error 1014 (see
+  [MCP servers, and servers that need your own sign-in](#mcp-servers-and-servers-that-need-your-own-sign-in)).
 - **Pi Durable is experimental.** It has no tool approvals, conversations can't be deleted yet, and a reconnecting
   client resumes from a fresh snapshot rather than a cursor.
 - **Next:**
   - a screenshot self-check in the sandbox before publishing
-  - live data from servers like Juyo for every viewer, each with their own sign-in
+  - live data from sign-in servers for every viewer, each with their own sign-in
   - WebSocket push for sources that stream
   - a separate preview domain

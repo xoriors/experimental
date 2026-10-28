@@ -1,10 +1,23 @@
 import { bindings, defineConfig, defineContainer, exports } from "cf/config";
+import { existsSync, readFileSync } from "node:fs";
 import * as entrypoint from "./worker/index.ts" with { type: "cf-worker" };
 
-// PI_NO_DOCKER=1 leaves out the sandbox container (and the run_python tool), for machines without Docker.
+// PI_NO_DOCKER=1 leaves out the sandbox container (and the run_python and run_bash tools), for machines without Docker.
 const withSandbox = process.env.PI_NO_DOCKER !== "1";
 
-// One Linux container per chat for run_python. See Dockerfile.
+/**
+ * The MCP servers every chat connects to, as [{ name, url, auth? }]. Each deployment keeps its own list out of the
+ * repository: PI_MCP_SERVERS (JSON) if set, else mcp-servers.json (gitignored; see mcp-servers.example.json), else
+ * only the public demo server.
+ */
+function mcpServerList(): { name: string; url: string; auth?: "oauth" }[] {
+  if (process.env.PI_MCP_SERVERS) return JSON.parse(process.env.PI_MCP_SERVERS);
+  const file = new URL("./mcp-servers.json", import.meta.url);
+  if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8"));
+  return [{ name: "CoinGecko", url: "https://mcp.api.coingecko.com/mcp" }];
+}
+
+// One Linux container per chat for run_python and run_bash. See Dockerfile.
 const sandbox = defineContainer({
   name: "pi-artifacts-sandbox",
   schedulingPolicy: "durable-object",
@@ -41,14 +54,10 @@ export default defineConfig({
       FILES_MASTER_KEY: bindings.secret(),
       // DEV_TOOLS=true (when running pnpm dev) enables POST /api/dev/chats/:id/publish. Never set it for a deploy.
       DEV_TOOLS: bindings.text(process.env.DEV_TOOLS === "true" ? "true" : "false"),
-      // The MCP servers every chat connects to: just a name and a URL each. The agent learns what a server offers from
-      // the server, and you name servers and tools in chat. "oauth": each user signs in, from a link the agent gives.
-      // A Cloudflare MCP portal is one entry for every server behind it; its portal_* tools turn them on and off.
-      // JUYO_PORTAL_URL=… pnpm dev points the portal entry elsewhere, e.g. at a local stand-in.
-      MCP_SERVERS: bindings.json([
-        { name: "CoinGecko", url: "https://mcp.api.coingecko.com/mcp" },
-        { name: "juyo", url: process.env.JUYO_PORTAL_URL ?? "https://juyo-mcp.oxfer.app/mcp", auth: "oauth" },
-      ]),
+      // The MCP servers every chat connects to: just a name and a URL each (see mcpServerList above). The agent learns
+      // what a server offers from the server, and you name servers and tools in chat. "oauth": each user signs in, from
+      // a link the agent gives. A Cloudflare MCP portal is one entry for every server behind it.
+      MCP_SERVERS: bindings.json(mcpServerList()),
       // Workers AI binding. Pi's createAI() routes Claude through AI Gateway with it.
       AI: bindings.ai({}),
       // Each user's files (users/<uid>/files/…), and a read cache of artifact versions (artifacts/<id>/…).

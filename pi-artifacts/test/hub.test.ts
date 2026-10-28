@@ -128,9 +128,9 @@ describe("McpHub.read", () => {
 
 describe("McpHub with signed-in servers", () => {
   it("passes on what the server says about itself", async () => {
-    const connection: McpConnection = { instructions: "Hotel data. Start with whoami.", listTools: async () => [], callTool: async () => text({}), close: async () => {} };
+    const connection: McpConnection = { instructions: "Example data. Start with whoami.", listTools: async () => [], callTool: async () => text({}), close: async () => {} };
     const hub = new McpHub([viewerScoped], async () => connection);
-    expect(await hub.instructions("Prices")).toBe("Hotel data. Start with whoami.");
+    expect(await hub.instructions("Prices")).toBe("Example data. Start with whoami.");
   });
 
   it("connects afresh after a sign-in, instead of keeping the failed connection", async () => {
@@ -151,13 +151,13 @@ describe("mcpServers", () => {
     const servers = mcpServers({
       MCP_SERVERS: [
         { name: "CoinGecko", url: "https://mcp.api.coingecko.com/mcp" },
-        { name: "juyo", url: "https://juyo-mcp.example/mcp", auth: "oauth" },
+        { name: "portal", url: "https://mcp.example.com/mcp", auth: "oauth" },
         { name: "no url" },
         { name: "../evil", url: "https://x.example/mcp" },
         { name: "ftp", url: "ftp://x.example" },
       ],
     });
-    expect(servers.map((s) => s.name)).toEqual(["CoinGecko", "juyo"]);
+    expect(servers.map((s) => s.name)).toEqual(["CoinGecko", "portal"]);
     expect(mcpServers({})).toEqual([]);
   });
 });

@@ -101,7 +101,7 @@
   <text x="488" y="316" font-size="11" font-weight="600">Agent tools</text>
   <text x="488" y="333" font-size="9.5" fill="#6b6a66">coingecko__* (from tools/list)</text>
   <text x="488" y="347" font-size="9.5" fill="#6b6a66">artifact_publish · _diff</text>
-  <text x="488" y="361" font-size="9.5" fill="#6b6a66">files_* · run_python</text>
+  <text x="488" y="361" font-size="9.5" fill="#6b6a66">files_* · run_python · run_bash</text>
 
   <!-- External -->
   <rect x="676" y="60" width="138" height="66" rx="9" fill="#f1f7ef" stroke="#8fb987"/>
@@ -172,7 +172,7 @@
       <li>Workers + Durable Objects, Pi Durable via the Agents SDK <code>PiHarness</code></li>
       <li>AI Gateway → Claude Sonnet 5.5 (BYOK)</li>
       <li>MCP SDK client (Streamable HTTP) → CoinGecko</li>
-      <li>Artifacts (a Git repo per artifact), R2 for files; Containers (Sandbox SDK) for Python</li>
+      <li>Artifacts (a Git repo per artifact), R2 for files; Containers (Sandbox SDK)</li>
       <li>React + Vite, deployed with the <code>cf</code> CLI</li>
     </ul>
   </div>
@@ -180,9 +180,9 @@
     <h2>Status and next</h2>
     <ul>
       <li>Deployed; an agent built a live dashboard and revised it as v2</li>
-      <li>Cloudflare Access sign-in; files encrypted per user; every artifact version a Git commit</li>
-      <li>Next: a screenshot self-check before publishing, MCP servers with OAuth, push for streaming sources</li>
-      <li><code>run_python</code> not yet exercised in production</li>
+      <li>Access sign-in, per-user encrypted files, a Git commit per version</li>
+      <li>Python and bash in a sandbox per chat, no internet</li>
+      <li>Next: a screenshot self-check, push for streaming sources</li>
     </ul>
   </div>
 </div>

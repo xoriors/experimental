@@ -3,6 +3,7 @@ import type { EntryRecord } from "@earendil-works/pi-durable";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useChat, type RunningTool } from "./useChat.ts";
 import { Linkified } from "./Linkified.tsx";
+import { Markdown } from "./Markdown.tsx";
 
 export interface PublishedArtifact {
   artifactId: string;
@@ -29,6 +30,7 @@ export function ChatView({ chatId, onArtifact, onActivity }: Props) {
   const { state, connected, prompt, abort } = useChat(chatId);
   const [draft, setDraft] = useState("");
   const list = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
   const lastArtifact = useRef<string>("");
 
   // Follow new output only while the reader is at the bottom; scrolling up to read stops it,
@@ -66,10 +68,15 @@ export function ChatView({ chatId, onArtifact, onActivity }: Props) {
     following.current = true;
     setDraft("");
     onActivity();
+    // Clicking Send moves focus to the button; keep typing where you were.
+    input.current?.focus();
   };
 
+  // Enter sends, Shift+Enter adds a line. Not while an IME is composing (Enter then confirms the text).
   const onKey = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) submit();
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    submit();
   };
 
   return (
@@ -93,6 +100,9 @@ export function ChatView({ chatId, onArtifact, onActivity }: Props) {
       </div>
       <form className="composer" onSubmit={submit}>
         <textarea
+          ref={input}
+          // Each chat mounts its own view, so a new or opened chat starts with the cursor here.
+          autoFocus
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKey}
@@ -151,8 +161,8 @@ function Assistant({ message, streaming }: { message: AssistantMessage; streamin
       {blocks(message.content).map((block, i) => {
         if (block.type === "text")
           return block.text ? (
-            <div key={i} className="bubble bot">
-              <Linkified text={block.text} />
+            <div key={i} className="bubble bot markdown">
+              <Markdown text={block.text} />
             </div>
           ) : null;
         if (block.type === "toolCall") return <div key={i} className="tool-call">→ {block.name}</div>;

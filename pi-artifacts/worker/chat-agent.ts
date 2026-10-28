@@ -6,7 +6,7 @@ import { createAI } from "agents/models/pi-ai";
 import { DurableObject, exports } from "cloudflare:workers";
 import type { ArtifactManifest, ChatClientMessage, ChatServerMessage, McpError, ProxyRequest, ProxyResponse, ToolInfo } from "../shared/protocol.ts";
 import { promptExtension } from "./agent/prompt.ts";
-import { artifactExtension, filesExtension, mcpExtension, publishArtifact, sandboxExtension, type ChatScope } from "./agent/tools.ts";
+import { artifactExtension, filesExtension, mcpExtension, publishArtifact, sandboxExtension, type ChatScope, type ServerCatalog } from "./agent/tools.ts";
 import { Storage } from "./storage/index.ts";
 import { connectStreamableHttp, signInRequired } from "./mcp/connect.ts";
 import { McpOAuthClient } from "./mcp/oauth.ts";
@@ -92,11 +92,11 @@ export class ChatAgent extends DurableObject<Env> {
    */
   refreshMcpTools(): Promise<void> {
     this.#mcpRefresh ??= (async () => {
-      const catalog = new Map<string, ToolInfo[]>();
+      const catalog = new Map<string, ServerCatalog>();
       const unavailable = new Map<string, string>();
       for (const server of this.hub.servers()) {
         try {
-          catalog.set(server.name, await this.hub.tools(server.name));
+          catalog.set(server.name, { tools: await this.hub.tools(server.name), instructions: await this.hub.instructions(server.name) });
         } catch (error) {
           unavailable.set(server.name, error instanceof McpFailure ? error.error.message : String(error));
         }
@@ -117,8 +117,19 @@ export class ChatAgent extends DurableObject<Env> {
     if (server.auth !== "oauth") return connectStreamableHttp(server);
     const store = mcpAuthStore(this.uid, server.name);
     const { tokens, redirectUrl } = await store.get();
-    if (!tokens || !redirectUrl) throw signInRequired(server.name);
-    return connectStreamableHttp(server, new McpOAuthClient(store, server.name, { redirectUrl, interactive: false }));
+    const signInUrl = await this.#signInUrl(server.name);
+    if (!tokens || !redirectUrl) throw signInRequired(server.name, signInUrl);
+    return connectStreamableHttp(server, new McpOAuthClient(store, server.name, { redirectUrl, interactive: false }), { signInUrl });
+  }
+
+  /** The app's address, from the chat's own WebSocket request: sign-in links in messages must be absolute. */
+  async rememberOrigin(origin: string): Promise<void> {
+    if (origin !== (await this.ctx.storage.get<string>("origin"))) await this.ctx.storage.put("origin", origin);
+  }
+
+  async #signInUrl(server: string): Promise<string | undefined> {
+    const origin = await this.ctx.storage.get<string>("origin");
+    return origin ? `${origin}/api/mcp/sign-in/${encodeURIComponent(server)}` : undefined;
   }
 
   async prompt(text: string): Promise<void> {
@@ -166,8 +177,9 @@ export class ChatAgent extends DurableObject<Env> {
       return fail({ code: "not_in_manifest", server, message: `This page did not declare ${server}/${tool} when it was published.` });
     }
 
-    if (this.hub.servers().find((s) => s.name === server)?.pageCallers === "author" && viewer !== this.uid) {
-      return fail({ code: "not_granted", server, message: `${server} holds private data, so only the page's author can load it.` });
+    // A page calls as its author. For a server that signs in each user, that would show the author's data to anyone with the link.
+    if (this.hub.servers().find((s) => s.name === server)?.auth === "oauth" && viewer !== this.uid) {
+      return fail({ code: "not_granted", server, message: `${server} signs in each user, and this page calls as its author, so only the author can load it.` });
     }
 
     try {
@@ -246,6 +258,7 @@ class ChatSockets implements DurableObjectCapability {
 
   onWebSocketUpgrade({ request }: { request: Request }): Response | undefined {
     if (!new URL(request.url).pathname.endsWith("/ws")) return undefined;
+    void this.#host.rememberOrigin(new URL(request.url).origin);
     const pair = new WebSocketPair();
     this.#ctx.acceptWebSocket(pair[1], [SOCKET_TAG]);
     void this.#attach(pair[1]);

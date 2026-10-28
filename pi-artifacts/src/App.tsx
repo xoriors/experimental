@@ -3,7 +3,6 @@ import type { ChatSummary } from "../shared/protocol.ts";
 import { api, type ArtifactSummary, type FileInfo, type Me } from "./api.ts";
 import { ArtifactPanel } from "./artifact/ArtifactPanel.tsx";
 import { ChatView, type PublishedArtifact } from "./chat/ChatView.tsx";
-import { Connections } from "./Connections.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
 import { ResizeHandle, useStoredState } from "./layout.tsx";
 
@@ -223,7 +222,6 @@ function Workspace({ uid, label, chatId, navigate, onSignOut }: WorkspaceProps) 
               </a>
             ))}
           </nav>
-          <Connections />
           <h3>Files</h3>
           <nav className="files">
             {files.map((f) => (

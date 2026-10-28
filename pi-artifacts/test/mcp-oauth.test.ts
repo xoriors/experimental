@@ -142,7 +142,7 @@ afterAll(() => server.close());
 beforeEach(() => {
   portal = new FakePortal();
   portal.origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  config = { name: "Juyo", url: `${portal.origin}/mcp`, cacheScope: "viewer", description: "", auth: "oauth" };
+  config = { name: "Juyo", url: `${portal.origin}/mcp`, cacheScope: "viewer", auth: "oauth" };
 });
 
 /** What a chat does: connect with the user's stored tokens, non-interactively. */

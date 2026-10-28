@@ -43,17 +43,19 @@ with `@cloudflare/vite-plugin`, pnpm; configured and deployed with the `cf` CLI 
 - Identity comes only from a verified Cloudflare Access token (`worker/auth/`). Only `worker/storage/` may touch the R2
   bucket or the Artifacts binding `REPOS` (a test enforces it); user files go through `UserFiles`, scoped per uid and
   encrypted with a per-user SSE-C key derived from the `FILES_MASTER_KEY` secret.
-- MCP servers are only names and URLs, in `MCP_SERVERS` (`cloudflare.config.ts`): the agent knows only what the
-  servers say (tools, instructions), and the user names servers or tools in chat. `auth: "oauth"` entries (the
-  Cloudflare MCP portal `juyo`) sign in each user with a generic MCP OAuth client (`worker/mcp/oauth.ts`; tokens per
+- MCP servers are only names and URLs, kept out of the repository: `PI_MCP_SERVERS` or the gitignored
+  `mcp-servers.json` (see `mcp-servers.example.json`), read by `cloudflare.config.ts` into `MCP_SERVERS`. Keep the
+  code and docs free of any one deployment's servers or business domain. The agent knows only what the servers say
+  (tools, instructions), and the user names servers or tools in chat. `auth: "oauth"` entries (e.g. a Cloudflare MCP
+  portal) sign in each user with a generic MCP OAuth client (`worker/mcp/oauth.ts`; tokens per
   user in `UserDirectory`; the agent hands out `/api/mcp/sign-in/<name>` links, routes in `worker/mcp-routes.ts`);
   pages calling them are author-only. `test/mcp-oauth.test.ts` runs the flow against a stand-in portal.
 - Each artifact is the repo `artifact-<id>`: one commit and tag `v<n>` per publish, pushed with isomorphic-git
   (`worker/storage/git.ts`), since the binding cannot write files. `pnpm dev` uses a local Git backend for it (needs
   `git`); `test/artifact-store.test.ts` runs the real Git code against `git http-backend`.
 - The README lists the security model (manifest per version, author's connections, write tools only for the author)
-  and what has been verified in production (agent runs, `run_python`, per-user R2 encryption, artifact repos; the Juyo
-  sign-in only locally).
+  and what has been verified in production (agent runs, `run_python`, per-user R2 encryption, artifact repos; the per-user
+  MCP sign-in only locally).
 - Deploy with `cf deploy` from `pi-artifacts/` (Worker `pi-artifacts` on workers.dev; R2 bucket, Artifacts namespace and AI
   Gateway all named `pi-artifacts`). The sandbox image build needs Docker.
 

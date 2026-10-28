@@ -6,8 +6,8 @@ const html = (text: string) => renderToStaticMarkup(<Markdown text={text} />);
 
 describe("chat Markdown", () => {
   it("renders GitHub-flavoured Markdown", () => {
-    const out = html("## Hotels\n\n- **3** hotels\n- `run_query`\n\n| code | name |\n|---|---|\n| H1 | Alpha |\n\nSee https://example.com/x");
-    expect(out).toContain("<h2>Hotels</h2>");
+    const out = html("## Results\n\n- **3** items\n- `run_query`\n\n| code | name |\n|---|---|\n| H1 | Alpha |\n\nSee https://example.com/x");
+    expect(out).toContain("<h2>Results</h2>");
     expect(out).toContain("<strong>3</strong>");
     expect(out).toContain("<code>run_query</code>");
     expect(out).toMatch(/<div class="md-table"><table>.*<td>Alpha<\/td>/);

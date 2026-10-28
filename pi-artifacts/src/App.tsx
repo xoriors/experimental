@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { ChatSummary } from "../shared/protocol.ts";
-import { api, type ArtifactSummary, type FileInfo } from "./api.ts";
+import { api, type ArtifactSummary, type FileInfo, type Me } from "./api.ts";
 import { ArtifactPanel } from "./artifact/ArtifactPanel.tsx";
 import { ChatView, type PublishedArtifact } from "./chat/ChatView.tsx";
 import { ErrorBoundary } from "./ErrorBoundary.tsx";
@@ -21,37 +21,65 @@ function usePath(): [string, (path: string) => void] {
 
 export function App() {
   const [path, navigate] = usePath();
-  const [uid, setUid] = useState<string | null | undefined>(undefined);
+  const [me, setMe] = useState<Me | null | undefined>(undefined);
+  const [auth, setAuth] = useState<Me["auth"]>("access");
 
   useEffect(() => {
-    api.me().then((me) => setUid(me.uid), () => setUid(null));
+    api.me().then(
+      (result) => {
+        setAuth(result.auth);
+        setMe(result.me);
+      },
+      () => setMe(null),
+    );
   }, []);
+
+  if (me === undefined) return null;
+  // Deployed, Cloudflare Access signs people in before the app loads; a 401 here means the session lapsed.
+  if (me === null && auth === "access") return <AccessExpired />;
+  if (me === null) return <SignIn onSignedIn={(uid) => setMe({ uid, auth: "demo" })} />;
 
   const shared = path.match(/^\/a\/([a-z0-9]+)$/);
   if (shared) {
-    // A shared artifact: anyone with the link can view it, signed in or not.
-    if (uid === undefined) return null;
+    // A shared artifact: anyone the app lets in can view it by its link.
     return (
       <ErrorBoundary what="this artifact">
-        <ArtifactPanel artifactId={shared[1]} uid={uid ?? undefined} fullPage />
+        <ArtifactPanel artifactId={shared[1]} uid={me.uid} fullPage />
       </ErrorBoundary>
     );
   }
-  if (uid === undefined) return null;
-  if (uid === null) return <SignIn onSignedIn={setUid} />;
 
   const chatId = path.match(/^\/c\/([a-z0-9]+)$/)?.[1];
   return (
     <Workspace
-      uid={uid}
+      uid={me.uid}
+      label={me.email ?? me.uid}
       chatId={chatId}
       navigate={navigate}
       onSignOut={async () => {
+        if (me.auth === "access") {
+          location.href = "/cdn-cgi/access/logout";
+          return;
+        }
         await api.signOut();
-        setUid(null);
+        setMe(null);
         navigate("/");
       }}
     />
+  );
+}
+
+function AccessExpired() {
+  return (
+    <main className="sign-in">
+      <div>
+        <h1>pi-artifacts</h1>
+        <p>Your sign-in has expired.</p>
+        <button type="button" className="primary" onClick={() => location.reload()}>
+          Sign in again
+        </button>
+      </div>
+    </main>
   );
 }
 
@@ -87,12 +115,14 @@ function SignIn({ onSignedIn }: { onSignedIn: (uid: string) => void }) {
 
 interface WorkspaceProps {
   uid: string;
+  /** What the sidebar shows for the signed-in user: their email, or the demo name. */
+  label: string;
   chatId: string | undefined;
   navigate: (path: string) => void;
   onSignOut: () => void;
 }
 
-function Workspace({ uid, chatId, navigate, onSignOut }: WorkspaceProps) {
+function Workspace({ uid, label, chatId, navigate, onSignOut }: WorkspaceProps) {
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [artifacts, setArtifacts] = useState<ArtifactSummary[]>([]);
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -169,7 +199,7 @@ function Workspace({ uid, chatId, navigate, onSignOut }: WorkspaceProps) {
           </label>
         </nav>
         <footer>
-          <span>{uid}</span>
+          <span title={label}>{label}</span>
           <button type="button" onClick={onSignOut}>
             Sign out
           </button>

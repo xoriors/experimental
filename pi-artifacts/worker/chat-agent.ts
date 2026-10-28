@@ -7,7 +7,7 @@ import { DurableObject, exports } from "cloudflare:workers";
 import type { ArtifactManifest, ChatClientMessage, ChatServerMessage, McpError, ProxyRequest, ProxyResponse, ToolInfo } from "../shared/protocol.ts";
 import { promptExtension } from "./agent/prompt.ts";
 import { artifactExtension, filesExtension, mcpExtension, publishArtifact, sandboxExtension, type ChatScope } from "./agent/tools.ts";
-import { readMeta } from "./artifacts/store.ts";
+import { Storage } from "./storage/index.ts";
 import { connectStreamableHttp } from "./mcp/connect.ts";
 import { McpFailure, McpHub } from "./mcp/hub.ts";
 import { MCP_SERVERS } from "./mcp/servers.ts";
@@ -31,6 +31,7 @@ export interface ArtifactCall {
  */
 export class ChatAgent extends DurableObject<Env> {
   readonly hub = new McpHub(MCP_SERVERS, connectStreamableHttp);
+  readonly storage = new Storage(this.env);
   readonly ai = createAI({ binding: this.env.AI, gateway: this.env.AI_GATEWAY_ID, byokAlias: this.env.AI_BYOK_ALIAS || undefined });
   readonly registry = createRegistry();
   readonly harness = new PiHarness({
@@ -55,8 +56,10 @@ export class ChatAgent extends DurableObject<Env> {
     const scope: ChatScope = (this.scope = {
       uid: this.uid,
       chatId: this.chatId,
-      env,
       hub: this.hub,
+      artifacts: this.storage.artifacts,
+      // The uid is this object's name, which the Worker sets from a verified identity.
+      files: () => this.storage.userFiles(this.uid),
       onPublished: (artifact) => exports.UserDirectory.getByName(this.uid).recordArtifact({ ...artifact, chatId: this.chatId }),
     });
     this.registry.install(promptExtension);
@@ -171,7 +174,7 @@ export class ChatAgent extends DurableObject<Env> {
     const key = `${artifactId}:${version}`;
     let manifest = this.#manifests.get(key);
     if (!manifest) {
-      const meta = await readMeta(this.env.FILES, artifactId);
+      const meta = await this.storage.artifacts.readMeta(artifactId);
       if (!meta || meta.chatId !== this.chatId || meta.ownerUid !== this.uid) return undefined;
       manifest = meta.versions.find((v) => v.version === version)?.manifest;
       if (!manifest) return undefined;

@@ -43,8 +43,11 @@ export default defineConfig({
       DEV_TOOLS: bindings.text(process.env.DEV_TOOLS === "true" ? "true" : "false"),
       // Workers AI binding. Pi's createAI() routes Claude through AI Gateway with it.
       AI: bindings.ai({}),
-      // Artifact versions (artifacts/<id>/v<n>/…) and each user's files (users/<uid>/files/…).
+      // Each user's files (users/<uid>/files/…), and a read cache of artifact versions (artifacts/<id>/…).
       FILES: bindings.r2({ name: "pi-artifacts" }),
+      // Cloudflare Artifacts: one Git repo per published artifact, the source of truth for its versions.
+      // Local development uses a local Git backend, so it never touches the deployed repos.
+      REPOS: bindings.artifacts({ namespace: "pi-artifacts", dev: { remote: false } }),
     },
     // The Worker reaches its own Durable Objects through `exports` from cloudflare:workers, not bindings.
     exports: {

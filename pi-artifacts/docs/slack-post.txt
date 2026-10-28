@@ -13,7 +13,7 @@ Browser ── chat over WebSocket ──┐      Artifact page (sandboxed ifram
           ChatAgent Durable Object (one per user + chat)
            ├─ Pi Durable agent loop ── AI Gateway ── Claude Sonnet 5.5
            ├─ McpHub: one MCP session per server, used by the agent's tools AND by live pages
-           ├─ R2: artifact versions + the user's files
+           ├─ Artifacts: a Git repo per artifact · R2: the user's files
            └─ Sandbox container: run_python
 ```
 
@@ -24,6 +24,6 @@ Browser ── chat over WebSocket ──┐      Artifact page (sandboxed ifram
 • *The same page API as Claude.* `pi.use("mcp")` has the same shape as `claude.use("mcp")`, so models already know how to write these pages.
 • *Durable by default.* Pi saves every step to the Durable Object's SQLite, so an eviction or a deploy mid-turn resumes where it stopped.
 
-*Stack:* Cloudflare Workers + Durable Objects (Pi Durable via the Agents SDK), AI Gateway, R2, Containers (Sandbox SDK), React + Vite, deployed with the new `cf` CLI.
-*Status:* a deployed prototype. It's verified end to end: the agent built a live dashboard, then revised it on request. Sign-in goes through Cloudflare Access, and each user's files are encrypted with their own key. `run_python` hasn't been exercised in production yet.
+*Stack:* Cloudflare Workers + Durable Objects (Pi Durable via the Agents SDK), AI Gateway, Artifacts, R2, Containers (Sandbox SDK), React + Vite, deployed with the new `cf` CLI.
+*Status:* a deployed prototype. It's verified end to end: the agent built a live dashboard, then revised it on request. Sign-in goes through Cloudflare Access, each user's files are encrypted with their own key, and every artifact version is a Git commit. `run_python` hasn't been exercised in production yet.
 *Code:* https://github.com/xoriors/experimental/tree/claude/charming-cannon-h2sh7j/pi-artifacts · one-page architecture PDF attached

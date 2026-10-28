@@ -77,7 +77,7 @@
   <rect x="268" y="150" width="130" height="120" rx="9" fill="#fff" stroke="#1d1d1b"/>
   <text x="282" y="174" font-size="12" font-weight="700">Worker</text>
   <text x="282" y="192" font-size="9.5" fill="#6b6a66">routes, verifies Access,</text>
-  <text x="282" y="206" font-size="9.5" fill="#6b6a66">serves pages from R2</text>
+  <text x="282" y="206" font-size="9.5" fill="#6b6a66">serves cached pages</text>
   <text x="282" y="220" font-size="9.5" fill="#6b6a66">with CSP + runtime</text>
   <rect x="268" y="318" width="130" height="62" rx="9" fill="#eef3fb" stroke="#8fa8cf"/>
   <text x="280" y="342" font-size="10.5" font-weight="600">UserDirectory DO</text>
@@ -100,7 +100,7 @@
   <rect x="476" y="294" width="162" height="92" rx="7" fill="#fff" stroke="#8fa8cf"/>
   <text x="488" y="316" font-size="11" font-weight="600">Agent tools</text>
   <text x="488" y="333" font-size="9.5" fill="#6b6a66">coingecko__* (from tools/list)</text>
-  <text x="488" y="347" font-size="9.5" fill="#6b6a66">artifact_publish / _read</text>
+  <text x="488" y="347" font-size="9.5" fill="#6b6a66">artifact_publish · _diff</text>
   <text x="488" y="361" font-size="9.5" fill="#6b6a66">files_* · run_python</text>
 
   <!-- External -->
@@ -112,9 +112,10 @@
   <text x="688" y="203" font-size="11" font-weight="600">MCP server</text>
   <text x="688" y="220" font-size="9.5" fill="#6b6a66">CoinGecko (public)</text>
   <text x="688" y="234" font-size="9.5" fill="#6b6a66">Streamable HTTP</text>
-  <rect x="676" y="282" width="138" height="48" rx="9" fill="#f1f7ef" stroke="#8fb987"/>
-  <text x="688" y="303" font-size="11" font-weight="600">R2</text>
-  <text x="688" y="318" font-size="9.5" fill="#6b6a66">artifact versions · files</text>
+  <rect x="676" y="264" width="138" height="68" rx="9" fill="#f1f7ef" stroke="#8fb987"/>
+  <text x="688" y="285" font-size="11" font-weight="600">Artifacts + R2</text>
+  <text x="688" y="301" font-size="9.5" fill="#6b6a66">a Git repo per artifact</text>
+  <text x="688" y="315" font-size="9.5" fill="#6b6a66">user files · page cache</text>
   <rect x="676" y="342" width="138" height="48" rx="9" fill="#f1f7ef" stroke="#8fb987"/>
   <text x="688" y="363" font-size="11" font-weight="600">Sandbox container</text>
   <text x="688" y="378" font-size="9.5" fill="#6b6a66">Python, no internet</text>
@@ -147,7 +148,7 @@
 
 <h2 class="page-break">How a live call travels</h2>
 <ol class="flow">
-  <li><b>Publish.</b> The agent makes one real read-only MCP call to learn the data's shape. It writes the page and calls <code>artifact_publish</code> with a manifest such as <code>[{server: "CoinGecko", tools: ["execute"]}]</code>. The manifest is checked against the server's <code>tools/list</code>, and the HTML and manifest are stored in R2 as a new version.</li>
+  <li><b>Publish.</b> The agent makes one real read-only MCP call to learn the data's shape. It writes the page and calls <code>artifact_publish</code> with a manifest such as <code>[{server: "CoinGecko", tools: ["execute"]}]</code>. The manifest is checked against the server's <code>tools/list</code>, and the version is committed to the artifact's own Git repo in Cloudflare Artifacts (tagged <code>v&lt;n&gt;</code>), with a copy in R2 for serving.</li>
   <li><b>View.</b> The Worker serves the page with the runtime inlined and a CSP that blocks all network access. The viewer frames it in a sandbox with an opaque origin. The page says hello, and the viewer answers its own frame's first hello with a <code>MessagePort</code>.</li>
   <li><b>Watch.</b> The page calls <code>mcp.watchTool(server, tool, input, onEvent, {refetchInterval})</code>. The broker shows the cached result at once, then sends <code>POST /api/artifacts/:id/mcp</code>.</li>
   <li><b>Check and call.</b> The Worker passes the call by RPC to the chat's Durable Object. It checks the version's manifest, applies a per-viewer rate limit, and allows tools that aren't read-only only for the author. It then calls the tool through the <em>same</em> McpHub session the agent used: the result is served from the cache or fetched, and identical calls in flight share one request.</li>
@@ -171,7 +172,7 @@
       <li>Workers + Durable Objects, Pi Durable via the Agents SDK <code>PiHarness</code></li>
       <li>AI Gateway → Claude Sonnet 5.5 (BYOK)</li>
       <li>MCP SDK client (Streamable HTTP) → CoinGecko</li>
-      <li>R2 for versions and files; Containers (Sandbox SDK) for Python</li>
+      <li>Artifacts (a Git repo per artifact), R2 for files; Containers (Sandbox SDK) for Python</li>
       <li>React + Vite, deployed with the <code>cf</code> CLI</li>
     </ul>
   </div>
@@ -179,7 +180,7 @@
     <h2>Status and next</h2>
     <ul>
       <li>Deployed; an agent built a live dashboard and revised it as v2</li>
-      <li>Cloudflare Access sign-in; files encrypted per user</li>
+      <li>Cloudflare Access sign-in; files encrypted per user; every artifact version a Git commit</li>
       <li>Next: a screenshot self-check before publishing, MCP servers with OAuth, push for streaming sources</li>
       <li><code>run_python</code> not yet exercised in production</li>
     </ul>

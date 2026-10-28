@@ -43,6 +43,7 @@ export const api = {
   artifacts: () => request<ArtifactSummary[]>("/api/artifacts"),
   artifact: (id: string) => request<Omit<ArtifactMeta, "chatId"> & { isOwner: boolean }>(`/api/artifacts/${id}`),
   artifactTools: (id: string, version: number) => request<ToolInfo[]>(`/api/artifacts/${id}/tools?version=${version}`),
+  cloneAccess: (id: string) => request<{ remote: string; token: string; expiresAt: string }>(`/api/artifacts/${id}/clone`, post({})),
   /** Resolves with the Worker's ProxyResponse, errors included; rejects only when the request itself fails. */
   proxy: async (id: string, call: ProxyRequest): Promise<ProxyResponse> => {
     const response = await fetch(`/api/artifacts/${id}/mcp`, { credentials: "same-origin", ...post(call) });

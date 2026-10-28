@@ -67,6 +67,8 @@ export interface ArtifactVersion {
   version: number;
   publishedAt: number;
   manifest: ArtifactManifest;
+  /** What changed, in the agent's words: the version's commit message. */
+  message?: string;
 }
 
 export interface ArtifactMeta {

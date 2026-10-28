@@ -9,9 +9,10 @@ export type { FileEntry, UserFiles } from "./user-files.ts";
 export { PathError } from "./paths.ts";
 
 /**
- * The only code that touches the R2 bucket (test/storage-boundary.test.ts
- * fails the build otherwise). Everything else gets an ArtifactStore, or a
- * UserFiles scoped to one user and encrypted with that user's key.
+ * The only code that touches the R2 bucket or the Artifacts repos
+ * (test/storage-boundary.test.ts fails the build otherwise). Everything else
+ * gets an ArtifactStore, or a UserFiles scoped to one user and encrypted with
+ * that user's key.
  */
 export class Storage {
   readonly artifacts: ArtifactStore;
@@ -19,7 +20,7 @@ export class Storage {
 
   constructor(env: Env) {
     this.#env = env;
-    this.artifacts = new ArtifactStore(env.FILES);
+    this.artifacts = new ArtifactStore(env.REPOS, env.FILES);
   }
 
   /** One user's files. `uid` must come from a verified identity, never from a request body or a model. */

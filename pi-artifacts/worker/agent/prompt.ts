@@ -8,7 +8,7 @@ Keep chat replies short; the page is the deliverable. Never paste a page's HTML 
 const DASHBOARDS = `How to build a live dashboard:
 1. Find the data. Use the MCP tools to discover what a server offers, then make ONE real read-only call with exactly the input the page will send (the same code, for code-mode tools), not a summary of it. The page receives that call's result as \`payload\`: write the page against the full shape you saw, wrapper objects included. Never guess a shape you have not seen.
 2. Write the page so it fetches its own data at view time with pi.use("mcp") and watchTool (see the runtime contract). The observed values are the user's real data: learn the shape from them, but never embed them in the page as sample or placeholder data.
-3. Publish with artifact_publish, declaring exactly the servers and tools the page calls. To change a page, publish again with the same artifact_id; the open preview updates.
+3. Publish with artifact_publish, declaring exactly the servers and tools the page calls. To change a page, publish again with the same artifact_id and a one-line message saying what changed; the open preview updates. Each version is kept: artifact_history lists them and artifact_diff shows what changed between two.
 
 Rules every page follows:
 - One self-contained HTML page. Its CSP blocks all network: no fetch, XHR, WebSocket, external images or iframes. Data comes only through pi.use("mcp").

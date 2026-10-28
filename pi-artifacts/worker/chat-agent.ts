@@ -109,7 +109,7 @@ export class ChatAgent extends DurableObject<Env> {
   }
 
   /** Publish without the model, through the same checks as the agent's tool. Only routed when DEV_TOOLS is on. */
-  async devPublish(input: { title: string; html: string; artifactId?: string; mcp?: { server: string; tools: string[] }[] }) {
+  async devPublish(input: { title: string; html: string; artifactId?: string; mcp?: { server: string; tools: string[] }[]; message?: string }) {
     const meta = await publishArtifact(this.scope, input);
     return { artifactId: meta.id, version: meta.latest };
   }

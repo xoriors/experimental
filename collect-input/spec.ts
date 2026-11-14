@@ -1,0 +1,289 @@
+// The contract between the model and the form, plus the validation that
+// enforces it. Shared by the server (which validates) and the view (which
+// renders), so there is exactly one definition of what a field can be.
+
+import { z } from "zod"
+
+export const FIELD_TYPES = [
+  "text",
+  "textarea",
+  "number",
+  "date",
+  "time",
+  "select",
+  "cards",
+  "multiselect",
+  "boolean",
+  "range",
+] as const
+
+export type FieldType = (typeof FIELD_TYPES)[number]
+
+// Bounds are numeric for number/range and ISO strings for date/time.
+const Bound = z.union([z.number(), z.string()])
+
+export const OptionSchema = z.object({
+  value: z.string(),
+  label: z.string(),
+  detail: z.string().optional().describe("Secondary line, e.g. a price or a hint."),
+})
+
+export const FieldSchema = z.object({
+  key: z.string().describe("Key this field's answer appears under in the result."),
+  label: z.string(),
+  type: z.enum(FIELD_TYPES),
+  help: z.string().optional().describe("Small print under the control."),
+  placeholder: z.string().optional(),
+  required: z.boolean().optional(),
+  default: z
+    .union([z.string(), z.number(), z.boolean(), z.array(z.string())])
+    .optional()
+    .describe("Pre-fill anything already inferred, so the form only asks for the gaps."),
+  options: z.array(OptionSchema).optional().describe("Required for select, cards, multiselect."),
+  min: Bound.optional(),
+  max: Bound.optional(),
+  step: z.number().optional().describe("Range/number granularity."),
+})
+
+export const SpecSchema = z.object({
+  title: z.string(),
+  intent: z.string().optional().describe("One line telling the user why you are asking."),
+  submitLabel: z.string().optional(),
+  fields: z.array(FieldSchema).min(1),
+})
+
+export type Option = z.infer<typeof OptionSchema>
+export type Field = z.infer<typeof FieldSchema>
+export type Spec = z.infer<typeof SpecSchema>
+
+export type FieldValue = string | number | boolean | string[]
+export type Values = Record<string, FieldValue>
+
+export interface ValidationResult {
+  valid: boolean
+  errors: Record<string, string>
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const TIME_RE = /^\d{2}:\d{2}$/
+
+// Shape is not enough: "2026-02-31" and "29:99" both match the patterns above
+// while being no date and no time at all. Validation is this server's one job,
+// so the answers it passes on have to be real.
+function isRealDate(value: string): boolean {
+  if (!DATE_RE.test(value)) return false
+  const [y, m, d] = value.split("-").map(Number)
+  // Set the parts explicitly rather than using Date.UTC, which reads years 0
+  // to 99 as 1900 to 1999 and would call year 0099 a different date entirely.
+  const parsed = new Date(0)
+  parsed.setUTCFullYear(y, m - 1, d)
+  // A rolled-over date (Feb 31 becoming Mar 3) no longer matches its parts.
+  return (
+    parsed.getUTCFullYear() === y && parsed.getUTCMonth() === m - 1 && parsed.getUTCDate() === d
+  )
+}
+
+function isRealTime(value: string): boolean {
+  if (!TIME_RE.test(value)) return false
+  const [h, min] = value.split(":").map(Number)
+  return h <= 23 && min <= 59
+}
+
+// Types whose answer is a single string drawn from `options`.
+const CHOICE_TYPES: FieldType[] = ["select", "cards"]
+
+function isBlank(value: FieldValue | undefined): boolean {
+  if (value === undefined || value === null) return true
+  if (typeof value === "string") return value.trim() === ""
+  if (Array.isArray(value)) return value.length === 0
+  return false
+}
+
+// Validates one field's answer, returning an error message or null. Kept
+// separate so the same rule set can report every problem at once rather than
+// stopping at the first.
+function checkField(field: Field, value: FieldValue | undefined): string | null {
+  const blank = isBlank(value)
+
+  if (field.required) {
+    // An unticked checkbox is "blank" for a required boolean: it is how a
+    // form says "you must accept this".
+    if (blank || (field.type === "boolean" && value !== true)) {
+      return "This field is required"
+    }
+  }
+  // Optional and absent is fine, whatever the type: an unanswered checkbox
+  // simply means false.
+  if (value === undefined) return null
+  // Optional and empty is fine; nothing left to check.
+  if (blank && field.type !== "boolean") return null
+
+  switch (field.type) {
+    case "text":
+    case "textarea":
+      if (typeof value !== "string") return "Expected text"
+      return null
+
+    case "number":
+    case "range": {
+      if (typeof value !== "number" || Number.isNaN(value)) return "Expected a number"
+      if (typeof field.min === "number" && value < field.min) return `Must be ${field.min} or more`
+      if (typeof field.max === "number" && value > field.max) return `Must be ${field.max} or less`
+      return null
+    }
+
+    case "date": {
+      if (typeof value !== "string" || !isRealDate(value)) return "Expected a date (YYYY-MM-DD)"
+      // ISO dates compare correctly as plain strings.
+      if (typeof field.min === "string" && value < field.min) return `Pick ${field.min} or later`
+      if (typeof field.max === "string" && value > field.max) return `Pick ${field.max} or earlier`
+      return null
+    }
+
+    case "time": {
+      if (typeof value !== "string" || !isRealTime(value)) return "Expected a time (HH:MM)"
+      if (typeof field.min === "string" && value < field.min) return `Pick ${field.min} or later`
+      if (typeof field.max === "string" && value > field.max) return `Pick ${field.max} or earlier`
+      return null
+    }
+
+    case "select":
+    case "cards": {
+      if (typeof value !== "string") return "Expected one of the options"
+      const allowed = (field.options ?? []).map((o) => o.value)
+      if (!allowed.includes(value)) return "Not one of the offered options"
+      return null
+    }
+
+    case "multiselect": {
+      if (!Array.isArray(value)) return "Expected a list of options"
+      const allowed = (field.options ?? []).map((o) => o.value)
+      const stray = value.find((v) => !allowed.includes(v))
+      if (stray !== undefined) return `"${stray}" is not one of the offered options`
+      return null
+    }
+
+    case "boolean":
+      if (typeof value !== "boolean") return "Expected yes or no"
+      return null
+  }
+}
+
+// The single source of truth for whether a set of answers is acceptable.
+// The server runs this before the values are ever handed back to the model.
+export function validate(spec: Spec, values: Values): ValidationResult {
+  const errors: Record<string, string> = {}
+  for (const field of spec.fields) {
+    const problem = checkField(field, values[field.key])
+    if (problem) errors[field.key] = problem
+  }
+  return { valid: Object.keys(errors).length === 0, errors }
+}
+
+// How a single answer reads in prose: option labels rather than raw values,
+// so the summary says "Premium" where the JSON says "premium".
+function describe(field: Field, value: FieldValue): string {
+  const labelOf = (v: string) => field.options?.find((o) => o.value === v)?.label ?? v
+  if (typeof value === "boolean") return value ? "yes" : "no"
+  if (Array.isArray(value)) return value.map(labelOf).join(", ")
+  if (field.type === "select" || field.type === "cards") return labelOf(String(value))
+  return String(value)
+}
+
+// The answers as prose, to sit above the JSON block in the message that goes
+// back to the model. The prose keeps the transcript readable for a human
+// scrolling back; the JSON is what the model should actually parse, so
+// parsing cannot drift as the wording changes.
+export function summarize(spec: Spec, values: Values): string {
+  const lines: string[] = []
+  for (const field of spec.fields) {
+    const value = values[field.key]
+    if (isBlank(value)) continue
+    lines.push(`${field.label}: ${describe(field, value as FieldValue)}`)
+  }
+  return lines.join("\n")
+}
+
+// Settings the model can get wrong in ways the user could never fix from the
+// form: a numeric bound written as text, a default of the wrong type, bounds
+// that no value can satisfy. Caught here, at the tool boundary, so the model
+// gets a precise reason and can retry rather than rendering a dead form.
+function settingProblems(field: Field): string[] {
+  const problems: string[] = []
+  const at = `Field "${field.key}"`
+  const { type, min, max, default: preset } = field
+
+  if (type === "number" || type === "range") {
+    for (const [name, bound] of [
+      ["min", min],
+      ["max", max],
+    ] as const) {
+      if (bound !== undefined && typeof bound !== "number") {
+        problems.push(`${at} is a ${type} but its ${name} is not a number`)
+      }
+    }
+    if (typeof min === "number" && typeof max === "number" && min > max) {
+      problems.push(`${at} has min ${min} above max ${max}, so no value can satisfy it`)
+    }
+    if (preset !== undefined && typeof preset !== "number") {
+      problems.push(`${at} is a ${type} but its default is not a number`)
+    }
+  }
+
+  if (type === "date" || type === "time") {
+    const real = type === "date" ? isRealDate : isRealTime
+    for (const [name, bound] of [
+      ["min", min],
+      ["max", max],
+      ["default", preset],
+    ] as const) {
+      if (bound === undefined) continue
+      if (typeof bound !== "string" || !real(bound)) {
+        problems.push(`${at} is a ${type} but its ${name} is not a valid ${type}`)
+      }
+    }
+    if (typeof min === "string" && typeof max === "string" && min > max) {
+      problems.push(`${at} has min ${min} above max ${max}, so no value can satisfy it`)
+    }
+  }
+
+  if (type === "boolean" && preset !== undefined && typeof preset !== "boolean") {
+    problems.push(`${at} is a boolean but its default is not true or false`)
+  }
+
+  if ((type === "text" || type === "textarea") && preset !== undefined && typeof preset !== "string") {
+    problems.push(`${at} is a ${type} but its default is not text`)
+  }
+
+  // A default the user cannot see among the choices is worse than none.
+  const allowed = (field.options ?? []).map((o) => o.value)
+  if (CHOICE_TYPES.includes(type) && preset !== undefined) {
+    if (typeof preset !== "string" || !allowed.includes(preset)) {
+      problems.push(`${at} has a default that is not one of its options`)
+    }
+  }
+  if (type === "multiselect" && preset !== undefined) {
+    if (!Array.isArray(preset) || preset.some((v) => !allowed.includes(v))) {
+      problems.push(`${at} has a default that is not a list of its options`)
+    }
+  }
+
+  return problems
+}
+
+// A spec is only usable if every choice field actually offers choices, every
+// key is distinct, and no field is configured so that it can never be answered.
+export function specProblems(spec: Spec): string[] {
+  const problems: string[] = []
+  const seen = new Set<string>()
+  for (const field of spec.fields) {
+    if (seen.has(field.key)) problems.push(`Duplicate field key "${field.key}"`)
+    seen.add(field.key)
+    const needsOptions = CHOICE_TYPES.includes(field.type) || field.type === "multiselect"
+    if (needsOptions && !field.options?.length) {
+      problems.push(`Field "${field.key}" is a ${field.type} but has no options`)
+    }
+    problems.push(...settingProblems(field))
+  }
+  return problems
+}

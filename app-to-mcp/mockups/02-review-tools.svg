@@ -1,0 +1,69 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='960' height='600' viewBox='0 0 960 600'>
+<rect x='0' y='0' width='960' height='600' rx='0' fill='#f6f7f9' />
+<rect x='0' y='0' width='960' height='44' rx='0' fill='#ffffff' />
+<line x1='0' y1='44' x2='960' y2='44' stroke='#e3e6eb'/>
+<text x='20' y='28' font-size='13' fill='#6b7385' font-weight='600' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>MCP host · chat</text>
+<text x='940' y='28' font-size='12' fill='#6b7385' font-weight='400' text-anchor='end' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>mockup — app-to-mcp cockpit</text>
+<rect x='580' y='58' width='360' height='34' rx='17' fill='#eef0ff' />
+<text x='594' y='80' font-size='13' fill='#4f46e5' font-weight='500' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Looks good — show me what you inferred</text>
+<rect x='20' y='104' width='920' height='476' rx='12' fill='#ffffff' stroke='#e3e6eb' />
+<rect x='20' y='104' width='920' height='40' rx='12' fill='#0f172a'/>
+<rect x='20' y='130' width='920' height='14' fill='#0f172a'/>
+<text x='40' y='129' font-size='13' fill='#fff' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>⌘ app-to-mcp</text>
+<text x='150' y='129' font-size='13' fill='#cbd5e1' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Review · acme-crm draft spec</text>
+<text x='920' y='129' font-size='11' fill='#94a3b8' font-weight='400' text-anchor='end' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>ui://app-to-mcp/cockpit</text>
+<text x='40' y='174' font-size='14' fill='#1d2330' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Draft spec · acme-crm v1 · 5 tools inferred from 1 recording</text>
+<text x='40' y='194' font-size='12' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Rename, drop or re-tier tools before they&#x27;re exposed to the model.</text>
+<rect x='40' y='210' width='560' height='30' rx='6' fill='#f6f7f9' />
+<text x='56' y='230' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Tool</text>
+<text x='236' y='230' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Calls</text>
+<text x='446' y='230' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Risk</text>
+<text x='560' y='230' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Keep</text>
+<rect x='40' y='246' width='560' height='42' rx='6' fill='#ffffff' stroke='#e3e6eb' />
+<text x='56' y='272' font-size='12' fill='#1d2330' font-weight='600' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>customers.search</text>
+<text x='236' y='272' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>GET /api/v2/customers</text>
+<rect x='446' y='256' width='42' height='22' rx='11' fill='#e8f7ee' /><text x='467.0' y='271' font-size='11' fill='#16a34a' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>read</text>
+<rect x='562' y='257' width='20' height='20' rx='5' fill='#4f46e5' />
+<path d='M567 267 l4 4 l7 -8' stroke='#fff' stroke-width='2.2' fill='none'/>
+<rect x='40' y='294' width='560' height='42' rx='6' fill='#ffffff' stroke='#e3e6eb' />
+<text x='56' y='320' font-size='12' fill='#1d2330' font-weight='600' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>currencies.list</text>
+<text x='236' y='320' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>GET /api/v2/currencies</text>
+<rect x='446' y='304' width='42' height='22' rx='11' fill='#e8f7ee' /><text x='467.0' y='319' font-size='11' fill='#16a34a' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>read</text>
+<rect x='562' y='305' width='20' height='20' rx='5' fill='#ffffff' stroke='#e3e6eb' />
+<rect x='40' y='342' width='560' height='42' rx='6' fill='#eef0ff' stroke='#4f46e5' />
+<text x='56' y='368' font-size='12' fill='#1d2330' font-weight='600' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>invoices.create</text>
+<text x='236' y='368' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>POST /api/v2/invoices</text>
+<rect x='446' y='352' width='49' height='22' rx='11' fill='#fff5e6' /><text x='470.5' y='367' font-size='11' fill='#d97706' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>write</text>
+<rect x='562' y='353' width='20' height='20' rx='5' fill='#4f46e5' />
+<path d='M567 363 l4 4 l7 -8' stroke='#fff' stroke-width='2.2' fill='none'/>
+<rect x='40' y='390' width='560' height='42' rx='6' fill='#ffffff' stroke='#e3e6eb' />
+<text x='56' y='416' font-size='12' fill='#1d2330' font-weight='600' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>invoices.get</text>
+<text x='236' y='416' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>GET /api/v2/invoices/{id}</text>
+<rect x='446' y='400' width='42' height='22' rx='11' fill='#e8f7ee' /><text x='467.0' y='415' font-size='11' fill='#16a34a' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>read</text>
+<rect x='562' y='401' width='20' height='20' rx='5' fill='#4f46e5' />
+<path d='M567 411 l4 4 l7 -8' stroke='#fff' stroke-width='2.2' fill='none'/>
+<rect x='40' y='438' width='560' height='42' rx='6' fill='#ffffff' stroke='#e3e6eb' />
+<text x='56' y='464' font-size='12' fill='#1d2330' font-weight='600' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>invoices.send</text>
+<text x='236' y='464' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>mutation SendInvoice</text>
+<rect x='446' y='448' width='91' height='22' rx='11' fill='#fdecec' /><text x='491.5' y='463' font-size='11' fill='#dc2626' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>destructive</text>
+<rect x='562' y='449' width='20' height='20' rx='5' fill='#4f46e5' />
+<path d='M567 459 l4 4 l7 -8' stroke='#fff' stroke-width='2.2' fill='none'/>
+<rect x='620' y='210' width='300' height='314' rx='8' fill='#f6f7f9' stroke='#e3e6eb' />
+<text x='636' y='236' font-size='14' fill='#1d2330' font-weight='700' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>invoices.create</text>
+<text x='636' y='256' font-size='12' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Create a draft invoice for a customer.</text>
+<text x='636' y='284' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Input schema (inferred from 3 samples)</text>
+<rect x='636' y='292' width='268' height='100' rx='6' fill='#0f172a' />
+<text x='648' y='312' font-size='11' fill='#e2e8f0' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>{</text>
+<text x='648' y='329' font-size='11' fill='#e2e8f0' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>  customer_id: string   ✓ required</text>
+<text x='648' y='346' font-size='11' fill='#e2e8f0' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>  amount:      number ≥ 0 ✓ required</text>
+<text x='648' y='363' font-size='11' fill='#e2e8f0' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>  currency:    &quot;EUR&quot; | &quot;USD&quot;</text>
+<text x='648' y='380' font-size='11' fill='#e2e8f0' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>}</text>
+<text x='636' y='416' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Replay test</text>
+<rect x='720' y='402' width='63' height='22' rx='11' fill='#e8f7ee' /><text x='751.5' y='417' font-size='11' fill='#16a34a' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>passing</text>
+<text x='636' y='446' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>UI fallback path recorded</text>
+<rect x='800' y='432' width='36' height='22' rx='11' fill='#e8f7ee' /><text x='818.0' y='447' font-size='11' fill='#16a34a' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>yes</text>
+<rect x='636' y='474' width='100' height='34' rx='8' fill='#ffffff' stroke='#e3e6eb' /><text x='686.0' y='496' font-size='13' fill='#1d2330' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Edit name</text>
+<rect x='744' y='474' width='110' height='34' rx='8' fill='#ffffff' stroke='#e3e6eb' /><text x='799.0' y='496' font-size='13' fill='#1d2330' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Change tier</text>
+<rect x='40' y='500' width='200' height='34' rx='8' fill='#4f46e5' /><text x='140.0' y='522' font-size='13' fill='#fff' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Approve spec v1 → serve</text>
+<rect x='250' y='500' width='170' height='34' rx='8' fill='#ffffff' stroke='#e3e6eb' /><text x='335.0' y='522' font-size='13' fill='#1d2330' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Record another task</text>
+</svg>

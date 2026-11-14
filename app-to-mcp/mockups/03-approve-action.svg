@@ -1,0 +1,34 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='960' height='600' viewBox='0 0 960 600'>
+<rect x='0' y='0' width='960' height='600' rx='0' fill='#f6f7f9' />
+<rect x='0' y='0' width='960' height='44' rx='0' fill='#ffffff' />
+<line x1='0' y1='44' x2='960' y2='44' stroke='#e3e6eb'/>
+<text x='20' y='28' font-size='13' fill='#6b7385' font-weight='600' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>MCP host · chat</text>
+<text x='940' y='28' font-size='12' fill='#6b7385' font-weight='400' text-anchor='end' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>mockup — app-to-mcp cockpit</text>
+<rect x='580' y='58' width='360' height='34' rx='17' fill='#eef0ff' />
+<text x='594' y='80' font-size='13' fill='#4f46e5' font-weight='500' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Send Contoso their invoice</text>
+<rect x='20' y='104' width='920' height='476' rx='12' fill='#ffffff' stroke='#e3e6eb' />
+<rect x='20' y='104' width='920' height='40' rx='12' fill='#0f172a'/>
+<rect x='20' y='130' width='920' height='14' fill='#0f172a'/>
+<text x='40' y='129' font-size='13' fill='#fff' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>⌘ app-to-mcp</text>
+<text x='150' y='129' font-size='13' fill='#cbd5e1' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Approval · acme-crm</text>
+<text x='920' y='129' font-size='11' fill='#94a3b8' font-weight='400' text-anchor='end' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>ui://app-to-mcp/cockpit</text>
+<rect x='40' y='164' width='880' height='40' rx='6' fill='#f6f7f9' /><text x='56' y='189' font-size='13' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Model wants to call a destructive tool. Nothing has been sent yet.</text>
+<rect x='180' y='224' width='600' height='280' rx='12' fill='#ffffff' stroke='#dc2626' stroke-width='2'/>
+<rect x='180' y='224' width='600' height='46' rx='12' fill='#fdecec' /><rect x='180' y='256' width='600' height='14' fill='#fdecec'/>
+<text x='204' y='253' font-size='15' fill='#dc2626' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>⚠  Approve: invoices.send</text>
+<rect x='680' y='236' width='91' height='22' rx='11' fill='#fff' /><text x='725.5' y='251' font-size='11' fill='#dc2626' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>destructive</text>
+<text x='204' y='298' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>App</text>
+<text x='300' y='298' font-size='13' fill='#1d2330' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Acme CRM  ·  crm.acme.internal</text>
+<text x='204' y='326' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Action</text>
+<text x='300' y='326' font-size='13' fill='#1d2330' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Email invoice INV-0081 (1,250.00 EUR) to</text>
+<text x='300' y='344' font-size='13' fill='#1d2330' font-weight='600' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>billing@contoso.example</text>
+<text x='204' y='374' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Request</text>
+<rect x='300' y='360' width='456' height='28' rx='5' fill='#0f172a' /><text x='310' y='379' font-size='11' fill='#e2e8f0' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>mutation SendInvoice { id: &quot;inv_81&quot; }</text>
+<text x='204' y='414' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Why</text>
+<text x='300' y='414' font-size='13' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>User asked: “send Contoso their invoice”</text>
+<line x1='204' y1='432' x2='756' y2='432' stroke='#e3e6eb'/>
+<rect x='204' y='448' width='130' height='34' rx='8' fill='#dc2626' /><text x='269.0' y='470' font-size='13' fill='#fff' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Approve once</text>
+<rect x='344' y='448' width='80' height='34' rx='8' fill='#ffffff' stroke='#e3e6eb' /><text x='384.0' y='470' font-size='13' fill='#1d2330' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Deny</text>
+<rect x='436' y='455' width='18' height='18' rx='4' fill='#ffffff' stroke='#e3e6eb' /><text x='462' y='469' font-size='12' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Allow for this chat (max 10 calls)</text>
+<text x='480' y='540' font-size='11' fill='#6b7385' font-weight='400' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Logged to audit log with spec version, inputs hash and decision.</text>
+</svg>

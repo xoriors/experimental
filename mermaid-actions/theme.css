@@ -1,0 +1,64 @@
+/* Pele reads colours and fonts from CSS variables. Change them here; diagrams restyle without re-rendering. */
+:root {
+  --bg: #fffcf0; --fg: #100f0f; --muted: #6f6e69;
+  --surface: #f2f0e5; --surface-alt: #e6e4d9; --border: #cecdc3;
+  --accent: #205ea6; --critical: #af3029;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #100f0f; --fg: #cecdc3; --muted: #878580;
+    --surface: #1c1b1a; --surface-alt: #282726; --border: #403e3c;
+    --accent: #4385be; --critical: #d14d41;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #100f0f; --fg: #cecdc3; --muted: #878580;
+  --surface: #1c1b1a; --surface-alt: #282726; --border: #403e3c;
+  --accent: #4385be; --critical: #d14d41;
+  color-scheme: dark;
+}
+
+/* The diagram: Pele's variables, mapped onto the page palette. */
+.pele {
+  --pele-bg: var(--bg); --pele-fg: var(--fg); --pele-muted: var(--muted); --pele-line: var(--fg);
+  --pele-surface: var(--surface); --pele-surface-alt: var(--surface-alt); --pele-border: var(--border);
+  --pele-accent: var(--accent); --pele-critical: var(--critical);
+  --pele-font: var(--font); --pele-radius: 6px;
+}
+
+/* Semantic classes coming from the diagram text. `checked` is toggled by action:toggle. */
+.pele .checked rect, .pele .checked polygon, .pele .checked circle { stroke: var(--accent); stroke-width: 3px; }
+.pele .checked .pele-label { text-decoration: line-through; fill: var(--muted); }
+.pele a:hover rect, .pele a:hover polygon, .pele a:hover circle { stroke: var(--accent); stroke-width: 2.5px; }
+
+/* The page around the diagrams. */
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--font); }
+header, main {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; padding-block: .6rem; border-bottom: 1px solid var(--border); background: var(--surface); }
+nav { display: flex; gap: 1rem; }
+header a { color: var(--accent); }
+nav a[aria-current] { font-weight: 600; text-decoration: none; }
+header select { font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; padding: .15rem .3rem; }
+#toast { margin-left: auto; color: var(--muted); opacity: 0; transition: opacity .2s; min-width: 0; }
+#toast.on { opacity: 1; }
+main { max-width: 56rem; margin: 0 auto; padding-block: 1rem 4rem; min-width: 0; }
+main a { color: var(--accent); }
+.diagram { margin: 1.25rem 0; max-width: 100%; overflow-x: auto; }
+code { background: var(--surface); border-radius: 4px; padding: .1em .3em; font-size: .92em; }
+pre { overflow-x: auto; }
+pre code { display: block; padding: .75rem; }
+table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+th, td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+details { border: 1px solid var(--border); border-radius: 6px; padding: .5rem .9rem; background: var(--surface); transition: outline-color .3s; outline: 2px solid transparent; }
+details.flash { outline-color: var(--accent); }
+summary { cursor: pointer; font-weight: 600; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; scroll-behavior: auto !important; }
+}

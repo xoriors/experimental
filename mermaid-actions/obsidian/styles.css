@@ -1,0 +1,9 @@
+/* Styles for the classes the built-in actions use. A host sets --ma-accent once. */
+.ma-action { cursor: pointer; }
+.ma-action:hover rect, .ma-action:hover polygon, .ma-action:hover circle,
+.pele a:hover rect, .pele a:hover polygon, .pele a:hover circle { stroke: var(--ma-accent); stroke-width: 2.5px; }
+.checked rect, .checked polygon, .checked circle { stroke: var(--ma-accent); stroke-width: 3px; }
+.checked .pele-label, .checked .nodeLabel { text-decoration: line-through; opacity: .6; }
+details.flash { outline-color: var(--ma-accent); }
+body { --ma-accent: var(--interactive-accent); }
+details.flash { outline: 2px solid var(--ma-accent); }

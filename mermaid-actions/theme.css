@@ -2,7 +2,7 @@
 :root {
   --bg: #fffcf0; --fg: #100f0f; --muted: #6f6e69;
   --surface: #f2f0e5; --surface-alt: #e6e4d9; --border: #cecdc3;
-  --accent: #205ea6; --critical: #af3029;
+  --accent: #205ea6; --critical: #af3029; --ma-accent: var(--accent);
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
@@ -29,11 +29,6 @@
   --pele-font: var(--font); --pele-radius: 6px;
 }
 
-/* Semantic classes coming from the diagram text. `checked` is toggled by action:toggle. */
-.pele .checked rect, .pele .checked polygon, .pele .checked circle { stroke: var(--accent); stroke-width: 3px; }
-.pele .checked .pele-label { text-decoration: line-through; fill: var(--muted); }
-.pele a:hover rect, .pele a:hover polygon, .pele a:hover circle { stroke: var(--accent); stroke-width: 2.5px; }
-
 /* The page around the diagrams. */
 body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--font); }
 header, main {
@@ -56,7 +51,6 @@ pre code { display: block; padding: .75rem; }
 table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
 th, td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 details { border: 1px solid var(--border); border-radius: 6px; padding: .5rem .9rem; background: var(--surface); transition: outline-color .3s; outline: 2px solid transparent; }
-details.flash { outline-color: var(--accent); }
 summary { cursor: pointer; font-weight: 600; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {

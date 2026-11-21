@@ -1,0 +1,9 @@
+{
+  "id": "mermaid-actions",
+  "name": "Mermaid Actions",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Run action: links (copy, toggle, show) declared as click lines in Mermaid diagrams.",
+  "author": "xorio",
+  "isDesktopOnly": false
+}

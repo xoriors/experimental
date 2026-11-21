@@ -1,0 +1,22 @@
+[package]
+name = "app-to-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "app-to-mcp"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+app-to-mcp-spec = { path = "../crates/spec" }
+app-to-mcp-record = { path = "../crates/record" }
+app-to-mcp-compile = { path = "../crates/compile" }
+app-to-mcp-runtime = { path = "../crates/runtime" }
+app-to-mcp-heal = { path = "../crates/heal" }
+app-to-mcp-cockpit = { path = "../crates/cockpit" }

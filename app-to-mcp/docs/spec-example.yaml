@@ -1,0 +1,61 @@
+# app-to-mcp spec, draft v0 (illustrative)
+spec: app-to-mcp/v0
+app:
+  id: acme-crm
+  name: Acme CRM
+  origin: https://crm.acme.internal
+  version: 3            # bumped on every approved patch
+auth:
+  kind: cookie-session  # cookie-session | bearer | oauth-pkce | none
+  login_url: /login
+  csrf:
+    from: cookie:XSRF-TOKEN
+    to: header:X-XSRF-TOKEN
+  secret_ref: keychain://app-to-mcp/acme-crm   # never inline secrets
+tools:
+  - name: customers.search
+    description: Find customers by name or email.
+    risk: read
+    input:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        limit: { type: integer, default: 20, maximum: 100 }
+    call:
+      http: { method: GET, path: /api/v2/customers, query: { q: "{{query}}", size: "{{limit}}" } }
+    output:
+      pick: $.items[*].{id, name, email}
+    test:
+      replay: traces/customers.search.0.json
+
+  - name: invoices.create
+    description: Create a draft invoice for a customer.
+    risk: write
+    input:
+      type: object
+      required: [customer_id, amount]
+      properties:
+        customer_id: { type: string }
+        amount: { type: number, minimum: 0 }
+        currency: { type: string, default: EUR }
+    call:
+      http:
+        method: POST
+        path: /api/v2/invoices
+        json: { customerId: "{{customer_id}}", total: "{{amount}}", currency: "{{currency}}", status: draft }
+    fallback:
+      ui: flows/invoices.create.ui.json   # recorded element path, used by the healer
+
+  - name: invoices.send
+    description: Email a finalized invoice to the customer.
+    risk: destructive   # approval card each call
+    input:
+      type: object
+      required: [invoice_id]
+      properties: { invoice_id: { type: string } }
+    call:
+      graphql:
+        endpoint: /graphql
+        operation: SendInvoice
+        variables: { id: "{{invoice_id}}" }

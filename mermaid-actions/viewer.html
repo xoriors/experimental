@@ -24,6 +24,7 @@
 <script type="module">
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked@16.1.2/lib/marked.esm.js';
 import { mount } from 'https://cdn.jsdelivr.net/npm/pele@1.10.0/+esm';
+import { mount as mountActions } from './mermaid-actions.js';
 
 // `action` is the one non-standard scheme. Pele keeps only the schemes listed here.
 const PELE = { linkSchemes: ['http', 'https', 'mailto', 'tel', 'action'], zoom: 'auto' };
@@ -66,40 +67,22 @@ async function show(file, hash = '') {
 const slug = t => t.trim().toLowerCase().replace(/[^\w]+/g, '-').replace(/^-|-$/g, '');
 const jump = hash => document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: 'start' });
 
-// 3. Actions. Add one here, then use it as `click node href "action:name?key=value"`.
-const actions = {
-  copy: (p) => {
-    const text = p.get('text');
-    navigator.clipboard.writeText(text).then(() => toast(`Copied: ${text}`), () => toast(`Clipboard blocked here, the text is: ${text}`));
+// 3. Actions live in mermaid-actions.js. To add one: `register('name', (params, node, ctx) => …)`
+// from './mermaid-actions.js', then use it as `click node href "action:name?key=value"`.
+// This page only handles what is specific to a viewer: header nav, #heading jumps, ./doc.md links.
+mountActions(document, {
+  toast,
+  onLink(href, a, e) {
+    if (a?.dataset.doc) {                                          // header nav
+      e.preventDefault(); show(a.dataset.doc);
+    } else if (href.startsWith('#')) {                             // heading in this doc
+      e.preventDefault(); jump(href);
+    } else if (/\.md(#|$)/.test(href) && !/^[a-z]+:/i.test(href)) { // another doc: stay in the viewer
+      e.preventDefault();
+      const t = new URL(href, new URL(current, base));
+      show(t.pathname.slice(base.pathname.length), t.hash);
+    }
   },
-  toggle: (p, node) => node?.classList.toggle(p.get('class')),
-  show: (p) => {
-    const t = document.getElementById(p.get('id'));
-    if (!t) return toast(`No element #${p.get('id')}`);
-    if ('open' in t) t.open = true;
-    t.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    t.classList.add('flash'); setTimeout(() => t.classList.remove('flash'), 1500);
-  },
-};
-
-// One click handler for the page: nav links, action: links, #heading jumps, and ./doc.md links.
-document.addEventListener('click', e => {
-  const a = e.target.closest('a[href]');
-  if (!a) return;
-  const href = a.getAttribute('href');
-  if (a.dataset.doc) {                                           // header nav
-    e.preventDefault(); show(a.dataset.doc);
-  } else if (href.startsWith('action:')) {                       // action:name?key=value
-    e.preventDefault();
-    const u = new URL(href);
-    (actions[u.pathname] ?? (() => toast(`Unknown action: ${u.pathname}`)))(u.searchParams, a.closest('[data-id]'));
-  } else if (href.startsWith('#')) {                             // heading in this doc
-    e.preventDefault(); jump(href);
-  } else if (/\.md(#|$)/.test(href) && !/^[a-z]+:/i.test(href)) { // another doc: stay in the viewer
-    e.preventDefault();
-    const t = new URL(href, new URL(current, base));
-    show(t.pathname.slice(base.pathname.length), t.hash);
-  }
 });
 
 show(new URLSearchParams(location.search).get('f') ?? 'docs/deploy-flow.md', location.hash);

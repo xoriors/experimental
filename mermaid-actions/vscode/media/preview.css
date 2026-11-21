@@ -1,0 +1,7 @@
+.ma-action { cursor: pointer; }
+.ma-action:hover rect, .ma-action:hover polygon, .ma-action:hover circle { stroke: var(--vscode-textLink-foreground); stroke-width: 2.5px; }
+.checked rect, .checked polygon, .checked circle { stroke: var(--vscode-textLink-foreground); stroke-width: 3px; }
+.checked .nodeLabel, .checked .pele-label { text-decoration: line-through; opacity: .6; }
+details.flash { outline: 2px solid var(--vscode-textLink-foreground); }
+.ma-toast { position: fixed; right: 12px; bottom: 12px; max-width: 60ch; padding: .4rem .7rem; border-radius: 4px; background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground); border: 1px solid var(--vscode-editorWidget-border); opacity: 0; transition: opacity .2s; pointer-events: none; }
+.ma-toast.on { opacity: 1; }

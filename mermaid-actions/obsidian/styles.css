@@ -1,0 +1,5 @@
+.ma-action { cursor: pointer; }
+.ma-action:hover rect, .ma-action:hover polygon, .ma-action:hover circle { stroke: var(--interactive-accent); stroke-width: 2.5px; }
+.checked rect, .checked polygon, .checked circle { stroke: var(--interactive-accent); stroke-width: 3px; }
+.checked .pele-label { text-decoration: line-through; opacity: .6; }
+details.flash { outline: 2px solid var(--interactive-accent); }

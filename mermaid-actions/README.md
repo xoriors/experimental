@@ -1,7 +1,7 @@
 # mermaid-actions
 
 Clickable actions for diagrams, declared inside plain Markdown + Mermaid files and executed by a
-90-line viewer built on [Pele](https://pele.run/), Obsidian's Mermaid renderer. Nothing in the
+small viewer built on [Pele](https://pele.run/), Obsidian's Mermaid renderer. Nothing in the
 docs is a script: every action is a `click … href` line in the Mermaid block, the look is a CSS
 file, and the behaviour lives once in `viewer.html`.
 
@@ -42,23 +42,56 @@ flowchart LR
 | mark meaning or state | `class fix,rollback warn` + `classDef`, or `A@{ shape: … }` | Mermaid and CSS |
 
 `action:` is the only non-standard part. It is a URL scheme, so it needs no new syntax and it
-stays inside the diagram text. To add one, add an entry to the `actions` map in `viewer.html`;
-it receives the query parameters and the node's `<g data-id>` element.
+stays inside the diagram text. To add one, call `register(name, fn)` from `mermaid-actions.js`;
+`fn(params, node, ctx)` receives the query parameters (`URLSearchParams`), the node's
+`<g data-id>` element and `ctx = { root, doc, toast }`.
+
+## The library and its hosts
+
+`mermaid-actions.js` is a dependency-free ES module that owns the actions and the click handler:
+
+```js
+import { register, mount } from './mermaid-actions.js';
+register('open-ticket', (p) => window.open(`https://example.com/t/${p.get('id')}`));
+const { destroy } = mount(document, {
+  toast: msg => console.log(msg),         // how a host shows messages
+  onLink: (href, a, event) => {},         // other clicks with an href (nav, #heading, ./doc.md)
+  // hrefFor: (target) => href,           // for hosts whose renderer strips the link
+});
+```
+
+`copy`, `toggle` and `show` are registered the same way, so a host can replace them. A host that
+cannot get the link out of its renderer reads the `click` lines itself (`parseClicks(source)`) and
+finds the clicked node with `nodeIdOf(target)`; the Obsidian and VS Code hosts do this.
+
+| Host | Folder | Install |
+|---|---|---|
+| Viewer | `viewer.html` | serve the folder, see above |
+| Obsidian plugin | `obsidian/` | copy `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/mermaid-actions/`, enable it |
+| VS Code Markdown preview | `vscode/` | `cd vscode && npx @vscode/vsce package`, then install the `.vsix`; needs the *Markdown Preview Mermaid Support* extension, which draws the diagrams |
+
+`obsidian/main.js`, `vscode/extension.js` and `vscode/media/preview.js` are generated from
+`mermaid-actions.js` plus the `*.src.js` next to them, so each ships as one file with no build on
+the user's side. After editing a source, run `node build-hosts.mjs` (`--check` fails when a
+generated file is stale). `node --test test/core.test.mjs` runs the unit tests.
+
+The Obsidian and VS Code hosts were exercised with a stub of the host API and a real browser DOM,
+not inside Obsidian or VS Code themselves. Obsidian: reading view only; Live Preview is untested.
 
 ## Where each part works
 
-| | GitHub | Obsidian (Pele) | This viewer |
-|---|---|---|---|
-| diagram | yes | yes | yes |
-| `https://`, `#heading`, `./doc.md` links | stripped | yes | yes |
-| `action:` links | stripped | blocked scheme, so the node is simply not a link | executed |
-| `classDef` colours | yes | yes, fixed colours in every theme | yes, fixed colours in every theme |
-| classes styled from `theme.css` | no | no | yes, follow light/dark |
-| kanban ticket links | no | yes | yes |
-| `<details>` blocks in the prose | yes | yes | yes |
+| | GitHub | Obsidian (Pele) | Obsidian + plugin | VS Code preview | VS Code + extension | This viewer |
+|---|---|---|---|---|---|---|
+| diagram | yes | yes | yes | with a Mermaid extension | yes | yes |
+| `https://`, `#heading`, `./doc.md` links | stripped | yes | yes | depends on the Mermaid extension | depends on the Mermaid extension | yes |
+| `action:` links | stripped | blocked scheme, so the node is simply not a link | executed (reading view) | not run | executed | executed |
+| `classDef` colours | yes | yes, fixed colours in every theme | same | yes | yes | yes, fixed colours in every theme |
+| classes styled from `theme.css` | no | no | `checked` only, from the plugin's `styles.css` | no | `checked` only, from `preview.css` | yes, follow light/dark |
+| kanban ticket links | no | yes | yes | no | no | yes |
+| `<details>` blocks in the prose | yes | yes | yes | yes | yes | yes |
 
 So a doc degrades to a static diagram on GitHub, a diagram with links in Obsidian, and a diagram
-with actions here. The same file is committed in every case.
+with actions wherever a host from this folder is installed. The same file is committed in every case.
 
 ## Gotchas found while building this
 
@@ -78,7 +111,12 @@ Checked against Pele 1.10.0:
 ## Files
 
 ```
-viewer.html          Markdown → HTML (marked 16.1.2), each ```mermaid block → Pele 1.10.0, one click handler
+mermaid-actions.js   the library: register / mount / parseClicks / nodeIdOf / decorate, built-in actions
+viewer.html          Markdown → HTML (marked 16.1.2), each ```mermaid block → Pele 1.10.0, uses the library
+obsidian/            Obsidian plugin (main.src.js → generated main.js, manifest.json, styles.css)
+vscode/              VS Code Markdown preview extension (extension.src.js, media/preview.src.js, generated bundles)
+build-hosts.mjs      builds the host bundles from mermaid-actions.js; --check for CI
+test/core.test.mjs   unit tests for the library (node --test)
 theme.css            --pele-* variables for light/dark, styles for the semantic classes, page styles
 docs/deploy-flow.md  every action type on one flowchart, plus a kanban with ticket links
 docs/runbook.md      a second doc, to show jumps between docs

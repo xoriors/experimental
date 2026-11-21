@@ -1,0 +1,35 @@
+name: app-to-mcp CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app-to-mcp/**"
+      - ".github/workflows/app-to-mcp.yml"
+  pull_request:
+    paths:
+      - "app-to-mcp/**"
+      - ".github/workflows/app-to-mcp.yml"
+
+defaults:
+  run:
+    working-directory: app-to-mcp
+
+jobs:
+  check:
+    name: fmt, clippy & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app-to-mcp
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Run clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Run tests
+        run: cargo test --workspace

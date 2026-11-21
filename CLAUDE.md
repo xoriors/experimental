@@ -54,6 +54,13 @@ Tests Liquid AI's d1-ultra decision model as the "should I announce this?" gate 
 - Published results: [screen-narrator-d1.vercel.app](https://screen-narrator-d1.vercel.app) (Vercel team "xorio's projects"). To update it: `pnpm site [runId]` builds `public/` (the report + its screenshots), then `vercel deploy --prod --yes` **from inside `screen-narrator-d1/`**, where `.vercel/` links the project. `.vercelignore` uploads only `public/` and `vercel.json`, so no source, `.env`, `data/` or `runs/` leaves the machine.
 - `.env` holds `LIQUID_API_KEY` and is gitignored. A hook blocks any Bash command that names `.env`; `src/env.ts` loads it.
 
+### app-to-mcp — Rust workspace skeleton (M0)
+
+Compiler that turns a one-time app recording into a versioned YAML spec served as a typed MCP server.
+
+- Workspace root is `app-to-mcp/` (`crates/{spec,record,compile,runtime,heal,cockpit}` + `cli/`).
+- Commands (run inside `app-to-mcp/`): `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo run -p app-to-mcp -- --help`.
+
 ### ansible — working infra example
 
 Tutorial-scale Ansible + Docker playground: one container runs Apache, another runs the playbook against it. Run with `docker-compose up --build` from `ansible/`.

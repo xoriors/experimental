@@ -2,7 +2,7 @@
 
 > Show it an app once, get a typed MCP server for it.
 
-**Status:** idea / planning. No code yet. Roadmap: [`app-to-mcp` issues](https://github.com/xoriors/experimental/issues?q=label%3Aapp-to-mcp).
+**Status:** M0 workspace skeleton (Rust scaffolding). Roadmap: [`app-to-mcp` issues](https://github.com/xoriors/experimental/issues?q=label%3Aapp-to-mcp).
 
 Most apps have no MCP server. Today an agent works with them by computer use: take a screenshot, have a vision model read it, guess where to click, repeat. Each step takes seconds and burns tokens, and it breaks whenever the layout changes.
 
@@ -56,3 +56,10 @@ More diagrams: [`docs/architecture.md`](./docs/architecture.md) · Spec example:
 ## Scope and limits
 
 Aimed at internal tools, B2B apps and the user's own accounts. Not a scraper. Respect each site's terms of service. Screen and page content is treated as untrusted input (prompt injection), and destructive tools need an explicit approval.
+
+## Development
+    cd app-to-mcp
+    cargo fmt --all -- --check
+    cargo clippy --workspace --all-targets -- -D warnings
+    cargo test --workspace
+    cargo run -p app-to-mcp -- --help

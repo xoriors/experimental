@@ -16,7 +16,7 @@ python3 -m http.server 8000 --directory mermaid-actions
 # then open http://localhost:8000/viewer.html
 ```
 
-`viewer.html?f=docs/runbook.md` opens another doc. The theme select switches light/dark; `auto`
+`viewer.html?f=docs/runbook.md` opens another doc (only `docs/*.md` on the same origin is loaded; anything else falls back to the default doc). The theme select switches light/dark; `auto`
 follows the OS.
 
 ## How an action is written

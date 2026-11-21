@@ -125,7 +125,9 @@ document.addEventListener('click', e => {
   }
 });
 
-show(new URLSearchParams(location.search).get('f') ?? 'docs/deploy-flow.md', location.hash);
+const DEFAULT_DOC = 'docs/deploy-flow.md';
+const wanted = new URLSearchParams(location.search).get('f');
+show(wanted && docUrl(wanted) ? wanted : DEFAULT_DOC, location.hash);   // a rejected ?f= falls back to the default doc
 
 function toast(msg) {
   const t = document.getElementById('toast');

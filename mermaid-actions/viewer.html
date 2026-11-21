@@ -45,10 +45,31 @@ sel.onchange = () => applyTheme(sel.value);
 
 // 1. Markdown → HTML, each ```mermaid block → a placeholder.  2. Pele mounts each placeholder;
 // `click … href` lines come out as real <a> elements.
+// Only Markdown files under docs/ are rendered: `?f=` and cross-doc links are untrusted input, and the
+// output goes into innerHTML, so a foreign (CORS-enabled) URL must never get this far.
+const DOCS = new URL('docs/', base);
+const docUrl = file => {
+  try {
+    const u = new URL(file, base);
+    return u.origin === base.origin && u.pathname.startsWith(DOCS.pathname) && u.pathname.endsWith('.md') ? u : null;
+  } catch { return null; }
+};
+let latest = 0;                                 // id of the newest show() call; older ones drop their result
 async function show(file, hash = '') {
-  const res = await fetch(new URL(file, base));
-  if (!res.ok) { doc.textContent = `Could not load ${file} (${res.status})`; return; }
-  let md = await res.text();
+  const id = ++latest;
+  const url = docUrl(file);
+  if (!url) { doc.textContent = `Refusing to load ${file}: only docs/*.md is allowed`; return; }
+  let res, md;
+  try {
+    res = await fetch(url);
+    if (id !== latest) return;
+    if (!res.ok) { doc.textContent = `Could not load ${file} (${res.status})`; return; }
+    md = await res.text();
+  } catch (err) {
+    if (id === latest) doc.textContent = `Could not load ${file}: ${err.message}`;
+    return;
+  }
+  if (id !== latest) return;
   md = md.replace(/^---\n[\s\S]*?\n---\n/, '');                 // doc frontmatter
   const sources = [];
   md = md.replace(/```mermaid\n([\s\S]*?)```/g, (_, src) => `\n<div class="diagram" data-i="${sources.push(src) - 1}"></div>\n`);
@@ -70,6 +91,8 @@ const jump = hash => document.getElementById(decodeURIComponent(hash.slice(1)))?
 const actions = {
   copy: (p) => {
     const text = p.get('text');
+    // navigator.clipboard is undefined on non-secure origins (plain http); writeText would throw.
+    if (!navigator.clipboard?.writeText) return toast(`Clipboard unavailable here, the text is: ${text}`);
     navigator.clipboard.writeText(text).then(() => toast(`Copied: ${text}`), () => toast(`Clipboard blocked here, the text is: ${text}`));
   },
   toggle: (p, node) => node?.classList.toggle(p.get('class')),

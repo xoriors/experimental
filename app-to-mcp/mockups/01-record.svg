@@ -1,0 +1,62 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='960' height='600' viewBox='0 0 960 600'>
+<rect x='0' y='0' width='960' height='600' rx='0' fill='#f6f7f9' />
+<rect x='0' y='0' width='960' height='44' rx='0' fill='#ffffff' />
+<line x1='0' y1='44' x2='960' y2='44' stroke='#e3e6eb'/>
+<text x='20' y='28' font-size='13' fill='#6b7385' font-weight='600' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>MCP host · chat</text>
+<text x='940' y='28' font-size='12' fill='#6b7385' font-weight='400' text-anchor='end' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>mockup — app-to-mcp cockpit</text>
+<rect x='580' y='58' width='360' height='34' rx='17' fill='#eef0ff' />
+<text x='594' y='80' font-size='13' fill='#4f46e5' font-weight='500' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Record me creating an invoice in Acme CRM</text>
+<rect x='20' y='104' width='920' height='476' rx='12' fill='#ffffff' stroke='#e3e6eb' />
+<rect x='20' y='104' width='920' height='40' rx='12' fill='#0f172a'/>
+<rect x='20' y='130' width='920' height='14' fill='#0f172a'/>
+<text x='40' y='129' font-size='13' fill='#fff' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>⌘ app-to-mcp</text>
+<text x='150' y='129' font-size='13' fill='#cbd5e1' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Record · acme-crm · task “create invoice”</text>
+<text x='920' y='129' font-size='11' fill='#94a3b8' font-weight='400' text-anchor='end' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>ui://app-to-mcp/cockpit</text>
+<rect x='40' y='160' width='560' height='300' rx='8' fill='#0b1220' />
+<rect x='52' y='172' width='536' height='26' rx='5' fill='#1e293b' /><text x='64' y='190' font-size='11' fill='#94a3b8' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>https://crm.acme.internal/invoices/new</text>
+<rect x='52' y='206' width='536' height='242' rx='4' fill='#ffffff' />
+<text x='70' y='232' font-size='16' fill='#1d2330' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>New invoice</text>
+<text x='70' y='252' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Customer</text>
+<rect x='70' y='258' width='300' height='30' rx='5' fill='#f6f7f9' stroke='#e3e6eb' />
+<text x='80' y='278' font-size='13' fill='#1d2330' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Contoso GmbH</text>
+<text x='70' y='304' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Amount</text>
+<rect x='70' y='310' width='300' height='30' rx='5' fill='#f6f7f9' stroke='#e3e6eb' />
+<text x='80' y='330' font-size='13' fill='#1d2330' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>1,250.00</text>
+<text x='70' y='356' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Currency</text>
+<rect x='70' y='362' width='300' height='30' rx='5' fill='#f6f7f9' stroke='#e3e6eb' />
+<text x='80' y='382' font-size='13' fill='#1d2330' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>EUR</text>
+<rect x='70' y='410' width='120' height='30' rx='6' fill='#4f46e5' /><text x='130' y='430' font-size='12' fill='#fff' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Save draft</text>
+<circle cx='140' cy='425' r='16' fill='none' stroke='#dc2626' stroke-width='3'/>
+<rect x='470' y='214' width='110' height='22' rx='11' fill='#dc2626' /><circle cx='484' cy='225' r='4' fill='#fff'/><text x='530' y='229' font-size='11' fill='#fff' font-weight='700' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>REC 00:42</text>
+<text x='40' y='482' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Live view · CDP screencast · dedicated profile “acme-crm”</text>
+<rect x='40' y='500' width='150' height='34' rx='8' fill='#dc2626' /><text x='115.0' y='522' font-size='13' fill='#fff' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>■ Stop &amp; compile</text>
+<rect x='200' y='500' width='80' height='34' rx='8' fill='#ffffff' stroke='#e3e6eb' /><text x='240.0' y='522' font-size='13' fill='#1d2330' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Pause</text>
+<rect x='290' y='500' width='140' height='34' rx='8' fill='#ffffff' stroke='#e3e6eb' /><text x='360.0' y='522' font-size='13' fill='#1d2330' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Take over input</text>
+<text x='620' y='174' font-size='13' fill='#1d2330' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Captured requests</text>
+<rect x='870' y='160' width='30' height='22' rx='11' fill='#eef0ff' /><text x='885.0' y='175' font-size='11' fill='#4f46e5' font-weight='600' text-anchor='middle' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>14</text>
+<rect x='620' y='192' width='300' height='36' rx='6' fill='#ffffff' stroke='#e3e6eb' />
+<text x='632' y='215' font-size='11' fill='#4f46e5' font-weight='700' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>GET</text>
+<text x='672' y='215' font-size='11' fill='#1d2330' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>/api/v2/customers?q=cont</text>
+<text x='908' y='215' font-size='10' fill='#16a34a' font-weight='600' text-anchor='end' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>200</text>
+<rect x='620' y='236' width='300' height='36' rx='6' fill='#ffffff' stroke='#e3e6eb' />
+<text x='632' y='259' font-size='11' fill='#4f46e5' font-weight='700' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>GET</text>
+<text x='672' y='259' font-size='11' fill='#1d2330' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>/api/v2/currencies</text>
+<text x='908' y='259' font-size='10' fill='#16a34a' font-weight='600' text-anchor='end' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>200</text>
+<rect x='620' y='280' width='300' height='36' rx='6' fill='#ffffff' stroke='#e3e6eb' />
+<text x='632' y='303' font-size='11' fill='#4f46e5' font-weight='700' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>POST</text>
+<text x='672' y='303' font-size='11' fill='#1d2330' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>/api/v2/invoices</text>
+<text x='908' y='303' font-size='10' fill='#16a34a' font-weight='600' text-anchor='end' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>201</text>
+<rect x='620' y='324' width='300' height='36' rx='6' fill='#ffffff' stroke='#e3e6eb' />
+<text x='632' y='347' font-size='11' fill='#4f46e5' font-weight='700' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>GET</text>
+<text x='672' y='347' font-size='11' fill='#1d2330' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>/api/v2/invoices/inv_81</text>
+<text x='908' y='347' font-size='10' fill='#16a34a' font-weight='600' text-anchor='end' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>200</text>
+<rect x='620' y='368' width='300' height='36' rx='6' fill='#f6f7f9' stroke='#e3e6eb' />
+<text x='632' y='391' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>POST</text>
+<text x='672' y='391' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>/telemetry/batch</text>
+<text x='908' y='391' font-size='10' fill='#6b7385' font-weight='600' text-anchor='end' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>ignored</text>
+<rect x='620' y='412' width='300' height='36' rx='6' fill='#f6f7f9' stroke='#e3e6eb' />
+<text x='632' y='435' font-size='11' fill='#6b7385' font-weight='700' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>GET</text>
+<text x='672' y='435' font-size='11' fill='#6b7385' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>/static/app.js</text>
+<text x='908' y='435' font-size='10' fill='#6b7385' font-weight='600' text-anchor='end' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>ignored</text>
+<rect x='620' y='462' width='300' height='62' rx='6' fill='#fff5e6' /><text x='632' y='482' font-size='12' fill='#d97706' font-weight='700' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>Auth detected: cookie session</text><text x='632' y='500' font-size='11' fill='#d97706' font-weight='400' text-anchor='start' xml:space='preserve' font-family='JetBrains Mono,Menlo,Consolas,monospace'>+ CSRF header X-XSRF-TOKEN</text><text x='632' y='516' font-size='11' fill='#d97706' font-weight='400' text-anchor='start' xml:space='preserve' font-family='Inter,Segoe UI,Helvetica,Arial,sans-serif'>secrets → OS keychain, not the spec</text>
+</svg>

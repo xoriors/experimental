@@ -13,6 +13,8 @@ stable release.
 - [`solar-eclipse-2026/`](./solar-eclipse-2026/) — Interactive guide and physically-accurate simulator for the total solar eclipse of 12 August 2026, with contact times computed in-browser from NASA's Besselian elements for any point on Earth. [Docs](./solar-eclipse-2026/README.md)
 - [`screen-narrator-d1/`](./screen-narrator-d1/) — Playground for testing Liquid AI's d1-ultra decision model as the "when to speak" gate of a screen narrator for blind users: synthetic screenshot benchmark, calibration report, live screen-sharing mode. [Results](https://screen-narrator-d1.vercel.app) · [Docs](./screen-narrator-d1/README.md)
 - [`mermaid-actions/`](./mermaid-actions/) — Clickable actions declared inside plain Markdown + Mermaid files (open, jump, copy, toggle, reveal, ticket links), executed by a 90-line [Pele](https://pele.run/) viewer; GitHub and Obsidian degrade gracefully. [Docs](./mermaid-actions/README.md)
+- [pi-artifacts](https://github.com/radumarias/pi-artifacts) (moved to its own repository) — Claude-style artifacts on Cloudflare: a Pi Durable agent per chat builds live dashboards whose pages pull real-time data through the chat's MCP connections.
+- [`app-to-mcp/`](./app-to-mcp/) — Idea: show it a web or desktop app once and it compiles a typed, self-healing MCP server for it, with an MCP App cockpit for recording, review and approvals. [Roadmap](https://github.com/xoriors/experimental/issues?q=label%3Aapp-to-mcp) · [Docs](./app-to-mcp/README.md)
 - [`llm-git-conflict-resolve/`](./llm-git-conflict-resolve/) — Use an LLM to resolve git merge conflicts
 - [`llm-linter/`](./llm-linter/) — LLM-driven code linting
 - [`llm-password-reset/`](./llm-password-reset/) — LLM password-reset experiment

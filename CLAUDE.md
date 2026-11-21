@@ -27,6 +27,11 @@ documented in the README: the ephemeris-meridian correction to `mu`, and the fac
 "eclipse magnitude" for a central eclipse is the Moon/Sun diameter ratio rather than the standard
 magnitude formula.
 
+### pi-artifacts — moved
+
+Claude-style live artifacts on Cloudflare now live in their own repository,
+[radumarias/pi-artifacts](https://github.com/radumarias/pi-artifacts). Nothing of it remains here.
+
 ### llm-git-conflict-resolve — working prototype
 
 LLM-assisted git merge-conflict resolution driven by semantic intent (commit messages + three-way diff) rather than textual diffs. Python 3 stdlib only.

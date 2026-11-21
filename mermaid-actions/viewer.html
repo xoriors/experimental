@@ -47,23 +47,32 @@ sel.onchange = () => applyTheme(sel.value);
 
 // 1. Markdown → HTML, each ```mermaid block → a placeholder.  2. Pele mounts each placeholder;
 // `click … href` lines come out as real <a> elements.
-let seq = 0;                                    // latest show() call wins
-async function show(file, hash = '') {
-  const my = ++seq;
-  // Only docs under this folder: ?f= comes from the URL, and marked renders raw HTML.
-  const url = new URL(file, base);
-  if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) { doc.textContent = `Refusing to open ${file}`; return; }
-  let md;
+// Only Markdown files under docs/ are rendered: `?f=` and cross-doc links are untrusted input, and the
+// output goes into innerHTML, so a foreign (CORS-enabled) URL must never get this far.
+const DOCS = new URL('docs/', base);
+const docUrl = file => {
   try {
-    const res = await fetch(url);
-    if (!res.ok) { if (my === seq) doc.textContent = `Could not load ${file} (${res.status})`; return; }
+    const u = new URL(file, base);
+    return u.origin === base.origin && u.pathname.startsWith(DOCS.pathname) && u.pathname.endsWith('.md') ? u : null;
+  } catch { return null; }
+};
+let latest = 0;                                 // id of the newest show() call; older ones drop their result
+async function show(file, hash = '') {
+  const id = ++latest;
+  const url = docUrl(file);
+  if (!url) { doc.textContent = `Refusing to load ${file}: only docs/*.md is allowed`; return; }
+  let res, md;
+  try {
+    res = await fetch(url);
+    if (id !== latest) return;
+    if (!res.ok) { doc.textContent = `Could not load ${file} (${res.status})`; return; }
     md = await res.text();
   } catch (err) {
-    if (my === seq) doc.textContent = `Could not load ${file}: ${err?.message ?? err}`;
+    if (id === latest) doc.textContent = `Could not load ${file}: ${err?.message ?? err}`;
     return;
   }
-  if (my !== seq) return;
-  md = md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');             // doc frontmatter
+  if (id !== latest) return;
+  md = md.replace(/^---\r?\n[\s\S]*?\r?\n---\n?/, '');                 // doc frontmatter
   const sources = [];
   md = md.replace(/```mermaid\r?\n([\s\S]*?)```/g, (_, src) => `\n<div class="diagram" data-i="${sources.push(src) - 1}"></div>\n`);
   for (const m of mounted.splice(0)) m.destroy();
@@ -105,7 +114,9 @@ mountActions(document, {
   },
 });
 
-show(new URLSearchParams(location.search).get('f') ?? 'docs/deploy-flow.md', location.hash);
+const DEFAULT_DOC = 'docs/deploy-flow.md';
+const wanted = new URLSearchParams(location.search).get('f');
+show(wanted && docUrl(wanted) ? wanted : DEFAULT_DOC, location.hash);   // a rejected ?f= falls back to the default doc
 
 </script>
 </body>

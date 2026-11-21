@@ -52,7 +52,12 @@ register('show', (p, node, ctx) => {
 
 /** `href` must be an `action:` URL. */
 function run(href, node, ctx) {
-  const u = new URL(href);
+  let u;
+  try {
+    u = new URL(href);
+  } catch {
+    return ctx.toast(`Invalid action link: ${href}`);
+  }
   const fn = registry.get(u.pathname);
   if (!fn) return ctx.toast(`Unknown action: ${u.pathname}`);
   try {
@@ -80,14 +85,16 @@ function mount(root, opts = {}) {
   const onClick = e => {
     if (!(e.target instanceof Element)) return;
     const a = e.target.closest('a[href], a[*|href]');
+    const clicks = opts.clicks?.(e.target);
+    const id = nodeIdOf(e.target)?.id;
     const href = opts.clicks
-      ? opts.clicks(e.target)?.[nodeIdOf(e.target)?.id]?.href
+      ? (clicks && id !== undefined && Object.hasOwn(clicks, id) ? clicks[id].href : undefined)
       : (a?.getAttribute('href') ?? a?.getAttribute('xlink:href'));
     if (!href) return;
     if (href.startsWith('action:')) {
       e.preventDefault();
       e.stopPropagation();
-      run(href, e.target.closest('[data-id]'), ctx);
+      run(href, nodeIdOf(e.target)?.el ?? null, ctx);
     } else {
       opts.onLink?.(href, a, e);
     }
@@ -127,7 +134,7 @@ function nodeIdOf(target) {
 function decorate(root, clicks, cls = 'ma-action') {
   for (const el of root.querySelectorAll('[data-id], [id]')) {
     const n = nodeIdOf(el);
-    if (n && n.el === el && clicks[n.id]) el.classList.add(cls);
+    if (n && n.el === el && Object.hasOwn(clicks, n.id)) el.classList.add(cls);
   }
 }
 

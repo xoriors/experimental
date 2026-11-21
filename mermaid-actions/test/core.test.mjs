@@ -1,4 +1,4 @@
-// node --test mermaid-actions/test
+// node --test mermaid-actions/test/core.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { register, run, parseClicks, nodeIdOf } from '../mermaid-actions.js';

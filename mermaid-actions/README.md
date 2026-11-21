@@ -3,7 +3,7 @@
 Clickable actions for diagrams, declared inside plain Markdown + Mermaid files and executed by a
 small viewer built on [Pele](https://pele.run/), Obsidian's Mermaid renderer. Nothing in the
 docs is a script: every action is a `click … href` line in the Mermaid block, the look is a CSS
-file, and the behaviour lives once in `viewer.html`.
+file, and the behaviour lives once in `mermaid-actions.js`.
 
 ![The deploy-flow doc in the viewer, with the Smoke check node toggled to done](docs/viewer.png)
 
@@ -125,4 +125,4 @@ docs/runbook.md      a second doc, to show jumps between docs
 docs/viewer.png      screenshot of the viewer
 ```
 
-Both libraries load pinned from jsdelivr; there is no build step and nothing to install.
+Both libraries load pinned from jsdelivr; the viewer has no build step and nothing to install (only the Obsidian and VS Code bundles are generated, see above).

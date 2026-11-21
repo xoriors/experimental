@@ -47,13 +47,25 @@ sel.onchange = () => applyTheme(sel.value);
 
 // 1. Markdown → HTML, each ```mermaid block → a placeholder.  2. Pele mounts each placeholder;
 // `click … href` lines come out as real <a> elements.
+let seq = 0;                                    // latest show() call wins
 async function show(file, hash = '') {
-  const res = await fetch(new URL(file, base));
-  if (!res.ok) { doc.textContent = `Could not load ${file} (${res.status})`; return; }
-  let md = await res.text();
-  md = md.replace(/^---\n[\s\S]*?\n---\n/, '');                 // doc frontmatter
+  const my = ++seq;
+  // Only docs under this folder: ?f= comes from the URL, and marked renders raw HTML.
+  const url = new URL(file, base);
+  if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) { doc.textContent = `Refusing to open ${file}`; return; }
+  let md;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) { if (my === seq) doc.textContent = `Could not load ${file} (${res.status})`; return; }
+    md = await res.text();
+  } catch (err) {
+    if (my === seq) doc.textContent = `Could not load ${file}: ${err?.message ?? err}`;
+    return;
+  }
+  if (my !== seq) return;
+  md = md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');             // doc frontmatter
   const sources = [];
-  md = md.replace(/```mermaid\n([\s\S]*?)```/g, (_, src) => `\n<div class="diagram" data-i="${sources.push(src) - 1}"></div>\n`);
+  md = md.replace(/```mermaid\r?\n([\s\S]*?)```/g, (_, src) => `\n<div class="diagram" data-i="${sources.push(src) - 1}"></div>\n`);
   for (const m of mounted.splice(0)) m.destroy();
   doc.innerHTML = marked.parse(md);
   for (const h of doc.querySelectorAll('h1,h2,h3,h4,h5,h6')) if (!h.id) h.id = slug(h.textContent);
@@ -66,7 +78,11 @@ async function show(file, hash = '') {
   if (hash) jump(hash); else window.scrollTo(0, 0);
 }
 const slug = t => t.trim().toLowerCase().replace(/[^\w]+/g, '-').replace(/^-|-$/g, '');
-const jump = hash => document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: 'start' });
+const jump = hash => {
+  let id = hash.slice(1);
+  try { id = decodeURIComponent(id); } catch {}
+  document.getElementById(id)?.scrollIntoView({ block: 'start' });
+};
 
 const toast = toaster(document.getElementById('toast'));
 
@@ -76,6 +92,7 @@ const toast = toaster(document.getElementById('toast'));
 mountActions(document, {
   toast,
   onLink(href, a, e) {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // let the browser open new tabs
     if (a?.dataset.doc) {                                          // header nav
       e.preventDefault(); show(a.dataset.doc);
     } else if (href.startsWith('#')) {                             // heading in this doc

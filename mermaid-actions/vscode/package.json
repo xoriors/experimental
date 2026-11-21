@@ -4,7 +4,7 @@
   "description": "Run action: links (copy, toggle, show) declared as click lines in Mermaid diagrams, in the Markdown preview.",
   "version": "0.1.0",
   "publisher": "xorio",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Other"],
   "activationEvents": ["onLanguage:markdown"],

@@ -11,23 +11,19 @@ module.exports = class MermaidActionsPlugin extends Plugin {
       const info = ctx.getSectionInfo(el);
       if (!info) return;
       const lines = info.text.split('\n').slice(info.lineStart, info.lineEnd + 1);
-      if (!lines.length || !FENCE.test(lines[0])) return;
+      if (!FENCE.test(lines[0])) return;
       const clicks = MermaidActions.parseClicks(lines.slice(1, -1).join('\n'));
       if (!Object.keys(clicks).length) return;
 
       const mounted = MermaidActions.mount(el, {
         capture: true,
         toast: msg => new Notice(msg),
-        hrefFor: target => clicks[MermaidActions.nodeIdOf(target)?.id]?.href,
+        clicks: () => clicks,
       });
-      // The diagram renders after this runs, so tag nodes as they appear.
-      const tag = () => MermaidActions.decorate(el, clicks);
-      const obs = new MutationObserver(tag);
-      obs.observe(el, { childList: true, subtree: true });
-      tag();
+      const unwatch = MermaidActions.watch(el, () => MermaidActions.decorate(el, clicks));
 
       const child = new MarkdownRenderChild(el);
-      child.onunload = () => { mounted.destroy(); obs.disconnect(); };
+      child.onunload = () => { mounted.destroy(); unwatch(); };
       ctx.addChild(child);
     });
   }

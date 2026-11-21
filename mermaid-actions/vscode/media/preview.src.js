@@ -2,38 +2,27 @@
 // action in the data element placed just before it, and runs it.
 const toastEl = document.createElement('div');
 toastEl.className = 'ma-toast';
-const toast = msg => {
-  toastEl.textContent = msg;
-  if (!toastEl.isConnected) document.body.appendChild(toastEl);
-  toastEl.classList.add('on');
-  clearTimeout(toast.h); toast.h = setTimeout(() => toastEl.classList.remove('on'), 4000);
-};
+document.documentElement.appendChild(toastEl);
 
-const dataBefore = target => {
+const readClicks = data => { try { return JSON.parse(data.dataset.actions); } catch { return null; } };
+
+const clicksFor = target => {
   for (let b = target; b && b !== document.body; b = b.parentElement) {
     const prev = b.previousElementSibling;
-    if (prev?.classList.contains('mermaid-actions-data')) {
-      try { return { block: b, clicks: JSON.parse(prev.dataset.actions) }; } catch { return null; }
-    }
+    if (prev?.classList.contains('mermaid-actions-data')) return readClicks(prev);
   }
   return null;
 };
 
 MermaidActions.mount(document, {
   capture: true,           // before mermaid.js's own <a> handling, which would navigate to about:blank
-  toast,
-  hrefFor: target => {
-    const d = dataBefore(target);
-    return d && d.clicks[MermaidActions.nodeIdOf(target)?.id]?.href;
-  },
+  toast: MermaidActions.toaster(toastEl),
+  clicks: clicksFor,
 });
 
-// Diagrams render asynchronously and the preview re-renders on every edit.
-const tag = () => {
+MermaidActions.watch(document.body, () => {
   for (const data of document.querySelectorAll('.mermaid-actions-data')) {
-    const block = data.nextElementSibling;
-    if (block) try { MermaidActions.decorate(block, JSON.parse(data.dataset.actions)); } catch {}
+    const clicks = readClicks(data);
+    if (clicks && data.nextElementSibling) MermaidActions.decorate(data.nextElementSibling, clicks);
   }
-};
-new MutationObserver(tag).observe(document.body, { childList: true, subtree: true });
-tag();
+});

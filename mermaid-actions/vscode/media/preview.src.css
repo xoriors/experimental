@@ -1,0 +1,4 @@
+:root { --ma-accent: var(--vscode-textLink-foreground); }
+details.flash { outline: 2px solid var(--ma-accent); }
+.ma-toast { position: fixed; right: 12px; bottom: 12px; max-width: 60ch; padding: .4rem .7rem; border-radius: 4px; background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground); border: 1px solid var(--vscode-editorWidget-border); opacity: 0; transition: opacity .2s; pointer-events: none; }
+.ma-toast.on { opacity: 1; }

@@ -6,20 +6,16 @@ function activate() {
   return {
     extendMarkdownIt(md) {
       md.core.ruler.push('mermaid_actions', state => {
-        const out = [];
-        for (const tok of state.tokens) {
-          if (tok.type === 'fence' && /^\s*mermaid\b/.test(tok.info)) {
-            const clicks = MermaidActions.parseClicks(tok.content);
-            if (Object.keys(clicks).length) {
-              const h = new state.Token('html_block', '', 0);
-              h.block = true;
-              h.content = `<div class="mermaid-actions-data" hidden data-actions="${md.utils.escapeHtml(JSON.stringify(clicks))}"></div>\n`;
-              out.push(h);
-            }
-          }
-          out.push(tok);
+        for (let i = state.tokens.length - 1; i >= 0; i--) {
+          const tok = state.tokens[i];
+          if (tok.type !== 'fence' || !/^\s*mermaid\b/.test(tok.info)) continue;
+          const clicks = MermaidActions.parseClicks(tok.content);
+          if (!Object.keys(clicks).length) continue;
+          const h = new state.Token('html_block', '', 0);
+          h.block = true;
+          h.content = `<div class="mermaid-actions-data" hidden data-actions="${md.utils.escapeHtml(JSON.stringify(clicks))}"></div>\n`;
+          state.tokens.splice(i, 0, h);
         }
-        state.tokens = out;
       });
       return md;
     },

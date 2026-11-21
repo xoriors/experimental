@@ -56,13 +56,14 @@ register('open-ticket', (p) => window.open(`https://example.com/t/${p.get('id')}
 const { destroy } = mount(document, {
   toast: msg => console.log(msg),         // how a host shows messages
   onLink: (href, a, event) => {},         // other clicks with an href (nav, #heading, ./doc.md)
-  // hrefFor: (target) => href,           // for hosts whose renderer strips the link
+  // clicks: (target) => parseClicks(src), // for hosts whose renderer strips the link
 });
 ```
 
 `copy`, `toggle` and `show` are registered the same way, so a host can replace them. A host that
 cannot get the link out of its renderer reads the `click` lines itself (`parseClicks(source)`) and
-finds the clicked node with `nodeIdOf(target)`; the Obsidian and VS Code hosts do this.
+passes it to `mount` as `clicks`; the Obsidian and VS Code hosts do this. `watch` and `decorate`
+mark the nodes that have an action (`ma-action`) as the diagram renders.
 
 | Host | Folder | Install |
 |---|---|---|
@@ -70,8 +71,8 @@ finds the clicked node with `nodeIdOf(target)`; the Obsidian and VS Code hosts d
 | Obsidian plugin | `obsidian/` | copy `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/mermaid-actions/`, enable it |
 | VS Code Markdown preview | `vscode/` | `cd vscode && npx @vscode/vsce package`, then install the `.vsix`; needs the *Markdown Preview Mermaid Support* extension, which draws the diagrams |
 
-`obsidian/main.js`, `vscode/extension.js` and `vscode/media/preview.js` are generated from
-`mermaid-actions.js` plus the `*.src.js` next to them, so each ships as one file with no build on
+`obsidian/main.js`, `obsidian/styles.css`, `vscode/extension.js`, `vscode/media/preview.js` and `vscode/media/preview.css` are generated from
+`mermaid-actions.js` plus the `*.src.*` files next to them, so each ships as one file with no build on
 the user's side. After editing a source, run `node build-hosts.mjs` (`--check` fails when a
 generated file is stale). `node --test test/core.test.mjs` runs the unit tests.
 
@@ -117,6 +118,7 @@ obsidian/            Obsidian plugin (main.src.js → generated main.js, manifes
 vscode/              VS Code Markdown preview extension (extension.src.js, media/preview.src.js, generated bundles)
 build-hosts.mjs      builds the host bundles from mermaid-actions.js; --check for CI
 test/core.test.mjs   unit tests for the library (node --test)
+mermaid-actions.css  styles for the classes the built-in actions use; a host sets `--ma-accent`
 theme.css            --pele-* variables for light/dark, styles for the semantic classes, page styles
 docs/deploy-flow.md  every action type on one flowchart, plus a kanban with ticket links
 docs/runbook.md      a second doc, to show jumps between docs

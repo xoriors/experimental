@@ -20,8 +20,10 @@ const wrap = file =>
   `const MermaidActions = ${iife};\n${read(file)}`;
 
 const outputs = {
-  'obsidian/main.js': wrap("obsidian/main.src.js"),
+  'obsidian/main.js': wrap('obsidian/main.src.js'),
   'vscode/extension.js': wrap('vscode/extension.src.js'),
+  'obsidian/styles.css': read('mermaid-actions.css') + read('obsidian/styles.src.css'),
+  'vscode/media/preview.css': read('mermaid-actions.css') + read('vscode/media/preview.src.css'),
   'vscode/media/preview.js': `(() => {\n${wrap('vscode/media/preview.src.js')}\n})();\n`,
 };
 

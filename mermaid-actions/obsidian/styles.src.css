@@ -1,0 +1,2 @@
+body { --ma-accent: var(--interactive-accent); }
+details.flash { outline: 2px solid var(--ma-accent); }

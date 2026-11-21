@@ -8,10 +8,12 @@ const MermaidActions = (() => {
  *
  *   register(name, fn)   add or replace an action; fn(params, node, ctx)
  *   mount(root, opts)    one click handler on `root`; returns { destroy }
- *   run(href, node, ctx) run one `action:` href; returns true when it was one
+ *   run(href, node, ctx) run one `action:` href
  *   parseClicks(source)  { nodeId: { href, tooltip } } from the `click` lines of a Mermaid source
  *   nodeIdOf(target)     { id, el } of the diagram node under a DOM element, or null
  *   decorate(root, clicks, cls)  add `cls` to the nodes that have an action
+ *   watch(root, fn)      call fn now and, once per burst, after DOM changes under root; returns disconnect
+ *   toaster(el, ms)      a toast(msg) function that shows `msg` in `el` by toggling its `on` class
  *
  * `fn` gets the URL's query as URLSearchParams, the node's element (or null) and
  * ctx = { root, doc, toast }.
@@ -51,25 +53,24 @@ register('show', (p, node, ctx) => {
   setTimeout(() => t.classList.remove('flash'), 1500);
 });
 
+/** `href` must be an `action:` URL. */
 function run(href, node, ctx) {
-  if (typeof href !== 'string' || !href.startsWith('action:')) return false;
   const u = new URL(href);
-  const fn = ctx.actions?.[u.pathname] ?? registry.get(u.pathname);
-  if (!fn) { ctx.toast(`Unknown action: ${u.pathname}`); return true; }
+  const fn = registry.get(u.pathname);
+  if (!fn) return ctx.toast(`Unknown action: ${u.pathname}`);
   try {
     fn(u.searchParams, node, ctx);
   } catch (err) {
     ctx.toast(`Action ${u.pathname} failed: ${err?.message ?? err}`);
   }
-  return true;
 }
 
 /**
  * Click handler for `root`. Options (all optional):
  *   toast(msg)              show a message; default logs to the console
- *   actions                 { name: fn } that win over the registered ones, for this mount only
- *   hrefFor(target, event)  the href to run for a click; default is the `href` of the enclosing <a>.
- *                           Hosts whose renderer strips the link (Obsidian) look it up by node id instead.
+ *   clicks(target)          the parseClicks() map for the diagram `target` is in, or null. For hosts whose
+ *                           renderer strips the link (Obsidian); the node's action is looked up by its id.
+ *                           Without it the href of the enclosing <a> is used.
  *   onLink(href, a, event)  called for every other click that has an href (nav, #heading, ./doc.md)
  *   capture                 listen in the capture phase, to run before the host's own handlers
  */
@@ -78,12 +79,13 @@ function mount(root, opts = {}) {
     root,
     doc: root.ownerDocument ?? root,
     toast: opts.toast ?? (msg => console.info('[mermaid-actions]', msg)),
-    actions: opts.actions,
   };
   const onClick = e => {
     if (!(e.target instanceof Element)) return;
     const a = e.target.closest('a[href], a[*|href]');
-    const href = opts.hrefFor ? opts.hrefFor(e.target, e) : (a?.getAttribute('href') ?? a?.getAttribute('xlink:href'));
+    const href = opts.clicks
+      ? opts.clicks(e.target)?.[nodeIdOf(e.target)?.id]?.href
+      : (a?.getAttribute('href') ?? a?.getAttribute('xlink:href'));
     if (!href) return;
     if (href.startsWith('action:')) {
       e.preventDefault();
@@ -111,7 +113,10 @@ function parseClicks(source) {
   return out;
 }
 
-/** Pele puts the Mermaid id in `data-id`; mermaid.js 10 names nodes `flowchart-<id>-<n>`. */
+/**
+ * Pele puts the Mermaid id in `data-id`; mermaid.js 10 names nodes `flowchart-<id>-<n>`. A renderer
+ * with another convention is supported by extending this function, not by a lookup in a host.
+ */
 function nodeIdOf(target) {
   for (let el = target; el && el.nodeType === 1; el = el.parentElement) {
     const d = el.getAttribute('data-id');
@@ -129,46 +134,60 @@ function decorate(root, clicks, cls = 'ma-action') {
   }
 }
 
-return { register, run, mount, parseClicks, nodeIdOf, decorate };
+// Diagrams render after the host runs and previews re-render on every edit, so hosts re-tag nodes.
+// Mutations are coalesced to one call per frame; fn must not itself add or remove child nodes.
+function watch(root, fn) {
+  const doc = root.ownerDocument ?? root;
+  let queued = false;
+  const obs = new MutationObserver(() => {
+    if (queued) return;
+    queued = true;
+    (doc.defaultView?.requestAnimationFrame ?? setTimeout)(() => { queued = false; fn(); });
+  });
+  obs.observe(root, { childList: true, subtree: true });
+  fn();
+  return () => obs.disconnect();
+}
+
+function toaster(el, ms = 4000) {
+  let timer;
+  return msg => {
+    el.textContent = msg;
+    el.classList.add('on');
+    clearTimeout(timer);
+    timer = setTimeout(() => el.classList.remove('on'), ms);
+  };
+}
+
+return { register, run, mount, parseClicks, nodeIdOf, decorate, watch, toaster };
 })();
 // VS Code host, preview webview side. Finds the diagram a click landed in, looks up the node's
 // action in the data element placed just before it, and runs it.
 const toastEl = document.createElement('div');
 toastEl.className = 'ma-toast';
-const toast = msg => {
-  toastEl.textContent = msg;
-  if (!toastEl.isConnected) document.body.appendChild(toastEl);
-  toastEl.classList.add('on');
-  clearTimeout(toast.h); toast.h = setTimeout(() => toastEl.classList.remove('on'), 4000);
-};
+document.documentElement.appendChild(toastEl);
 
-const dataBefore = target => {
+const readClicks = data => { try { return JSON.parse(data.dataset.actions); } catch { return null; } };
+
+const clicksFor = target => {
   for (let b = target; b && b !== document.body; b = b.parentElement) {
     const prev = b.previousElementSibling;
-    if (prev?.classList.contains('mermaid-actions-data')) {
-      try { return { block: b, clicks: JSON.parse(prev.dataset.actions) }; } catch { return null; }
-    }
+    if (prev?.classList.contains('mermaid-actions-data')) return readClicks(prev);
   }
   return null;
 };
 
 MermaidActions.mount(document, {
   capture: true,           // before mermaid.js's own <a> handling, which would navigate to about:blank
-  toast,
-  hrefFor: target => {
-    const d = dataBefore(target);
-    return d && d.clicks[MermaidActions.nodeIdOf(target)?.id]?.href;
-  },
+  toast: MermaidActions.toaster(toastEl),
+  clicks: clicksFor,
 });
 
-// Diagrams render asynchronously and the preview re-renders on every edit.
-const tag = () => {
+MermaidActions.watch(document.body, () => {
   for (const data of document.querySelectorAll('.mermaid-actions-data')) {
-    const block = data.nextElementSibling;
-    if (block) try { MermaidActions.decorate(block, JSON.parse(data.dataset.actions)); } catch {}
+    const clicks = readClicks(data);
+    if (clicks && data.nextElementSibling) MermaidActions.decorate(data.nextElementSibling, clicks);
   }
-};
-new MutationObserver(tag).observe(document.body, { childList: true, subtree: true });
-tag();
+});
 
 })();

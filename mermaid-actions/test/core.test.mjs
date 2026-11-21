@@ -18,25 +18,17 @@ test('parseClicks keeps only action: targets, with tooltip, href optional', () =
   assert.equal(c.b.tooltip, '');
 });
 
-test('run: registered, unknown, throwing and non-action hrefs', () => {
+test('run: registered, unknown and throwing actions', () => {
   const seen = [];
   register('probe', (p, node) => seen.push([p.get('k'), node]));
   register('boom', () => { throw new Error('nope'); });
   const c = ctx();
-  assert.equal(run('action:probe?k=v', 'N', c), true);
+  run('action:probe?k=v', 'N', c);
   assert.deepEqual(seen, [['v', 'N']]);
-  assert.equal(run('action:missing', null, c), true);
-  assert.equal(run('action:boom', null, c), true);
-  assert.equal(run('https://x', null, c), false);
+  run('action:missing', null, c);
+  run('action:boom', null, c);
   assert.deepEqual(c.toasts, ['Unknown action: missing', 'Action boom failed: nope']);
   assert.throws(() => register('bad name', () => {}), TypeError);
-});
-
-test('run: per-mount actions win over registered ones', () => {
-  register('dup', () => { throw new Error('registered'); });
-  const c = { ...ctx(), actions: { dup: () => c.toast('local') } };
-  run('action:dup', null, c);
-  assert.deepEqual(c.toasts, ['local']);
 });
 
 test('nodeIdOf reads data-id (Pele) and flowchart-<id>-<n> (mermaid.js)', () => {
